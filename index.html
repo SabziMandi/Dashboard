@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BBC Dashboard">
+<meta name="theme-color" content="#F5F1EB">
+<meta name="mobile-web-app-capable" content="yes">
 <title>BBC Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -916,14 +921,35 @@ button.tasks-tab-btn {
   .date-full.sz-today { font-size: 20px; }
   .content { padding: 14px 16px 80px; }
   .header-row1 { padding: 9px 16px; }
-  .filter-bar { padding: 6px 16px; }
-  .deadline-split { grid-template-columns: 1fr 1fr; }
+  .hide-mobile { display: none !important; }
+
+  /* iOS auto-zoom fix: Safari zooms in when inputs < 16px */
+  .finput, .fselect, .ftextarea, .header-search,
+  input[type="date"], input[type="search"], input[type="text"],
+  input[type="number"], textarea, select { font-size: 16px !important; }
+
+  /* Scrollable filter bar — no wrapping, scroll horizontally */
+  .filter-bar { padding: 6px 16px; overflow-x: auto; flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .fpill { flex-shrink: 0; }
+  .live-clock { flex-shrink: 0; }
+
+  /* Modals slide up from bottom on mobile */
+  .modal-bg { padding: 0; align-items: flex-end; }
+  .modal { border-radius: 18px 18px 0 0; max-height: 88vh;
+    padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+  /* Forms always single column */
+  .form-grid { grid-template-columns: 1fr !important; }
+  .deadline-split { grid-template-columns: 1fr !important; }
+  .fb-grid { grid-template-columns: 1fr !important; }
+}
+@media(min-width:721px){
+  .show-mobile-only { display: none !important; }
 }
 @media(max-width:480px){
   .card-fields { grid-template-columns: 1fr 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
-  .fb-grid { grid-template-columns: 1fr; }
-  .deadline-split { grid-template-columns: 1fr; }
 }
 
 /* ── Bottom Nav Bar ── */
@@ -968,13 +994,16 @@ button.tasks-tab-btn {
         <span class="sync-dot dot-local" id="sync-dot"></span>
         <span id="sync-label">Local only</span>
       </div>
-      <button class="tasks-tab-btn" onclick="jumpToTasks()" title="Go to Tasks">☑ Tasks</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTxt()">⬇ Export .txt</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportJSON()" title="Save all your data as a backup file you can re-import">⬇ Export data</button>
-      <button class="btn btn-ghost btn-sm" onclick="openImportDialog()" title="Restore data from a previously exported file">⬆ Import data</button>
-      <button class="btn btn-ghost btn-sm" onclick="openStaffSettings()" title="Edit correspondent, producer and shoot-edit names">👥 Staff</button>
-      <button class="btn btn-ghost btn-sm" onclick="doEmailAll()">✉ Email All</button>
-      <button class="btn btn-ghost btn-sm" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
+      <!-- These buttons hide on mobile — accessible via bottom nav or ⋯ More -->
+      <button class="tasks-tab-btn hide-mobile" onclick="jumpToTasks()" title="Go to Tasks">☑ Tasks</button>
+      <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportTxt()">⬇ Export .txt</button>
+      <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportJSON()" title="Save all your data as a backup file you can re-import">⬇ Export data</button>
+      <button class="btn btn-ghost btn-sm hide-mobile" onclick="openImportDialog()" title="Restore data from a previously exported file">⬆ Import data</button>
+      <button class="btn btn-ghost btn-sm hide-mobile" onclick="openStaffSettings()" title="Edit correspondent, producer and shoot-edit names">👥 Staff</button>
+      <button class="btn btn-ghost btn-sm hide-mobile" onclick="doEmailAll()">✉ Email All</button>
+      <button class="btn btn-ghost btn-sm hide-mobile" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
+      <!-- Mobile-only More button -->
+      <button class="btn btn-ghost btn-sm show-mobile-only" onclick="openMobileMore()" title="More options">⋯ More</button>
     </div>
   </div>
   <div class="header-collapsible" id="header-collapsible">
@@ -2246,13 +2275,44 @@ function doEmailAll(){
 ════════════════════════════════════════ */
 let _lastScrollY=0;
 let _headerCollapsed=false;
+function openMobileMore(){
+  if(document.getElementById('mobile-more-modal')) return;
+  const m=document.createElement('div'); m.className='modal-bg'; m.id='mobile-more-modal';
+  m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:320px;padding:16px">
+    <h2 style="margin-bottom:14px">More options</h2>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Edit Staff Names</button>
+      <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('mobile-more-modal').remove()">⬇ Export Data (backup)</button>
+      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('mobile-more-modal').remove()">⬆ Import Data</button>
+      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('mobile-more-modal').remove()">✉ Email All</button>
+      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
+      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">☁ Firebase Sync</button>
+      <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('mobile-more-modal').remove()">⬇ Export .txt</button>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="document.getElementById('mobile-more-modal').remove()">Close</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
+  document.body.appendChild(m);
+}
+
 function bnbNav(tab){
-  if(tab==='today'){ setView('today',null); }
-  else if(tab==='tasks'){ if(ui.view!=='today') setView('today',null); setTimeout(()=>{ document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}); },ui.view!=='today'?200:50); }
-  else if(tab==='leaves'){ if(ui.view!=='today') setView('today',null); setTimeout(()=>{ document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}); },ui.view!=='today'?200:50); }
-  else if(tab==='search'){ document.getElementById('search-input')?.focus(); expandHeader(); }
-  else if(tab==='migrate'){ setView('migrate',null); }
-  updateBnbActive();
+  if(tab==='today'){
+    setView('today',null);
+  } else if(tab==='tasks'){
+    if(ui.view!=='today'){ setView('today',null); setTimeout(()=>{ document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}); },250); }
+    else { document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}); }
+  } else if(tab==='leaves'){
+    if(ui.view!=='today'){ setView('today',null); setTimeout(()=>{ document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}); },250); }
+    else { document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}); }
+  } else if(tab==='search'){
+    expandHeader();
+    setTimeout(()=>{ const el=document.getElementById('search-input'); if(el){ el.focus(); el.select(); } },100);
+  } else if(tab==='migrate'){
+    setView('migrate',null);
+  }
+  // updateBnbActive is called by render() — no need to call again here
 }
 function updateBnbActive(){
   const tabs=['today','tasks','leaves','search','migrate'];
@@ -2388,19 +2448,20 @@ function setWWFilter(sec,val){
     if(storyWrap) storyWrap.innerHTML=html;
   }
 }
+let _searchTimer=null;
 function onSearch(v){
   ui.search=v;
-  if(v && v.trim()){
-    // Switch to dedicated global search view
-    if(ui.view!=='search') ui.view='search';
-  } else {
-    // Clear search — go back to today
-    if(ui.view==='search') ui.view='today';
-  }
-  render();
-  // Keep focus on search box after render
-  const el=document.getElementById('search-input');
-  if(el){ el.value=v; el.focus(); }
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(()=>{
+    if(v&&v.trim()){
+      if(ui.view!=='search') ui.view='search';
+    } else {
+      if(ui.view==='search') ui.view='today';
+    }
+    render();
+    const el=document.getElementById('search-input');
+    if(el){ el.value=v; el.focus(); }
+  },200);
 }
 function toggleForm(sec,archKey){
   const k=sec+(archKey?'::'+archKey:'');
@@ -2798,44 +2859,37 @@ function renderSearchHTML(){
       if(r.type==='story'&&r.story){
         const s=r.story;
         const archKeyJS=r.archKey?`'${r.archKey}'`:'null';
-        const sbL=s.status==='urgent'?'🔴 Urgent':s.status==='in-progress'?'🟡 In Progress':s.status==='completed'?'🟢 Done':s.status==='not-done'?'⚫ Not Done':s.status==='postponed'?'⏸ Postponed':s.status==='shelved'?'🗄 Shelved':s.status==='on-hold'?'🟣 On Hold':'';
-        const subsecBadge=r.sec==='ibu'?`<span class="subsec-badge ssb-ibu" style="font-size:9px">IBU</span>`:r.sec==='other'?`<span class="subsec-badge ssb-other" style="font-size:9px">Other</span>`:`<span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${esc(r.secLabel)}</span>`;
-        html+=`<div class="card" style="margin-bottom:6px;cursor:pointer" onclick="setView(${r.archKey?`'archive','${r.archKey}'`:"'today',null"});setTimeout(()=>{ ui.openCards.add('${s.id}'); render(); },100)">
-          <div class="card-top" style="cursor:pointer">
-            <div class="card-title-wrap">
-              <div class="card-title">${esc(s.title||'Untitled')} ${subsecBadge}</div>
-              <div class="card-subtitle">
-                ${s.correspondent?`<span class="cs-chip">👤 ${esc(s.correspondent)}</span>`:''}
-                ${s.producer?`<span class="cs-chip">🎬 ${esc(s.producer)}</span>`:''}
-                ${sbL?`<span class="cs-chip">${sbL}</span>`:''}
-              </div>
-            </div>
+        const sbL=s.status==='urgent'?'🔴':s.status==='in-progress'?'🟡':s.status==='completed'?'🟢':s.status==='not-done'?'⚫':s.status==='on-hold'?'🟣':'';
+        const secBadge=r.sec==='ibu'?'IBU':r.sec==='other'?'Other':r.secLabel;
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;"
+          onclick="clearTimeout(_searchTimer);setView(${r.archKey?`'archive','${r.archKey}'`:"'today',null"});setTimeout(()=>{ ui.openCards.add('${s.id}');render(); },100)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.title||'Untitled')}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${secBadge}${s.correspondent?' · '+esc(s.correspondent):''}${sbL?' · '+sbL:''}</div>
           </div>
+          <span style="font-size:11px;color:var(--text3);flex-shrink:0">›</span>
         </div>`;
       } else if(r.type==='note'&&r.note){
         const n=r.note;
-        const created=new Date(n.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-        html+=`<div class="note-card" style="margin-bottom:6px">
-          <div class="note-text" style="font-size:12.5px">${esc(n.text)}</div>
-          <div class="note-meta"><span>📝 Note · ${created}</span>${n.status!=='active'?`<span style="color:var(--text3)">${n.status==='done'?'✅ Done':'↪ Passed'}</span>`:''}</div>
+        html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--upcoming)">
+          <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(n.text)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--mono)">Note${n.status!=='active'?' · '+(n.status==='done'?'✅ Done':'↪ Passed'):''}</div>
         </div>`;
       } else if(r.type==='task'&&r.task){
         const t=r.task;
-        html+=`<div class="task-card ts-pending" style="margin-bottom:6px">
-          <div class="task-top" style="cursor:default">
-            <div style="flex:1"><div class="task-title">${esc(t.title||'Untitled')}</div>
-            ${t.deadline_date?`<div class="task-chips"><span class="task-chip">📅 ${t.deadline_date}</span></div>`:''}</div>
-            <span class="task-status-badge tsb-${t.taskStatus==='done'?'done':t.taskStatus==='not-done'?'postponed':'pending'}">${t.taskStatus==='done'?'✓ Done':t.taskStatus==='not-done'?'⚫ Not Done':'⏳ Pending'}</span>
+        const st=t.taskStatus==='done'?'✅':t.taskStatus==='not-done'?'⚫':'⏳';
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+          <span style="font-size:15px">${st}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.title||'Untitled')}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">Task${t.deadline_date?' · '+t.deadline_date:''}</div>
           </div>
         </div>`;
       } else if(r.type==='leave'&&r.leave){
         const l=r.leave;
-        html+=`<div class="leave-card lc-${l.status}" style="margin-bottom:6px">
-          <div class="leave-top" style="cursor:default">
-            <span class="leave-employee">${esc(l.employeeName||'Unknown')}</span>
-            <span style="font-size:11.5px;font-family:var(--mono);color:var(--text2);flex:1">${l.dateFrom} → ${l.dateTo}</span>
-            <span class="leave-status-badge ${l.status==='approved'?'lsb-approved':'lsb-pending'}">${l.status==='approved'?'✓ Approved':'⏳ Pending'}</span>
-          </div>
+        html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid ${l.status==='approved'?'var(--done)':'var(--progress)'}">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.employeeName||'Unknown')}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${l.dateFrom} → ${l.dateTo} · ${l.status==='approved'?'✓ Approved':'⏳ Pending'}</div>
         </div>`;
       }
     });
@@ -4493,6 +4547,16 @@ function init(){
   setTimeout(()=>renderBackupBanners(), 100);
   updateClock(); setInterval(updateClock, 30000);
   initScrollHeader();
+
+  // Hide bottom nav when keyboard is open (iOS)
+  const bnb=document.getElementById('bottom-nav-bar');
+  if(bnb){
+    window.addEventListener('resize',()=>{
+      // When keyboard opens, window height shrinks significantly
+      const keyboardOpen=window.innerHeight<window.screen.height*0.75;
+      bnb.style.display=keyboardOpen?'none':'';
+    });
+  }
 
   // Check every 5 minutes if the date has changed (midnight rollover)
   // Also refreshes the header date so it never shows yesterday's date
