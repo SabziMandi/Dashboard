@@ -93,6 +93,35 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow);
+  transition: transform .25s ease;
+}
+/* The collapsible part - date row + strip + filters */
+.header-collapsible {
+  overflow: hidden;
+  max-height: 300px;
+  transition: max-height .3s ease, opacity .25s ease;
+  opacity: 1;
+}
+.header-collapsible.hdr-collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Slim toggle bar shown when collapsed - mobile only */
+.header-slim-bar {
+  display: none;
+  align-items: center; justify-content: space-between;
+  padding: 5px 14px; gap: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; font-family: var(--mono); color: var(--text3);
+  background: var(--surface2);
+  cursor: pointer;
+}
+.header-slim-bar.visible { display: flex; }
+
+@media(max-width:768px){
+  .header-slim-bar { display: flex; }
+  .header-slim-bar.hdr-collapsed { display: none; }
 }
 
 /* Row 1 */
@@ -885,7 +914,7 @@ button.tasks-tab-btn {
   .migrate-dest { position: static; }
   .acc-summary { display: none; }
   .date-full.sz-today { font-size: 20px; }
-  .content { padding: 14px 16px; }
+  .content { padding: 14px 16px 80px; }
   .header-row1 { padding: 9px 16px; }
   .filter-bar { padding: 6px 16px; }
   .deadline-split { grid-template-columns: 1fr 1fr; }
@@ -896,6 +925,34 @@ button.tasks-tab-btn {
   .fb-grid { grid-template-columns: 1fr; }
   .deadline-split { grid-template-columns: 1fr; }
 }
+
+/* ── Bottom Nav Bar ── */
+.bottom-nav-bar {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 400;
+  box-shadow: 0 -1px 8px rgba(0,0,0,.07);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media(max-width:720px){
+  .bottom-nav-bar { display: flex; }
+}
+.bnb-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  cursor: pointer; color: var(--text3);
+  font-size: 9.5px; font-family: var(--mono); letter-spacing: .2px;
+  border: none; background: none;
+  padding: 6px 0 4px; transition: color .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.bnb-item:active { background: var(--surface2); }
+.bnb-item.bnb-active { color: var(--accent); }
+.bnb-icon { font-size: 18px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -920,43 +977,50 @@ button.tasks-tab-btn {
       <button class="btn btn-ghost btn-sm" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
     </div>
   </div>
-  <div class="date-nav-row">
-    <div class="date-display">
-      <div class="date-main">
-        <div class="date-weekday" id="hdr-weekday">MONDAY</div>
-        <div class="date-full sz-today" id="hdr-date">16 March 2026</div>
-        <div class="date-context"  id="hdr-context">Today's working board</div>
-      </div>
-      <div class="date-nav-btns" style="flex-direction:column;align-items:flex-end;gap:6px">
-        <div style="display:flex;gap:7px">
-          <button class="btn btn-ghost btn-sm" onclick="snapshotToday()">📸 Snapshot</button>
-          <button class="btn btn-ghost btn-sm" onclick="setView('migrate',null)">⇄ Migrate</button>
+  <div class="header-collapsible" id="header-collapsible">
+    <div class="date-nav-row">
+      <div class="date-display">
+        <div class="date-main">
+          <div class="date-weekday" id="hdr-weekday">MONDAY</div>
+          <div class="date-full sz-today" id="hdr-date">16 March 2026</div>
+          <div class="date-context"  id="hdr-context">Today's working board</div>
         </div>
-        <div id="onleave-pill-wrap" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
+        <div class="date-nav-btns" style="flex-direction:column;align-items:flex-end;gap:6px">
+          <div style="display:flex;gap:7px">
+            <button class="btn btn-ghost btn-sm" onclick="snapshotToday()">📸 Snapshot</button>
+            <button class="btn btn-ghost btn-sm" onclick="setView('migrate',null)">⇄ Migrate</button>
+          </div>
+          <div id="onleave-pill-wrap" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
+        </div>
+      </div>
+      <div class="date-strip-outer">
+        <div class="date-strip" id="date-strip"></div>
+        <div style="flex-shrink:0;margin-left:10px;display:flex;align-items:center;gap:6px">
+          <input type="date" id="date-jump-picker"
+            style="font-family:var(--mono);font-size:11.5px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text2);cursor:pointer;outline:none"
+            title="Jump to any date"
+            onchange="jumpToDate(this.value)">
+        </div>
       </div>
     </div>
-    <div class="date-strip-outer">
-      <div class="date-strip" id="date-strip"></div>
-      <div style="flex-shrink:0;margin-left:10px;display:flex;align-items:center;gap:6px">
-        <input type="date" id="date-jump-picker"
-          style="font-family:var(--mono);font-size:11.5px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text2);cursor:pointer;outline:none"
-          title="Jump to any date"
-          onchange="jumpToDate(this.value)">
-      </div>
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <button class="fpill fa"  onclick="setFilter('all',this)">All</button>
+      <button class="fpill"     onclick="setFilter('urgent',this)">🔴 Urgent</button>
+      <button class="fpill"     onclick="setFilter('in-progress',this)">🟡 In Progress</button>
+      <button class="fpill"     onclick="setFilter('completed',this)">🟢 Done</button>
+      <button class="fpill"     onclick="setFilter('on-hold',this)">🟣 On Hold</button>
+      <button class="fpill"     onclick="setFilter('not-done',this)">⚫ Not Done</button>
+      <button class="fpill"     onclick="setFilter('postponed',this)">🔵 Postponed</button>
+      <button class="fpill"     onclick="setFilter('working',this)">▶ Working</button>
+      <button class="fpill"     onclick="setFilter('watching',this)">👁 Watching</button>
+      <span class="live-clock" id="live-clock"></span>
     </div>
   </div>
-  <div class="filter-bar">
-    <span class="filter-label">Filter:</span>
-    <button class="fpill fa"  onclick="setFilter('all',this)">All</button>
-    <button class="fpill"     onclick="setFilter('urgent',this)">🔴 Urgent</button>
-    <button class="fpill"     onclick="setFilter('in-progress',this)">🟡 In Progress</button>
-    <button class="fpill"     onclick="setFilter('completed',this)">🟢 Done</button>
-    <button class="fpill"     onclick="setFilter('on-hold',this)">🟣 On Hold</button>
-    <button class="fpill"     onclick="setFilter('not-done',this)">⚫ Not Done</button>
-    <button class="fpill"     onclick="setFilter('postponed',this)">🔵 Postponed</button>
-    <button class="fpill"     onclick="setFilter('working',this)">▶ Working</button>
-    <button class="fpill"     onclick="setFilter('watching',this)">👁 Watching</button>
-    <span class="live-clock" id="live-clock"></span>
+  <!-- Slim bar shown when header is collapsed — tap to expand -->
+  <div class="header-slim-bar" id="header-slim-bar" onclick="expandHeader()">
+    <span id="slim-bar-date" style="font-weight:600;color:var(--text2);font-size:12px"></span>
+    <span style="font-size:10px;color:var(--text3)">↕ tap to expand</span>
   </div>
 </header>
 
@@ -2177,6 +2241,65 @@ function doEmailAll(){
 /* ════════════════════════════════════════
    UI ACTIONS
 ════════════════════════════════════════ */
+/* ════════════════════════════════════════
+   SCROLL-COLLAPSE HEADER (mobile)
+════════════════════════════════════════ */
+let _lastScrollY=0;
+let _headerCollapsed=false;
+function bnbNav(tab){
+  if(tab==='today'){ setView('today',null); }
+  else if(tab==='tasks'){ if(ui.view!=='today') setView('today',null); setTimeout(()=>{ document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}); },ui.view!=='today'?200:50); }
+  else if(tab==='leaves'){ if(ui.view!=='today') setView('today',null); setTimeout(()=>{ document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}); },ui.view!=='today'?200:50); }
+  else if(tab==='search'){ document.getElementById('search-input')?.focus(); expandHeader(); }
+  else if(tab==='migrate'){ setView('migrate',null); }
+  updateBnbActive();
+}
+function updateBnbActive(){
+  const tabs=['today','tasks','leaves','search','migrate'];
+  tabs.forEach(t=>{
+    const el=document.getElementById('bnb-'+t);
+    if(!el) return;
+    const active=
+      (t==='today'   && ui.view==='today')   ||
+      (t==='migrate' && ui.view==='migrate')  ||
+      (t==='search'  && ui.view==='search');
+    el.classList.toggle('bnb-active', active);
+  });
+}
+
+function initScrollHeader(){
+  const main=document.getElementById('main-content')||window;
+  const onScroll=()=>{
+    const y=window.scrollY||document.documentElement.scrollTop;
+    const delta=y-_lastScrollY;
+    // Collapse when scrolling down more than 40px from top
+    if(delta>8 && y>60 && !_headerCollapsed){
+      collapseHeader();
+    }
+    // Expand when scrolling back up
+    if(delta<-8 && _headerCollapsed){
+      expandHeader();
+    }
+    _lastScrollY=y;
+  };
+  window.addEventListener('scroll',onScroll,{passive:true});
+}
+function collapseHeader(){
+  _headerCollapsed=true;
+  document.getElementById('header-collapsible')?.classList.add('hdr-collapsed');
+  // Show slim bar with current date
+  const slimBar=document.getElementById('header-slim-bar');
+  const dateEl=document.getElementById('hdr-date');
+  const slimDate=document.getElementById('slim-bar-date');
+  if(slimBar) slimBar.classList.add('visible');
+  if(slimDate&&dateEl) slimDate.textContent=dateEl.textContent;
+}
+function expandHeader(){
+  _headerCollapsed=false;
+  document.getElementById('header-collapsible')?.classList.remove('hdr-collapsed');
+  document.getElementById('header-slim-bar')?.classList.remove('visible');
+}
+
 function jumpToDate(dateStr){
   if(!dateStr) return;
   const picker=document.getElementById('date-jump-picker');
@@ -2523,9 +2646,8 @@ function render(){
   mc.innerHTML=html;
   // Inject datalists for staff names (hidden, referenced by form inputs)
   injectDataLists();
-  // Refresh on-leave pill in header
   renderOnLeavePill();
-  // Restore form values after DOM rebuild
+  updateBnbActive();
   restoreFormState(savedForm);
 }
 
@@ -4370,6 +4492,7 @@ function init(){
   // Show backup banners after render (only on today view)
   setTimeout(()=>renderBackupBanners(), 100);
   updateClock(); setInterval(updateClock, 30000);
+  initScrollHeader();
 
   // Check every 5 minutes if the date has changed (midnight rollover)
   // Also refreshes the header date so it never shows yesterday's date
@@ -4389,5 +4512,22 @@ function init(){
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
+<nav class="bottom-nav-bar" id="bottom-nav-bar">
+  <button class="bnb-item" id="bnb-today" onclick="bnbNav('today')">
+    <span class="bnb-icon">🏠</span>Today
+  </button>
+  <button class="bnb-item" id="bnb-tasks" onclick="bnbNav('tasks')">
+    <span class="bnb-icon">☑</span>Tasks
+  </button>
+  <button class="bnb-item" id="bnb-leaves" onclick="bnbNav('leaves')">
+    <span class="bnb-icon">🌴</span>Leaves
+  </button>
+  <button class="bnb-item" id="bnb-search" onclick="bnbNav('search')">
+    <span class="bnb-icon">🔍</span>Search
+  </button>
+  <button class="bnb-item" id="bnb-migrate" onclick="bnbNav('migrate')">
+    <span class="bnb-icon">⇄</span>Migrate
+  </button>
+</nav>
 </body>
 </html>
