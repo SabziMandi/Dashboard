@@ -1110,7 +1110,8 @@ let ui = {
   editMap: {},
   complForms: new Set(),
   showShelved: new Set(),
-  combinedSubTab: 'all',   // 'all' | 'ibu' | 'other'
+  combinedSubTab: 'all',
+  notesResolvedOpen: false,
   // per-section Working/Watching sub-filter: 'all' | 'working' | 'watching'
   wwFilter: { ibu:'all', other:'all' },
   // migrate
@@ -1255,7 +1256,14 @@ function startRealtimeSync(){
   if(!fireDb) return;
   if(firestoreUnsub) firestoreUnsub();
   firestoreUnsub=fireDb.collection('nd').doc('data').onSnapshot(snap=>{
-    if(snap.exists){ state={...state,...snap.data()}; if(!state.archive)state.archive={}; saveLocal(); render(); renderDateStrip(); setSyncUI('live'); }
+    if(snap.exists){
+      // Merge incoming data into state without touching UI flags
+      const incoming=snap.data();
+      Object.assign(state, incoming);
+      if(!state.archive) state.archive={};
+      saveLocal();
+      render(); renderDateStrip(); setSyncUI('live');
+    }
     else pushToCloud();
   }, ()=>setSyncUI('offline'));
 }
@@ -1788,10 +1796,25 @@ function updateStory(sec,id,data,archKey){
 }
 function deleteStory(sec,id,archKey){
   const arr=getArr(sec,archKey); if(!arr) return;
+  const story=arr.find(s=>s.id===id); if(!story) return;
+
+  // Archive to creation date before permanent deletion
+  const createdDate=story.carriedFromDate||(story.created?dateStr(new Date(typeof story.created==='number'?story.created:parseInt(story.created))):todayStr());
+  if(!state.archive[createdDate]){
+    state.archive[createdDate]={type:'day',label:archiveLabel(createdDate),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{state.archive[createdDate].sections[s.key]=[];});
+  }
+  if(!state.archive[createdDate].sections[sec]) state.archive[createdDate].sections[sec]=[];
+  // Only add if not already there
+  if(!state.archive[createdDate].sections[sec].some(s=>s.id===id)){
+    state.archive[createdDate].sections[sec].push({...story, deletedOn:Date.now(), _deleted:true});
+  }
+
+  // Now remove from working board
   const filtered=arr.filter(s=>s.id!==id);
   if(archKey) state.archive[archKey].sections[sec]=filtered; else state.sections[sec]=filtered;
   ui.openCards.delete(id); ui.complForms.delete(id);
-  saveAndPush(); render();
+  saveAndPush(); renderDateStrip(); render();
 }
 function doMoveSelect(fromSec, id, archKey, selectEl){
   const toSec=selectEl.value;
@@ -3005,7 +3028,32 @@ function renderArchiveHTML(key){
   </div>`;
   if(isTomm) html+=`<div style="background:rgba(13,148,136,.07);border:1px solid rgba(13,148,136,.2);border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;color:var(--tomorrow)">📋 <strong>Pre-planning for tomorrow.</strong> Use <strong>⇄ Migrate</strong> to send today's stories here.</div>`;
   SECTIONS.forEach(sec=>{ html+=renderAccordion(sec,key); });
-  html+=`<div class="accordion"><div class="acc-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.acc-chevron').classList.toggle('open')"><span class="acc-icon">📝</span><span class="acc-name">Notes</span><span class="acc-chevron">▾</span></div><div class="acc-body"><textarea class="remarks-area" style="min-height:120px" placeholder="Notes for this entry…" oninput="updateArchiveNotes('${key}',this.value)">${esc(state.archive[key]?.notes||'')}</textarea></div></div>`;
+
+  // Show any notes that were logged on this date (resolved notes archived here)
+  const notesLog=state.archive[key]?.notesLog||[];
+  const tasksLog=state.archive[key]?.tasksLog||[];
+  if(notesLog.length||tasksLog.length){
+    html+=`<div class="accordion"><div class="acc-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.acc-chevron').classList.toggle('open')">
+      <span class="acc-icon">📝</span><span class="acc-name">Notes logged on this day</span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:8px">${notesLog.length}</span>
+      <span class="acc-chevron">▾</span></div>
+      <div class="acc-body" style="display:flex;flex-direction:column;gap:6px">
+        ${notesLog.map(n=>`<div class="note-card ${n._deleted?'note-pass':n.status==='done'?'note-done':'note-pass'}">
+          <div class="note-text" style="text-decoration:${n.status==='done'||n._deleted?'line-through':''};opacity:${n._deleted?.7:1}">${esc(n.text)}</div>
+          <div class="note-meta">
+            <span>${n._deleted?'🗑 Deleted':n.status==='done'?'✅ Done':'↪ Passed'}</span>
+            ${n.resolvedOn?`<span>· ${new Date(n.resolvedOn).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
+          </div>
+        </div>`).join('')}
+        ${tasksLog.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;opacity:.7">
+          <span style="font-size:12px">🗑</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:var(--text);text-decoration:line-through">${esc(t.title||'Untitled')}</div>
+          <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">Task · Deleted</div></div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  html+=`<div class="accordion"><div class="acc-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.acc-chevron').classList.toggle('open')"><span class="acc-icon">📓</span><span class="acc-name">Free notes</span><span class="acc-chevron">▾</span></div><div class="acc-body"><textarea class="remarks-area" style="min-height:120px" placeholder="Notes for this entry…" oninput="updateArchiveNotes('${key}',this.value)">${esc(state.archive[key]?.notes||'')}</textarea></div></div>`;
   return html;
 }
 
@@ -3289,10 +3337,22 @@ function updateTask(id,data){
   if(i>=0){ state.tasks[i]={...state.tasks[i],...data}; saveAndPush(); }
 }
 function deleteTask(id){
-  if(!state.tasks) return;
+  const task=(state.tasks||[]).find(t=>t.id===id); if(!task) return;
+
+  // Archive to creation date before permanent deletion
+  const createdDate=task.carriedFromDate||(task.created?dateStr(new Date(typeof task.created==='number'?task.created:parseInt(task.created))):todayStr());
+  if(!state.archive[createdDate]){
+    state.archive[createdDate]={type:'day',label:archiveLabel(createdDate),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{state.archive[createdDate].sections[s.key]=[];});
+  }
+  if(!state.archive[createdDate].tasksLog) state.archive[createdDate].tasksLog=[];
+  if(!state.archive[createdDate].tasksLog.some(t=>t.id===id)){
+    state.archive[createdDate].tasksLog.push({...task, deletedOn:Date.now(), _deleted:true});
+  }
+
   state.tasks=state.tasks.filter(t=>t.id!==id);
   ui_openTasks.delete(id);
-  saveAndPush(); render();
+  saveAndPush(); renderDateStrip(); render();
 }
 function nextRecurrenceDate(task){
   const base=task.deadline_date||todayStr();
@@ -3744,10 +3804,51 @@ function updateNote(id, data){
   const i=state.notes.findIndex(n=>n.id===id);
   if(i>=0){ state.notes[i]={...state.notes[i],...data}; saveAndPush(); }
 }
-function deleteNote(id){ state.notes=(state.notes||[]).filter(n=>n.id!==id); saveAndPush(); render(); }
+function deleteNote(id){
+  const note=(state.notes||[]).find(n=>n.id===id); if(!note) return;
+
+  // Archive to creation date before permanent deletion
+  const createdDate=note.carriedFromDate||(note.created?dateStr(new Date(typeof note.created==='number'?note.created:parseInt(note.created))):todayStr());
+  if(!state.archive[createdDate]){
+    state.archive[createdDate]={type:'day',label:archiveLabel(createdDate),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{state.archive[createdDate].sections[s.key]=[];});
+  }
+  if(!state.archive[createdDate].notesLog) state.archive[createdDate].notesLog=[];
+  if(!state.archive[createdDate].notesLog.some(n=>n.id===id)){
+    state.archive[createdDate].notesLog.push({...note, deletedOn:Date.now(), _deleted:true});
+  }
+
+  state.notes=(state.notes||[]).filter(n=>n.id!==id);
+  saveAndPush(); renderDateStrip(); render();
+}
 function setNoteStatus(id, status){
+  if(!state.notes) return;
+  const note=state.notes.find(n=>n.id===id);
+  if(!note) return;
+
+  // Archive the note to its creation date so it's permanently recorded there
+  const createdDate=note.carriedFromDate||(note.created?dateStr(new Date(typeof note.created==='number'?note.created:parseInt(note.created))):todayStr());
+  if(!state.archive[createdDate]){
+    state.archive[createdDate]={type:'day',label:archiveLabel(createdDate),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{state.archive[createdDate].sections[s.key]=[];});
+  }
+  // Store resolved note in archive entry's notesLog array
+  if(!state.archive[createdDate].notesLog) state.archive[createdDate].notesLog=[];
+  const alreadyLogged=state.archive[createdDate].notesLog.some(n=>n.id===id);
+  if(!alreadyLogged){
+    state.archive[createdDate].notesLog.push({...note, status, resolvedOn:Date.now()});
+  } else {
+    const i=state.archive[createdDate].notesLog.findIndex(n=>n.id===id);
+    if(i>=0) state.archive[createdDate].notesLog[i]={...note, status, resolvedOn:Date.now()};
+  }
+
   updateNote(id,{status, resolvedOn:Date.now()});
-  toast(status==='done'?'✅ Note marked Done':'Note passed — removed from carry-forward');
+  toast(status==='done'?'✅ Note marked Done — saved to '+archiveLabel(createdDate):'↪ Note passed — saved to '+archiveLabel(createdDate));
+  renderDateStrip();
+  render();
+}
+function toggleNotesResolved(){
+  ui.notesResolvedOpen=!ui.notesResolvedOpen;
   render();
 }
 function submitNoteForm(){
@@ -3825,12 +3926,11 @@ function renderRemarksAccordion(){
 
   // Resolved notes (Done/Pass) collapsed
   if(resolved.length){
-    const resolvedOpen=ui.openSections.has('notes-resolved');
-    body+=`<div class="shelved-toggle" onclick="toggleAccordion('notes-resolved')">
-      <span>${resolvedOpen?'▾':'▸'}</span>
-      ✓ ${resolved.length} resolved (done/passed) — ${resolvedOpen?'hide':'show'}
+    body+=`<div class="shelved-toggle" onclick="toggleNotesResolved()">
+      <span>${ui.notesResolvedOpen?'▾':'▸'}</span>
+      ✓ ${resolved.length} resolved (done/passed) — ${ui.notesResolvedOpen?'hide':'show'}
     </div>`;
-    if(resolvedOpen){
+    if(ui.notesResolvedOpen){
       resolved.forEach(n=>{
         const created=new Date(n.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
         body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}" style="margin-top:5px">
