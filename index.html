@@ -952,7 +952,12 @@ button.tasks-tab-btn {
   .card-fields { grid-template-columns: 1fr 1fr; }
 }
 
-/* ── Bottom Nav Bar ── */
+@media(max-width:720px){
+  .hide-on-mobile-view { display: none; }
+}
+@media(min-width:721px){
+  .hide-on-mobile-view { display: block; }
+}
 .bottom-nav-bar {
   display: none;
   position: fixed;
@@ -994,19 +999,12 @@ button.tasks-tab-btn {
         <span class="sync-dot dot-local" id="sync-dot"></span>
         <span id="sync-label">Local only</span>
       </div>
-      <!-- These buttons hide on mobile — accessible via bottom nav or ⋯ More -->
-      <button class="tasks-tab-btn hide-mobile" onclick="jumpToTasks()" title="Go to Tasks">☑ Tasks</button>
-      <button class="tasks-tab-btn hide-mobile" onclick="jumpToLeaves()" title="Go to Leaves">🌴 Leaves</button>
-      <button class="tasks-tab-btn hide-mobile" onclick="setView('upcoming',null)" title="Upcoming">🗓 Upcoming</button>
-      <button class="tasks-tab-btn hide-mobile" onclick="setView('notes',null)" title="Note">📝 Note</button>
-      <button class="tasks-tab-btn hide-mobile" onclick="setView('migrate',null)" title="Migrate">⇄ Migrate</button>
       <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportTxt()">⬇ Export .txt</button>
       <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportJSON()" title="Save all your data as a backup file you can re-import">⬇ Export data</button>
       <button class="btn btn-ghost btn-sm hide-mobile" onclick="openImportDialog()" title="Restore data from a previously exported file">⬆ Import data</button>
       <button class="btn btn-ghost btn-sm hide-mobile" onclick="openStaffSettings()" title="Edit correspondent, producer and shoot-edit names">👥 Staff</button>
       <button class="btn btn-ghost btn-sm hide-mobile" onclick="doEmailAll()">✉ Email All</button>
       <button class="btn btn-ghost btn-sm hide-mobile" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
-      <!-- Mobile-only More button -->
       <button class="btn btn-ghost btn-sm show-mobile-only" onclick="openMobileMore()" title="More options">⋯ More</button>
     </div>
   </div>
@@ -1053,7 +1051,7 @@ button.tasks-tab-btn {
   <!-- Slim bar shown when header is collapsed — tap to expand -->
   <div class="header-slim-bar" id="header-slim-bar" onclick="expandHeader()">
     <span id="slim-bar-date" style="font-weight:600;color:var(--text2);font-size:12px"></span>
-    <span style="font-size:10px;color:var(--text3)">↕ tap to expand</span>
+    <span style="font-size:10px;color:var(--text3)">tap to expand header</span>
   </div>
 </header>
 
@@ -1066,11 +1064,10 @@ button.tasks-tab-btn {
 // Section order: IBU → Other Lives → Requests → Upcoming
 // 'watching' section removed; replaced by ww-badge on IBU/Other
 const SECTIONS = [
-  // ibu_combined is the merged IBU / Other Stories accordion
-  { key:'ibu',      name:'IBU / Other Stories', icon:'📺', hasWW:true, renameable:false, isCombined:true },
-  { key:'other',    name:'Other Stories',        icon:'🌍', hasWW:true, renameable:true,  hidden:true },
-  { key:'requests', name:'Requests for Future',  icon:'📨', hasWW:false },
-  { key:'upcoming', name:'Upcoming',             icon:'🗓', hasWW:false, isUpcoming:true },
+  { key:'ibu',      name:'Lives',          icon:'📡', hasWW:true, renameable:false, isCombined:true },
+  { key:'other',    name:'Other Stories',  icon:'🌍', hasWW:true, renameable:true,  hidden:true },
+  { key:'requests', name:'Requests for Future', icon:'📨', hasWW:false },
+  { key:'upcoming', name:'Upcoming Events', icon:'🗓', hasWW:false, isUpcoming:true },
 ];
 const REMINDER_DELAYS = {
   '15min':900000,'30min':1800000,'1hr':3600000,'4hr':14400000,'1day':86400000,'1week':604800000
@@ -1655,18 +1652,19 @@ function openBackupsPanel(){
 ════════════════════════════════════════ */
 function captureFormState(){
   const saved={};
-  // Capture story forms AND task form
   document.querySelectorAll('.form-wrap input,.form-wrap select,.form-wrap textarea,.task-form input,.task-form select,.task-form textarea').forEach(el=>{
     if(el.id) saved[el.id]=el.value;
+    // Capture radio buttons
+    if(el.type==='radio'&&el.name) saved['__radio_'+el.name]=el.checked?el.value:(saved['__radio_'+el.name]||'');
   });
-  // Also capture dynamic broadcast time slots
   const slots=[];
   document.querySelectorAll('.bt-row').forEach(row=>{
     const idx=row.dataset.idx;
     const uk=(document.getElementById('bt-uk-'+idx)||{}).value||'';
     const ist=(document.getElementById('bt-ist-'+idx)||{}).value||'';
-    const lbl=(document.getElementById('bt-lbl-'+idx)||{}).value||'';
-    slots.push({idx,uk,ist,lbl});
+    const plat=(document.getElementById('bt-plat-'+idx)||{}).value||'';
+    const prog=(document.getElementById('bt-prog-'+idx)||{}).value||'';
+    slots.push({idx,uk,ist,plat,prog});
   });
   saved.__broadcastSlots=slots;
   return saved;
@@ -1675,24 +1673,31 @@ function restoreFormState(saved){
   if(!saved) return;
   Object.entries(saved).forEach(([id,val])=>{
     if(id==='__broadcastSlots') return;
+    if(id.startsWith('__radio_')){
+      // Restore radio buttons
+      const name=id.replace('__radio_','');
+      const el=document.querySelector(`input[name="${name}"][value="${val}"]`);
+      if(el) el.checked=true;
+      return;
+    }
     const el=document.getElementById(id);
     if(el&&el.tagName!=='BUTTON') el.value=val;
   });
-  // Restore field-location visibility
   ui.openForms.forEach(k=>{
     const sec=k.split('::')[0];
     const archKey=k.includes('::')?k.split('::')[1]:null;
     showFieldRow(sec,archKey);
   });
-  // Restore broadcast slots
   if(saved.__broadcastSlots&&saved.__broadcastSlots.length){
-    saved.__broadcastSlots.forEach(({idx,uk,ist,lbl})=>{
+    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog})=>{
       const ukEl=document.getElementById('bt-uk-'+idx);
       const istEl=document.getElementById('bt-ist-'+idx);
-      const lblEl=document.getElementById('bt-lbl-'+idx);
+      const platEl=document.getElementById('bt-plat-'+idx);
+      const progEl=document.getElementById('bt-prog-'+idx);
       if(ukEl) ukEl.value=uk;
       if(istEl) istEl.value=ist;
-      if(lblEl) lblEl.value=lbl;
+      if(platEl) platEl.value=plat;
+      if(progEl) progEl.value=prog||'';
     });
   }
 }
@@ -1721,15 +1726,14 @@ function startRename(key){
 // In-memory slot counter per form session
 let _btSlotCounter=1;
 function getBroadcastSlots(sec,archKey){
-  // Returns current slots from DOM (live form) or empty array
   const slots=[];
   document.querySelectorAll('.bt-row').forEach(row=>{
     const idx=row.dataset.idx;
-    slots.push({
-      uk: (document.getElementById('bt-uk-'+idx)||{}).value||'',
-      ist:(document.getElementById('bt-ist-'+idx)||{}).value||'',
-      lbl:(document.getElementById('bt-lbl-'+idx)||{}).value||'',
-    });
+    const plat=(document.getElementById('bt-plat-'+idx)||{}).value||'';
+    const prog=(document.getElementById('bt-prog-'+idx)||{}).value||'';
+    const uk=  (document.getElementById('bt-uk-'+idx)||{}).value||'';
+    const ist= (document.getElementById('bt-ist-'+idx)||{}).value||'';
+    slots.push({ uk, ist, plat, prog, lbl:plat }); // lbl=plat for backward compat
   });
   return slots;
 }
@@ -1739,19 +1743,20 @@ function addBroadcastSlot(){
   const container=document.getElementById('broadcast-slots');
   if(!container) return;
   const row=document.createElement('div');
-  row.className='bt-row';
-  row.dataset.idx=idx;
-  row.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:7px;align-items:end;margin-bottom:7px';
-  row.innerHTML=`
-    <div class="fgroup" style="margin:0"><label class="flabel">Live Label</label><input class="finput" id="bt-lbl-${idx}" placeholder="e.g. Late bulletin"></div>
-    <div class="fgroup" style="margin:0"><label class="flabel">UK Time</label><input class="finput" id="bt-uk-${idx}" placeholder="18:00" maxlength="5" oninput="btUKChange(${idx})"></div>
-    <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="23:30" maxlength="5" oninput="btISTChange(${idx})"></div>
-    <button class="btn btn-ghost btn-sm" style="color:var(--urgent);padding:7px 9px;align-self:flex-end" onclick="removeBroadcastSlot(${idx})" title="Remove">✕</button>`;
+  row.className='bt-row'; row.dataset.idx=idx;
+  row.innerHTML=buildSlotRowHTML(idx,{plat:'',uk:'',ist:''},true);
   container.appendChild(row);
 }
 function removeBroadcastSlot(idx){
   const row=document.querySelector('.bt-row[data-idx="'+idx+'"]');
   if(row) row.remove();
+}
+function moveBroadcastSlot(idx,dir){
+  const c=document.getElementById('broadcast-slots'); if(!c) return;
+  const rows=[...c.querySelectorAll('.bt-row')];
+  const i=rows.findIndex(r=>r.dataset.idx==idx);
+  if(dir==='up'&&i>0) c.insertBefore(rows[i],rows[i-1]);
+  else if(dir==='down'&&i<rows.length-1) c.insertBefore(rows[i+1],rows[i]);
 }
 function btUKChange(idx){
   const v=(document.getElementById('bt-uk-'+idx)||{}).value||'';
@@ -1761,19 +1766,50 @@ function btISTChange(idx){
   const v=(document.getElementById('bt-ist-'+idx)||{}).value||'';
   const c=istToUK(v); if(c){ const e=document.getElementById('bt-uk-'+idx); if(e) e.value=c; }
 }
+const DEFAULT_PLATFORM_LABELS=['TV Live','Radio Live','Radio Two-way','Radio Pre-Rec','TV Rant','Radio Rant'];
+function getPlatformLabels(){ return [...DEFAULT_PLATFORM_LABELS,...(state.customPlatformLabels||[])]; }
+function onPlatformLabelChange(idx){
+  const sel=document.getElementById('bt-plat-'+idx); if(!sel) return;
+  if(sel.value==='__custom'){
+    const v=prompt('Enter custom label:','');
+    if(v&&v.trim()){
+      if(!state.customPlatformLabels) state.customPlatformLabels=[];
+      if(!state.customPlatformLabels.includes(v.trim())) state.customPlatformLabels.push(v.trim());
+      saveAndPush();
+      const opt=document.createElement('option'); opt.value=v.trim(); opt.textContent=v.trim(); opt.selected=true;
+      sel.insertBefore(opt,sel.querySelector('option[value="__custom"]')); sel.value=v.trim();
+    } else sel.value='';
+  }
+}
+function buildSlotRowHTML(idx,slot){
+  const platSel=getPlatformLabels().map(l=>`<option value="${esc(l)}"${l===(slot.plat||'')?' selected':''}>${esc(l)}</option>`).join('');
+  return`<div style="display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1fr auto;gap:6px;align-items:end">
+    <div class="fgroup" style="margin:0"><label class="flabel">Platform</label>
+      <select class="fselect" id="bt-plat-${idx}" onchange="onPlatformLabelChange(${idx})">
+        <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
+      </select>
+    </div>
+    <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
+      <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
+    </div>
+    <div class="fgroup" style="margin:0"><label class="flabel">UK Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
+    <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00" maxlength="5" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
+    <div style="display:flex;flex-direction:column;gap:2px;align-self:flex-end;padding-bottom:1px">
+      <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 7px">↑</button>
+      <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 7px">↓</button>
+      <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 7px">✕</button>
+    </div>
+  </div>`;
+}
 function buildBroadcastSlotsHTML(existingSlots){
-  // existingSlots = story.broadcast_times array or []
   _btSlotCounter=0;
-  if(!existingSlots||!existingSlots.length) existingSlots=[{uk:'',ist:'',lbl:'First live'}];
+  if(!existingSlots||!existingSlots.length) existingSlots=[{plat:'',prog:'',uk:'',ist:''}];
   let html='';
   existingSlots.forEach((slot,i)=>{
+    // backward compat: old slots used lbl, new use plat
+    const normSlot={...slot, plat:slot.plat||slot.lbl||'', prog:slot.prog||''};
     _btSlotCounter=i;
-    html+=`<div class="bt-row" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:7px;align-items:end;margin-bottom:7px">
-      <div class="fgroup" style="margin:0"><label class="flabel">${i===0?'Label':'Label'}</label><input class="finput" id="bt-lbl-${i}" placeholder="e.g. First live" value="${esc(slot.lbl||'')}"></div>
-      <div class="fgroup" style="margin:0"><label class="flabel">UK Time</label><input class="finput" id="bt-uk-${i}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${i})"></div>
-      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${i}" placeholder="20:00" maxlength="5" value="${esc(slot.ist||'')}" oninput="btISTChange(${i})"></div>
-      ${i===0?'<div></div>':`<button class="btn btn-ghost btn-sm" style="color:var(--urgent);padding:7px 9px;align-self:flex-end" onclick="removeBroadcastSlot(${i})" title="Remove">✕</button>`}
-    </div>`;
+    html+=`<div class="bt-row" data-idx="${i}" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:7px">${buildSlotRowHTML(i,normSlot)}</div>`;
   });
   return html;
 }
@@ -2308,14 +2344,11 @@ function openMobileMore(){
   m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:320px;padding:16px">
     <h2 style="margin-bottom:14px">More options</h2>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-ghost" onclick="setView('migrate',null);document.getElementById('mobile-more-modal').remove()">⇄ Migrate Stories</button>
-      <button class="btn btn-ghost" onclick="expandHeader();setTimeout(()=>{document.getElementById('search-input')?.focus();},100);document.getElementById('mobile-more-modal').remove()">🔍 Search</button>
       <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Edit Staff Names</button>
       <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('mobile-more-modal').remove()">⬇ Export Data (backup)</button>
       <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('mobile-more-modal').remove()">⬆ Import Data</button>
       <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('mobile-more-modal').remove()">✉ Email All</button>
       <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
-      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">☁ Firebase Sync</button>
       <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('mobile-more-modal').remove()">⬇ Export .txt</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
@@ -2357,21 +2390,24 @@ function updateBnbActive(){
 }
 
 function initScrollHeader(){
-  const main=document.getElementById('main-content')||window;
-  const onScroll=()=>{
-    const y=window.scrollY||document.documentElement.scrollTop;
-    const delta=y-_lastScrollY;
-    // Collapse when scrolling down more than 40px from top
-    if(delta>8 && y>60 && !_headerCollapsed){
-      collapseHeader();
+  let ticking=false;
+  window.addEventListener('scroll',()=>{
+    if(!ticking){
+      ticking=true;
+      requestAnimationFrame(()=>{
+        const y=window.scrollY||document.documentElement.scrollTop;
+        // Collapse when scrolled past 80px — stay collapsed until slim bar tapped
+        if(y>80 && !_headerCollapsed){
+          collapseHeader();
+        }
+        // Only auto-expand if at very top
+        if(y<=5 && _headerCollapsed){
+          expandHeader();
+        }
+        ticking=false;
+      });
     }
-    // Expand when scrolling back up
-    if(delta<-8 && _headerCollapsed){
-      expandHeader();
-    }
-    _lastScrollY=y;
-  };
-  window.addEventListener('scroll',onScroll,{passive:true});
+  },{passive:true});
 }
 function collapseHeader(){
   _headerCollapsed=true;
@@ -2452,7 +2488,7 @@ function updateDateHeader(){
     ctEl.textContent='Staff leave tracker';
   } else if(ui.view==='upcoming'){
     wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
-    hdEl.textContent='Upcoming';
+    hdEl.textContent='Upcoming Events';
     hdEl.className='date-full sz-normal';
     ctEl.textContent='Future stories & events';
   } else if(ui.view==='notes'){
@@ -2532,8 +2568,13 @@ function editStory(sec,id,archKey){
       ['title','detail','expected_type','expected_date','correspondent','status','remarks','links','reminder','deadline_date','deadline_uk','deadline_ist']
       .forEach(f=>{ const el=document.getElementById('f-'+f.replace(/_/g,'-')+sfx); if(el) el.value=s[f]||''; });
     } else {
-      ['title','correspondent','producer','shoot_edit','location','field_location','time_uk','time_ist','req_name','req_team','req_location','status','remarks','links','reminder','deadline_date','deadline_uk','deadline_ist']
+      ['title','correspondent','producer','shoot_edit','location','field_location','req_name','req_team','req_location','status','remarks','links','reminder','deadline_date','deadline_uk','deadline_ist']
       .forEach(f=>{ const el=document.getElementById('f-'+f.replace(/_/g,'-')+sfx); if(el) el.value=s[f]||''; });
+      // Restore live_type radio
+      if(sec==='ibu'&&s.live_type){
+        const radioEl=document.querySelector(`input[name="live-type${sfx}"][value="${s.live_type}"]`);
+        if(radioEl) radioEl.checked=true;
+      }
       showFieldRow(sec,archKey);
     }
   }
@@ -2561,17 +2602,17 @@ function submitForm(sec,archKey){
       deadline_ist: g('f-deadline-ist'+sfx).trim(),
     };
   } else {
-    // Collect broadcast time slots (IBU has multiple, others have one)
     let broadcast_times=[];
-    if(isIBU){
-      document.querySelectorAll('.bt-row').forEach(row=>{
-        const idx=row.dataset.idx;
-        const uk=(document.getElementById('bt-uk-'+idx)||{}).value?.trim()||'';
-        const ist=(document.getElementById('bt-ist-'+idx)||{}).value?.trim()||'';
-        const lbl=(document.getElementById('bt-lbl-'+idx)||{}).value?.trim()||'';
-        if(uk||ist) broadcast_times.push({uk,ist,lbl});
-      });
-    }
+    document.querySelectorAll('.bt-row').forEach(row=>{
+      const idx=row.dataset.idx;
+      const uk=(document.getElementById('bt-uk-'+idx)||{}).value?.trim()||'';
+      const ist=(document.getElementById('bt-ist-'+idx)||{}).value?.trim()||'';
+      const plat=(document.getElementById('bt-plat-'+idx)||{}).value?.trim()||'';
+      const prog=(document.getElementById('bt-prog-'+idx)||{}).value?.trim()||'';
+      if(uk||ist||plat||prog) broadcast_times.push({uk,ist,plat,prog,lbl:plat});
+    });
+    const liveTypeEl=document.querySelector(`input[name="live-type${sfx}"]:checked`);
+    const live_type=liveTypeEl?liveTypeEl.value:'';
     data={
       title:         g('f-title'+sfx).trim(),
       correspondent: g('f-correspondent'+sfx).trim(),
@@ -2579,10 +2620,10 @@ function submitForm(sec,archKey){
       shoot_edit:    g('f-shoot-edit'+sfx).trim(),
       location:      g('f-location'+sfx),
       field_location:g('f-field-location'+sfx).trim(),
-      // Legacy single time kept for non-IBU and backward compat
-      time_uk:       isIBU?(broadcast_times[0]?.uk||''):g('f-time-uk'+sfx).trim(),
-      time_ist:      isIBU?(broadcast_times[0]?.ist||''):g('f-time-ist'+sfx).trim(),
-      broadcast_times: isIBU?broadcast_times:[],
+      live_type,
+      time_uk:       broadcast_times[0]?.uk||'',
+      time_ist:      broadcast_times[0]?.ist||'',
+      broadcast_times,
       req_name:      g('f-req-name'+sfx).trim(),
       req_team:      g('f-req-team'+sfx).trim(),
       req_location:  g('f-req-location'+sfx).trim(),
@@ -2985,8 +3026,16 @@ function renderTodayHTML(){
     <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportTxt()">⬇ Export</button>
   </div>`;
 
-  // Today shows only IBU/Other Stories and Requests — Tasks, Leaves, Upcoming, Note are in bottom nav
+  // On desktop: all sections scroll on Today page
+  // On mobile: Tasks/Leaves/Upcoming/Note open via bottom nav tabs (not shown here)
   SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).forEach(sec=>{ html+=renderAccordion(sec,null); });
+  // On mobile these are hidden — accessed via bottom nav. On desktop they scroll below.
+  html+=`<div class="hide-on-mobile-view">`;
+  html+=renderAccordion(SECTIONS.find(s=>s.isUpcoming),null);
+  html+=renderRemarksAccordion();
+  html+=renderTasksSection();
+  html+=renderLeavesSection();
+  html+=`</div>`;
   return html;
 }
 
@@ -3315,8 +3364,19 @@ function toggleStorySubsection(sec, id, archKey){
   moveStoryToSection(sec,id,toSec,archKey,'move');
 }
 
-function jumpToTasks(){ bnbNav('tasks'); }
-function jumpToLeaves(){ bnbNav('leaves'); }
+function jumpToTasks(){
+  const isMobile=window.innerWidth<=720;
+  if(isMobile){ bnbNav('tasks'); return; }
+  // Desktop: switch to today then scroll
+  if(ui.view!=='today') setView('today',null);
+  setTimeout(()=>document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}),ui.view!=='today'?250:50);
+}
+function jumpToLeaves(){
+  const isMobile=window.innerWidth<=720;
+  if(isMobile){ bnbNav('leaves'); return; }
+  if(ui.view!=='today') setView('today',null);
+  setTimeout(()=>document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}),ui.view!=='today'?250:50);
+}
 
 /* ════════════════════════════════════════
    TASKS CRUD
@@ -3748,28 +3808,28 @@ function renderCombinedAccordion(archKey){
 
   let html=`<div class="accordion${isOpen?' acc-open':''}" id="acc-ibu">
     <div class="acc-header" onclick="toggleAccordion('ibu')">
-      <span class="acc-icon">📺</span>
-      <span class="acc-name">IBU / Other Stories</span>
+      <span class="acc-icon">📡</span>
+      <span class="acc-name">Lives &amp; Other Stories</span>
       <div class="acc-meta">
         ${uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:''}
         ${ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:''}
         ${cc?`<span style="font-size:10px;color:var(--carry);background:var(--carry-bg);border:1px solid rgba(234,88,12,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">🔁 ${cc}</span>`:''}
-        <span class="acc-count">${ibuActive.length} IBU · ${otherActive.length} Other</span>
+        <span class="acc-count">${ibuActive.length} Lives · ${otherActive.length} Other</span>
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
       <div class="sec-head" style="flex-wrap:wrap;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ IBU</button>
+        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Lives</button>
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('other',${archKeyJS});event.stopPropagation()">✉ Other</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ IBU Stories</button>
-        <button class="btn btn-ghost btn-sm" style="border-color:rgba(13,148,136,.4);color:var(--working)" onclick="toggleForm('other',${archKeyJS});event.stopPropagation()">+ Other Stories</button>
+        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Live Story</button>
+        <button class="btn btn-ghost btn-sm" style="border-color:rgba(13,148,136,.4);color:var(--working)" onclick="toggleForm('other',${archKeyJS});event.stopPropagation()">+ Other Story</button>
       </div>
       <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin:0 0 10px;padding:6px 10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);line-height:1.6">
-        <span class="subsec-badge ssb-ibu">IBU</span> auto-archives each day &nbsp;·&nbsp;
-        <span class="subsec-badge ssb-other">Other</span> carries forward unless done/shelved &nbsp;·&nbsp;
-        Click the badge on a card to switch it between IBU and Other &nbsp;·&nbsp;
-        Use <strong>⇄ Migrate</strong> to send an IBU story to a future date
+        <span class="subsec-badge ssb-ibu">IBU Live</span> auto-archives each day &nbsp;·&nbsp;
+        <span class="subsec-badge ssb-other">Non-IBU / Other</span> carries forward unless done/shelved &nbsp;·&nbsp;
+        Click the badge on a card to switch it &nbsp;·&nbsp;
+        Use <strong>⇄ Migrate</strong> to send a live to a future date
       </div>
       ${isIBUFormOpen?renderForm('ibu',archKey):''}
       ${isOtherFormOpen?renderForm('other',archKey):''}
@@ -3793,6 +3853,21 @@ function renderCombinedAccordion(archKey){
 ════════════════════════════════════════ */
 let ui_noteForm=false;
 let ui_openNotes=new Set();
+let ui_editNoteId=null;
+
+function editNote(id){
+  const note=(state.notes||[]).find(n=>n.id===id); if(!note) return;
+  ui_editNoteId=id;
+  ui_noteForm=true;
+  render();
+  setTimeout(()=>{
+    const t=document.getElementById('nf-text');
+    const d=document.getElementById('nf-deadline');
+    if(t) t.value=note.text||'';
+    if(d) d.value=note.deadline_date||'';
+    t?.focus();
+  },60);
+}
 
 function addNote(data){
   if(!state.notes) state.notes=[];
@@ -3855,9 +3930,15 @@ function submitNoteForm(){
   const g=id=>(document.getElementById(id)||{}).value||'';
   const text=g('nf-text').trim();
   if(!text){ toast('Enter a note'); return; }
-  addNote({ text, deadline_date:g('nf-deadline') });
+  if(ui_editNoteId){
+    updateNote(ui_editNoteId, { text, deadline_date:g('nf-deadline') });
+    toast('Note updated ✓');
+    ui_editNoteId=null;
+  } else {
+    addNote({ text, deadline_date:g('nf-deadline') });
+    toast('Note added ✓');
+  }
   ui_noteForm=false;
-  toast('Note added ✓');
   render();
 }
 function toggleNoteOpen(id){
@@ -3877,18 +3958,18 @@ function renderRemarksAccordion(){
   // Add-note form
   if(ui_noteForm){
     body+=`<div class="note-add-form">
-      <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">+ New Note</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
       <div class="fgroup" style="margin-bottom:8px">
         <label class="flabel">Note *</label>
-        <textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px" autofocus></textarea>
+        <textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea>
       </div>
       <div class="fgroup" style="margin-bottom:10px">
         <label class="flabel">Deadline (optional)</label>
         <input class="finput" type="date" id="nf-deadline">
       </div>
       <div style="display:flex;gap:7px">
-        <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">Add Note</button>
-        <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;render()">Cancel</button>
+        <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
       </div>
     </div>`;
   }
@@ -3918,34 +3999,31 @@ function renderRemarksAccordion(){
         <div class="note-btns">
           <button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${n.id}','done');event.stopPropagation()">✅ Done</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="setNoteStatus('${n.id}','pass');event.stopPropagation()">↪ Pass</button>
+          <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}');event.stopPropagation()">✏ Edit</button>
           <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteNote('${n.id}');event.stopPropagation()">🗑</button>
         </div>
       </div>`;
     });
   }
 
-  // Resolved notes (Done/Pass) collapsed
+  // Resolved notes — always visible, faded
   if(resolved.length){
-    body+=`<div class="shelved-toggle" onclick="toggleNotesResolved()">
-      <span>${ui.notesResolvedOpen?'▾':'▸'}</span>
-      ✓ ${resolved.length} resolved (done/passed) — ${ui.notesResolvedOpen?'hide':'show'}
-    </div>`;
-    if(ui.notesResolvedOpen){
-      resolved.forEach(n=>{
-        const created=new Date(n.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
-        body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}" style="margin-top:5px">
-          <div class="note-text" style="text-decoration:${n.status==='done'?'line-through':''}">${esc(n.text)}</div>
-          <div class="note-meta">
-            <span>🗓 ${created}</span>
-            <span style="color:${n.status==='done'?'var(--done)':'var(--text3)'}">${n.status==='done'?'✅ Done':'↪ Passed'}</span>
-          </div>
-          <div class="note-btns">
-            <button class="btn btn-ghost btn-xs" onclick="updateNote('${n.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>
-            <button class="btn btn-ghost btn-xs btn-danger" onclick="deleteNote('${n.id}')">🗑</button>
-          </div>
-        </div>`;
-      });
-    }
+    body+=`<div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 6px;padding-top:8px;border-top:1px dashed var(--border)">✓ ${resolved.length} resolved</div>`;
+    resolved.forEach(n=>{
+      const created=new Date(n.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+      body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}">
+        <div class="note-text" style="text-decoration:${n.status==='done'?'line-through':''}">${esc(n.text)}</div>
+        <div class="note-meta">
+          <span>🗓 ${created}</span>
+          <span style="color:${n.status==='done'?'var(--done)':'var(--text3)'}">${n.status==='done'?'✅ Done':'↪ Passed'}</span>
+        </div>
+        <div class="note-btns">
+          <button class="btn btn-ghost btn-xs" onclick="updateNote('${n.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>
+          <button class="btn btn-ghost btn-xs" onclick="editNote('${n.id}')">✏ Edit</button>
+          <button class="btn btn-ghost btn-xs btn-danger" onclick="deleteNote('${n.id}')">🗑</button>
+        </div>
+      </div>`;
+    });
   }
 
   return`<div class="accordion${isOpen?' acc-open':''}" id="acc-remarks">
@@ -4402,7 +4480,9 @@ function renderStoryCard(sec,s,archKey){
   const mode=s.mode||'none';
   const wwLabel=mode==='working'?'▶ Working':mode==='watching'?'👁 Watching':'● Set mode';
   const subsecBadge=(sec==='ibu'||sec==='other')
-    ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'}" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch to ${sec==='ibu'?'Other Stories':'IBU'}" style="cursor:pointer">${sec==='ibu'?'IBU':'Other'} ⇄</span>`
+    ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'}" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch" style="cursor:pointer">${
+        sec==='ibu'?(s.live_type==='nonibu'?'Non-IBU Live':'IBU Live'):'Other Story'
+      } ⇄</span>`
     : '';
   const isIBU=sec==='ibu'&&!archKey;
   const cardBorderCls=carried?'c-carried':s.status?'c-'+s.status:'';
@@ -4419,7 +4499,7 @@ function renderStoryCard(sec,s,archKey){
       <div class="card-subtitle">
         ${s.correspondent?`<span class="cs-chip">👤 ${esc(s.correspondent)}</span>`:''}
         ${loc?`<span class="cs-chip">📍 ${esc(loc)}</span>`:''}
-        ${s.time_uk?`<span class="cs-chip">🕐 ${esc(s.time_uk)} ${ukLabel()}</span>`:''}
+        ${s.time_uk||(s.broadcast_times&&s.broadcast_times[0]?.uk)?`<span class="cs-chip">🕐 ${esc((s.broadcast_times&&s.broadcast_times[0]?.uk)||s.time_uk||'')} ${ukLabel()}${s.broadcast_times&&s.broadcast_times[0]?.plat?' · '+esc(s.broadcast_times[0].plat):''}${s.broadcast_times&&s.broadcast_times[0]?.prog?' · '+esc(s.broadcast_times[0].prog):''}</span>`:''}
         ${reqTime?`<span class="cs-chip">🗓 ${reqTime}</span>`:''}
       </div>
       <div class="card-tags">
@@ -4440,9 +4520,14 @@ function renderStoryCard(sec,s,archKey){
       ${field('Producer',s.producer)}
         ${field('Shoot-Edit',s.shoot_edit)}
         ${field('Location',loc||'–')}
-        ${(s.broadcast_times&&s.broadcast_times.length>1)
-          ? s.broadcast_times.map((t,i)=>field((t.lbl||'Live '+(i+1))+' ('+ukLabel()+')',t.uk+(t.ist?' / IST '+t.ist:''))).join('')
-          : field('UK ('+ukLabel()+')',s.time_uk)+field('IST',s.time_ist)
+        ${(s.broadcast_times&&s.broadcast_times.length)
+          ? s.broadcast_times.map((t,i)=>{
+              const platLabel=t.plat||t.lbl||('Slot '+(i+1));
+              const progStr=t.prog?` · ${t.prog}`:'';
+              const timeStr=[t.uk?`UK ${t.uk} ${ukLabel()}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
+              return field(platLabel+progStr, timeStr||'–');
+            }).join('')
+          : (s.time_uk||s.time_ist)?field('UK ('+ukLabel()+')',s.time_uk)+field('IST',s.time_ist):''
         }
         ${s.req_name||s.req_team?field('Requested By',[s.req_name,s.req_team,s.req_location].filter(Boolean).join(' · ')):''}
       
@@ -4513,6 +4598,17 @@ function renderForm(sec,archKey){
   <div class="form-title">${isEdit?'✏ Edit Story':'+ New Story'}</div>
   <div class="form-grid">
     <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off"></div>
+    ${isIBU?`<div class="fgroup full">
+      <label class="flabel">Live Type</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
+          <input type="radio" name="live-type${sfx}" id="f-live-ibu${sfx}" value="ibu" checked style="accent-color:var(--accent)"> <span>IBU Live</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
+          <input type="radio" name="live-type${sfx}" id="f-live-nonibu${sfx}" value="nonibu" style="accent-color:var(--working)"> <span>Non-IBU Live</span>
+        </label>
+      </div>
+    </div>`:''}
     <div class="form-divider">People</div>
     <div class="fgroup"><label class="flabel">Correspondent</label>
       <div style="display:flex;gap:5px;align-items:center">
@@ -4542,17 +4638,12 @@ function renderForm(sec,archKey){
       <label class="flabel">Location Detail <span class="flabel-hint">Studio name, city, venue…</span></label>
       <input class="finput" id="f-field-location${sfx}" placeholder="e.g. Studio A, New Delhi, Connaught Place">
     </div>
-    <div class="form-divider">${isIBU?'Broadcast Times (add one per live)':'Broadcast Time'}</div>
-    ${isIBU?`
+    <div class="form-divider">Broadcast Times</div>
     <div class="fgroup full" style="margin-bottom:4px">
-      <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Enter UK time and IST will auto-fill. Add a slot for each scheduled live.</div>
+      <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Select platform and enter UK time — IST auto-fills. Add a slot for each scheduled broadcast.</div>
       <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Time</button>
+      <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
     </div>
-    `:`
-    <div class="fgroup"><label class="flabel">UK Broadcast Time <span class="flabel-hint">${ukLabel()} → auto-converts</span></label><input class="finput" id="f-time-uk${sfx}" placeholder="14:30" oninput="onUKChange('${sec}',${archKeyJS})" maxlength="5"></div>
-    <div class="fgroup"><label class="flabel">IST Broadcast Time <span class="flabel-hint">auto-converts</span></label><input class="finput" id="f-time-ist${sfx}" placeholder="20:00" oninput="onISTChange('${sec}',${archKeyJS})" maxlength="5"></div>
-    `}
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}"></div>
@@ -4721,7 +4812,7 @@ document.addEventListener('DOMContentLoaded', init);
     <span class="bnb-icon">🌴</span>Leaves
   </button>
   <button class="bnb-item" id="bnb-upcoming" onclick="bnbNav('upcoming')">
-    <span class="bnb-icon">🗓</span>Upcoming
+    <span class="bnb-icon">🗓</span><span style="font-size:8px">Events</span>
   </button>
   <button class="bnb-item" id="bnb-notes" onclick="bnbNav('notes')">
     <span class="bnb-icon">📝</span>Note
