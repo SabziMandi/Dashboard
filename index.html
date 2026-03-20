@@ -1109,6 +1109,9 @@ let ui = {
   showShelved: new Set(),
   combinedSubTab: 'all',
   notesResolvedOpen: false,
+  notesDate: null,      // null = today; string = archive date being viewed in Notes tab
+  tasksDate: null,      // null = today; string = archive date
+  leavesDate: null,     // not date-specific but keep for symmetry
   // per-section Working/Watching sub-filter: 'all' | 'working' | 'watching'
   wwFilter: { ibu:'all', other:'all' },
   // migrate
@@ -1117,6 +1120,7 @@ let ui = {
   migrateAction:'move',
   migrateOpenSecs: new Set(SECTIONS.map(s=>s.key)),
   quickDayTarget: null,
+  migrateSourceKey: null, // null = today, string = archive date
 };
 let fireDb=null, firestoreUnsub=null, reminderTimers={};
 
@@ -2090,16 +2094,39 @@ function doMigrate(){
     const t=archiveKey.startsWith('week-')?'week':archiveKey.startsWith('month-')?'month':'day';
     state.archive[archiveKey]={type:t,label:archiveLabel(archiveKey),sections:{ibu:[],other:[],requests:[],upcoming:[]},notes:'',created:Date.now()};
   }
+  const srcKey=ui.migrateSourceKey; // null = today, string = archive date
   const toRemove={};
   selected.forEach(k=>{
     const sep=k.indexOf('::'); const sec=k.slice(0,sep); const id=k.slice(sep+2);
-    const story=state.sections[sec]?.find(s=>s.id===id); if(!story) return;
+    // Find story in correct source
+    let story;
+    if(srcKey){
+      story=(state.archive[srcKey]?.sections?.[sec]||[]).find(s=>s.id===id);
+    } else {
+      story=(state.sections[sec]||[]).find(s=>s.id===id);
+    }
+    if(!story) return;
+    // Add to destination
     if(!state.archive[archiveKey].sections[sec]) state.archive[archiveKey].sections[sec]=[];
     if(!state.archive[archiveKey].sections[sec].some(s=>s.id===id))
       state.archive[archiveKey].sections[sec].push({...story,migratedAt:Date.now()});
-    if(ui.migrateAction==='move'){ if(!toRemove[sec]) toRemove[sec]=new Set(); toRemove[sec].add(id); }
+    // Queue removal if moving
+    if(ui.migrateAction==='move'){
+      if(!toRemove[sec]) toRemove[sec]=new Set();
+      toRemove[sec].add(id);
+    }
   });
-  if(ui.migrateAction==='move') Object.entries(toRemove).forEach(([sec,ids])=>{ state.sections[sec]=state.sections[sec].filter(s=>!ids.has(s.id)); });
+  // Remove from source
+  if(ui.migrateAction==='move'){
+    Object.entries(toRemove).forEach(([sec,ids])=>{
+      if(srcKey){
+        if(state.archive[srcKey]?.sections?.[sec])
+          state.archive[srcKey].sections[sec]=state.archive[srcKey].sections[sec].filter(s=>!ids.has(s.id));
+      } else {
+        state.sections[sec]=(state.sections[sec]||[]).filter(s=>!ids.has(s.id));
+      }
+    });
+  }
   ui.selectedStories.clear(); ui.quickDayTarget=null;
   saveAndPush();
   toast(selected.length+' stor'+(selected.length===1?'y':'ies')+' '+(ui.migrateAction==='move'?'moved':'copied')+' to '+archiveLabel(archiveKey)+' ✓');
@@ -2117,10 +2144,16 @@ function toggleMigrateStory(k){
   }
   updateSelCounter();
 }
-function selectAllSec(sec){
-  const all=state.sections[sec]||[];
-  const keys=all.map(s=>sec+'::'+s.id);
-  const allSel=keys.every(k=>ui.selectedStories.has(k));
+function selectAllSec(sectionKey){
+  const srcSecs=getMigrateSourceSections();
+  let stories=[];
+  if(sectionKey==='ibu_combined'){
+    stories=[...(srcSecs['ibu']||[]).map(s=>({...s,_subsec:'ibu'})),...(srcSecs['other']||[]).map(s=>({...s,_subsec:'other'}))];
+  } else {
+    stories=srcSecs[sectionKey]||[];
+  }
+  const keys=stories.map(s=>(s._subsec||sectionKey)+'::'+s.id);
+  const allSel=keys.length>0&&keys.every(k=>ui.selectedStories.has(k));
   if(allSel) keys.forEach(k=>ui.selectedStories.delete(k)); else keys.forEach(k=>ui.selectedStories.add(k));
   renderMigrateSource(); updateSelCounter();
 }
@@ -2171,9 +2204,12 @@ function storyToText(s){
     let l=s.location||''; if(s.field_location) l=(l?l+' — ':'')+s.field_location;
     ln.push('  Location      : '+l);
   }
-  if(s.broadcast_times&&s.broadcast_times.length>1){
+  if(s.live_type) ln.push('  Live Type     : '+(s.live_type==='nonibu'?'Non-IBU Live':'IBU Live'));
+  if(s.broadcast_times&&s.broadcast_times.length){
     s.broadcast_times.forEach((t,i)=>{
-      ln.push(`  ${t.lbl?t.lbl:'Live '+(i+1)+'      '}: UK ${t.uk||'–'} (${ukLabel()}) | IST ${t.ist||'–'}`);
+      const plat=t.plat||t.lbl||('Live '+(i+1));
+      const prog=t.prog?(' · '+t.prog):'';
+      ln.push(`  ${(plat+prog).padEnd(14)}: UK ${t.uk||'–'} (${ukLabel()}) | IST ${t.ist||'–'}`);
     });
   } else if(s.time_uk||s.time_ist){
     ln.push('  Broadcast     : UK '+(s.time_uk||'–')+' ('+ukLabel()+') | IST '+(s.time_ist||'–'));
@@ -2190,6 +2226,12 @@ function storyToText(s){
   if(s.req_name||s.req_team) ln.push('  Requested by  : '+[s.req_name,s.req_team,s.req_location].filter(Boolean).join(', '));
   if(s.created)  ln.push('  Logged at     : '+new Date(s.created).toLocaleString('en-GB'));
   if(s.remarks)  ln.push('  Remarks       : '+s.remarks);
+  if(s.remarksList&&s.remarksList.length){
+    s.remarksList.forEach((r,i)=>{
+      const dt=new Date(r.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      ln.push('  Remark '+(i+1)+'      : '+r.text+' ['+dt+']');
+    });
+  }
   if(s.links)    ln.push('  Links         : '+s.links);
   if(s.completion_note)  ln.push('  Done notes    : '+s.completion_note);
   if(s.completion_links) ln.push('  Done links    : '+s.completion_links);
@@ -2197,16 +2239,88 @@ function storyToText(s){
 }
 function buildFullText(){
   const hr='─'.repeat(56);
-  const ln=['NEWSROOM DASHBOARD',new Date().toLocaleString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}),'═'.repeat(56),''];
+  const now=new Date().toLocaleString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const ln=['BBC Dashboard',now,'═'.repeat(56),''];
+
+  // Active sections
   SECTIONS.forEach(sec=>{
     ln.push(sec.name.toUpperCase()); ln.push(hr);
     (state.sections[sec.key]||[]).forEach(s=>{ ln.push(storyToText(s)); ln.push(''); });
     if(!(state.sections[sec.key]||[]).length) ln.push('(No stories)');
     ln.push('');
   });
-  if(state.remarks&&state.remarks.trim()){ ln.push('REMARKS'); ln.push(hr); ln.push(state.remarks); ln.push(''); }
+
+  // Active notes
+  if((state.notes||[]).length){
+    ln.push('NOTES'); ln.push(hr);
+    state.notes.forEach(n=>{
+      const status=n.status==='done'?'[DONE]':n.status==='pass'||n.status==='passed'?'[PASSED]':'[ACTIVE]';
+      ln.push('  '+status+' '+n.text);
+      if(n.deadline_date) ln.push('  Deadline : '+n.deadline_date);
+      if(n.carriedForward) ln.push('  Carried  : '+n.carriedDays+'d');
+      ln.push('');
+    });
+    ln.push('');
+  }
+
+  // Tasks
+  if((state.tasks||[]).length){
+    ln.push('TASKS'); ln.push(hr);
+    state.tasks.forEach(t=>{
+      const status=t.taskStatus==='done'?'[DONE]':t.taskStatus==='not-done'?'[NOT DONE]':t.taskStatus==='transferred'?'[TRANSFERRED]':'[PENDING]';
+      ln.push('  '+status+' '+(t.title||'Untitled'));
+      if(t.deadline_date) ln.push('  Deadline : '+t.deadline_date);
+      if(t.notes) ln.push('  Notes    : '+t.notes);
+      ln.push('');
+    });
+    ln.push('');
+  }
+
+  // Leaves
+  if((state.leaves||[]).length){
+    ln.push('LEAVES'); ln.push(hr);
+    const fmtDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',weekday:'short'}):d;
+    state.leaves.forEach(l=>{
+      ln.push('  '+(l.employeeName||'Unknown')+' — '+(l.leaveType||'')+' ['+l.status+']');
+      ln.push('  From : '+fmtDate(l.dateFrom));
+      ln.push('  To   : '+fmtDate(l.dateTo));
+      if(l.reason) ln.push('  Note : '+l.reason);
+      ln.push('');
+    });
+    ln.push('');
+  }
+
+  // Archive
   const keys=sortedArchiveKeys();
-  if(keys.length){ ln.push('ARCHIVE'); ln.push(hr); keys.forEach(k=>{ ln.push('\n'+archiveLabel(k).toUpperCase()); const e=state.archive[k]; if(!e)return; SECTIONS.forEach(sec=>{ const st=e.sections?.[sec.key]||[]; if(!st.length)return; ln.push('  '+sec.name.toUpperCase()); st.forEach(s=>{ln.push('  '+storyToText(s).replace(/\n/g,'\n  '));ln.push('');}); }); }); }
+  if(keys.length){
+    ln.push('ARCHIVE'); ln.push(hr);
+    keys.forEach(k=>{
+      ln.push('\n'+archiveLabel(k).toUpperCase());
+      const e=state.archive[k]; if(!e) return;
+      SECTIONS.forEach(sec=>{
+        const st=e.sections?.[sec.key]||[];
+        if(!st.length) return;
+        ln.push('  '+sec.name.toUpperCase());
+        st.forEach(s=>{ ln.push('  '+storyToText(s).replace(/\n/g,'\n  ')); ln.push(''); });
+      });
+      // Archive notes log
+      if(e.notesLog?.length){
+        ln.push('  NOTES ON THIS DAY');
+        e.notesLog.forEach(n=>{
+          const st=n._deleted?'[DELETED]':n.status==='done'?'[DONE]':n.status==='pass'||n.status==='passed'?'[PASSED]':'[ACTIVE]';
+          ln.push('  '+st+' '+n.text);
+          if(n.deadline_date) ln.push('  Deadline: '+n.deadline_date);
+        });
+        ln.push('');
+      }
+      if(e.notes?.trim()){
+        ln.push('  FREE NOTES');
+        ln.push('  '+e.notes.trim().replace(/\n/g,'\n  '));
+        ln.push('');
+      }
+    });
+  }
+
   return ln.join('\n');
 }
 function doExportTxt(){
@@ -2222,7 +2336,7 @@ function doExportJSON(){
   const exportData={
     _version: 'nd_v5',
     _exported: new Date().toISOString(),
-    _label: 'Newsroom Dashboard data export',
+    _label: 'BBC Dashboard data export',
     sections:    state.sections,
     remarks:     state.remarks,
     archive:     state.archive,
@@ -2232,6 +2346,7 @@ function doExportJSON(){
     employees:   state.employees||[],
     staffNames:  state.staffNames||{},
     sectionNames:state.sectionNames||{},
+    customPlatformLabels: state.customPlatformLabels||[],
     backupSnapshots: state.backupSnapshots||{weekly:[],monthly:[],yearly:[]},
     lastWeeklyBackup:  state.lastWeeklyBackup||null,
     lastMonthlyBackup: state.lastMonthlyBackup||null,
@@ -2292,6 +2407,7 @@ function handleImportFile(input){
       state.employees   = data.employees   || state.employees;
       state.staffNames  = data.staffNames  || state.staffNames;
       state.sectionNames= data.sectionNames|| {};
+      state.customPlatformLabels = data.customPlatformLabels || [];
       state.backupSnapshots = data.backupSnapshots || {weekly:[],monthly:[],yearly:[]};
       state.lastWeeklyBackup  = data.lastWeeklyBackup  || null;
       state.lastMonthlyBackup = data.lastMonthlyBackup || null;
@@ -2492,6 +2608,7 @@ function setView(view,archiveKey){
   ui.view=view; ui.archiveKey=archiveKey||null;
   ui.openSections=new Set(view==='today'?['ibu']:SECTIONS.slice(0,2).map(s=>s.key));
   ui.openCards.clear(); ui.openForms.clear(); ui.editMap={}; ui.complForms.clear();
+  if(view==='migrate'){ ui.selectedStories.clear(); ui.migrateSourceKey=null; }
   updateDateHeader(); renderDateStrip(); render();
   if(view==='today') setTimeout(()=>renderBackupBanners(),100);
   window.scrollTo({top:0,behavior:'smooth'});
@@ -2864,6 +2981,31 @@ function injectDataLists(){
   makeList('dl-shoot',          sn.shootEdit||[]);
 }
 
+/* ── Tab Date Navigator — shown inside Notes / Tasks standalone views ── */
+function renderTabDateNav(uiKey, labelToday){
+  const today=todayStr();
+  const cur=ui[uiKey]||today;
+  const isToday=cur===today;
+  const prev=addDays(cur,-1);
+  const next=addDays(cur,1);
+  const fmt=d=>{
+    if(d===today) return 'Today';
+    if(d===yesterdayStr()) return 'Yesterday';
+    if(d===tomorrowStr()) return 'Tomorrow';
+    return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  };
+  return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:8px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+    <button class="btn btn-ghost btn-sm" style="padding:5px 9px" onclick="ui['${uiKey}']='${prev}';render()">◀</button>
+    <div style="flex:1;text-align:center">
+      <div style="font-size:13px;font-weight:600;color:var(--text)">${fmt(cur)}</div>
+      ${!isToday?`<button class="btn btn-ghost btn-xs" style="margin-top:3px;font-size:10px" onclick="ui['${uiKey}']=null;render()">↩ Back to Today</button>`:''}
+    </div>
+    <button class="btn btn-ghost btn-sm" style="padding:5px 9px" onclick="ui['${uiKey}']='${next}';render()">▶</button>
+    <input type="date" value="${cur}" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text2);cursor:pointer"
+      onchange="ui['${uiKey}']=this.value;render()">
+  </div>`;
+}
+
 /* ─── GLOBAL SEARCH ─── */
 function storyMatchesSearch(s, q){
   const fields=[
@@ -3084,16 +3226,72 @@ function renderTodayHTML(){
 }
 
 function renderUpcomingView(){
-  // Full-page view for Upcoming section
+  const today=todayStr();
   const sec=SECTIONS.find(s=>s.key==='upcoming');
-  return`<div style="padding-bottom:12px">
-    ${renderAccordion(sec,null)}
-  </div>`;
+  let html=renderTabDateNav('leavesDate','Upcoming Events'); // reuse leavesDate as upcomingDate
+  // For today: show live upcoming entries
+  // For past dates: show archive entries
+  const cur=ui.leavesDate||today;
+  if(cur!==today && state.archive[cur]?.sections?.upcoming?.length){
+    // Show archived upcoming entries for this date
+    const entries=state.archive[cur].sections.upcoming||[];
+    html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${entries.length} upcoming event${entries.length===1?'':'s'} on this date</div>`;
+    entries.forEach(s=>{
+      html+=`<div class="uc-row" style="margin-bottom:6px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(s.title||'Untitled')}</div>
+        ${s.correspondent?`<div style="font-size:11px;color:var(--text3);margin-top:3px">👤 ${esc(s.correspondent)}</div>`:''}
+        ${s.expected_date?`<div style="font-size:11px;color:var(--text3)">📅 ${esc(s.expected_date)}</div>`:''}
+      </div>`;
+    });
+  } else {
+    html+=renderAccordion(sec,null);
+  }
+  return`<div style="padding-bottom:12px">${html}</div>`;
 }
 
 function renderNotesView(){
-  // Full-page view for Note section
-  return renderRemarksAccordion();
+  const today=todayStr();
+  const cur=ui.notesDate||today;
+  const isToday=cur===today;
+  let html=renderTabDateNav('notesDate','Note');
+
+  if(isToday){
+    // Today: show the full live notes panel (add/edit/done/pass)
+    html+=renderRemarksAccordion();
+  } else {
+    // Past/future date: show notesLog from archive for that date
+    const notesLog=state.archive[cur]?.notesLog||[];
+    if(!notesLog.length){
+      html+=`<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-msg">No notes logged on this date</div></div>`;
+    } else {
+      html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${notesLog.length} note${notesLog.length===1?'':'s'} on this day</div>`;
+      notesLog.forEach(n=>{
+        const statusLabel=n._deleted?'🗑 Deleted':n.status==='done'?'✅ Done':n.status==='pass'||n.status==='passed'?'↪ Passed':'📌 Active';
+        const cardCls=n._deleted?'note-pass':n.status==='done'?'note-done':n.status==='pass'||n.status==='passed'?'note-pass':'note-carried';
+        const created=n.created?new Date(n.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · ':'';
+        html+=`<div class="note-card ${cardCls}" style="margin-bottom:8px">
+          <div class="note-text" style="text-decoration:${n.status==='done'||n._deleted?'line-through':''}">${esc(n.text)}</div>
+          <div class="note-meta">
+            <span>${created}${statusLabel}</span>
+            ${n.deadline_date?`<span>📅 ${n.deadline_date}</span>`:''}
+          </div>
+          ${n.status==='active'?`<div class="note-btns" style="margin-top:6px">
+            <button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${n.id}','done')">✅ Done</button>
+            <button class="btn btn-ghost btn-sm" onclick="setNoteStatus('${n.id}','pass')">↪ Pass</button>
+            <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}')">✏ Edit</button>
+          </div>`:''}
+        </div>`;
+      });
+    }
+    // Also show the free-text notes field for that date
+    if(state.archive[cur]?.notes){
+      html+=`<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Free notes</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">${esc(state.archive[cur].notes)}</div>
+      </div>`;
+    }
+  }
+  return html;
 }
 
 /* ─── ARCHIVE ─── */
@@ -3144,11 +3342,18 @@ function renderArchiveHTML(key){
             ${n.deadline_date?`<span>📅 ${n.deadline_date}</span>`:''}
           </div>
         </div>`).join('')}
-        ${tasksLog.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;opacity:.7">
-          <span style="font-size:12px">🗑</span>
-          <div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:var(--text);text-decoration:line-through">${esc(t.title||'Untitled')}</div>
-          <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">Task · Deleted</div></div>
-        </div>`).join('')}
+        ${tasksLog.map(t=>{
+          const st=t._deleted?'🗑 Deleted':t.taskStatus==='done'?'✅ Done':t.taskStatus==='not-done'?'⚫ Not Done':t.taskStatus==='transferred'?'⇄ Transferred':'⏳ Pending';
+          const strike=t._deleted||t.taskStatus==='done'?'text-decoration:line-through;':'';
+          const op=t._deleted?'opacity:.6;':'';
+          return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;${op}">
+            <span style="font-size:12px">${t._deleted?'🗑':t.taskStatus==='done'?'✅':t.taskStatus==='not-done'?'⚫':'⏳'}</span>
+            <div style="flex:1">
+              <div style="font-size:12.5px;font-weight:600;color:var(--text);${strike}">${esc(t.title||'Untitled')}</div>
+              <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">Task · ${st}${t.deadline_date?' · '+t.deadline_date:''}</div>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   }
@@ -3160,13 +3365,27 @@ function renderArchiveHTML(key){
 /* ─── MIGRATE ─── */
 function renderMigrateHTML(){
   const tomm=tomorrowStr(), yest=yesterdayStr();
+  const sourceLabel=ui.migrateSourceKey?archiveLabel(ui.migrateSourceKey):'Today';
   return`<div>
     <div class="migrate-header">
       <div class="migrate-h1">⇄ Migrate Stories</div>
-      <div class="migrate-sub">Select stories from your working board → choose a destination → Move or Copy.</div>
+      <div class="migrate-sub">Pick an origin date → select stories → pick destination → Move or Copy.</div>
     </div>
     <div class="migrate-layout">
-      <div><div id="migrate-source-wrap">${buildMigrateSourceHTML()}</div></div>
+      <div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:11px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.7px;flex-shrink:0">📋 Origin</span>
+          <button class="qday-btn${!ui.migrateSourceKey?' qd-active':''}" onclick="setMigrateSource(null)">Today</button>
+          <button class="qday-btn${ui.migrateSourceKey===yest?' qd-active':''}" onclick="setMigrateSource('${yest}')">Yesterday</button>
+          <button class="qday-btn${ui.migrateSourceKey===tomm?' qd-active':''}" onclick="setMigrateSource('${tomm}')">Tomorrow</button>
+          <input type="date" class="finput" id="migrate-source-picker" style="font-size:12px;padding:5px 8px;max-width:155px"
+            value="${ui.migrateSourceKey&&!['${yest}','${tomm}'].includes(ui.migrateSourceKey)?ui.migrateSourceKey:''}"
+            placeholder="Other date…"
+            onchange="setMigrateSource(this.value||null)">
+          ${ui.migrateSourceKey?`<span style="font-size:11px;font-family:var(--mono);color:var(--upcoming)">📅 ${sourceLabel}</span>`:''}
+        </div>
+        <div id="migrate-source-wrap">${buildMigrateSourceHTML()}</div>
+      </div>
       <div class="migrate-dest">
         <div class="migrate-dest-title">📌 Destination</div>
         <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Quick select</div>
@@ -3187,8 +3406,8 @@ function renderMigrateHTML(){
         <div id="migrate-dest-label" style="font-size:11.5px;color:var(--week);font-family:var(--mono);min-height:18px;margin-bottom:8px"></div>
         <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Action</div>
         <div class="migrate-action-row">
-          <button class="action-btn${ui.migrateAction==='move'?' act-active':''}" data-action="move" onclick="setMigrateAction('move')">🔀 Move<br><span style="font-size:10px;color:var(--text3)">removes original, adds to destination</span></button>
-          <button class="action-btn${ui.migrateAction==='copy'?' act-active':''}" data-action="copy" onclick="setMigrateAction('copy')">⎘ Copy<br><span style="font-size:10px;color:var(--text3)">keeps original, also adds to destination</span></button>
+          <button class="action-btn${ui.migrateAction==='move'?' act-active':''}" data-action="move" onclick="setMigrateAction('move')">🔀 Move<br><span style="font-size:10px;color:var(--text3)">removes original</span></button>
+          <button class="action-btn${ui.migrateAction==='copy'?' act-active':''}" data-action="copy" onclick="setMigrateAction('copy')">⎘ Copy<br><span style="font-size:10px;color:var(--text3)">keeps original</span></button>
         </div>
         <div class="sel-counter" id="sel-counter">No stories selected</div>
         <button class="migrate-go" onclick="doMigrate()">Migrate Selected →</button>
@@ -3197,39 +3416,75 @@ function renderMigrateHTML(){
     </div>
   </div>`;
 }
+function setMigrateSource(key){
+  ui.migrateSourceKey=key||null;
+  ui.selectedStories.clear();
+  ui.migrateOpenSecs=new Set(SECTIONS.map(s=>s.key));
+  render(); // full re-render to update origin buttons
+}
+function getMigrateSourceSections(){
+  // Returns {sectionKey: [stories]} for the current origin
+  const sk=ui.migrateSourceKey;
+  const result={};
+  SECTIONS.forEach(sec=>{
+    if(sk){
+      result[sec.key]=(state.archive[sk]?.sections?.[sec.key]||[]);
+    } else {
+      result[sec.key]=(state.sections[sec.key]||[]);
+    }
+  });
+  return result;
+}
 function buildMigrateSourceHTML(){
+  const srcSecs=getMigrateSourceSections();
+  const sk=ui.migrateSourceKey;
   let html='';
   SECTIONS.forEach(sec=>{
-    const stories=state.sections[sec.key]||[];
-    const selCnt=stories.filter(s=>ui.selectedStories.has(sec.key+'::'+s.id)).length;
-    const isOpen=ui.migrateOpenSecs.has(sec.key);
+    if(sec.hidden) return; // skip hidden (other is rendered inside ibu combined)
+    // For combined section, merge ibu+other
+    let stories=[];
+    if(sec.isCombined){
+      const ibuStories=(srcSecs['ibu']||[]).map(s=>({...s,_subsec:'ibu'}));
+      const otherStories=(srcSecs['other']||[]).map(s=>({...s,_subsec:'other'}));
+      stories=[...ibuStories,...otherStories];
+    } else {
+      stories=srcSecs[sec.key]||[];
+    }
+    const sectionKey=sec.isCombined?'ibu_combined':sec.key;
+    const selCnt=stories.filter(s=>ui.selectedStories.has((s._subsec||sec.key)+'::'+s.id)).length;
+    const isOpen=ui.migrateOpenSecs.has(sectionKey);
     html+=`<div style="margin-bottom:10px">
-      <div class="migrate-section-header" onclick="toggleMigrateSec('${sec.key}')">
+      <div class="migrate-section-header" onclick="toggleMigrateSec('${sectionKey}')">
         <span class="migrate-sec-name">${sec.icon} ${sec.name} <span style="color:var(--text3);font-size:11px;font-family:var(--mono)">(${stories.length})</span></span>
         <div style="display:flex;gap:7px;align-items:center">
-          ${stories.length?`<button class="btn btn-xs btn-ghost" onclick="selectAllSec('${sec.key}');event.stopPropagation()">${selCnt===stories.length&&stories.length?'Deselect all':'Select all'}</button>`:''}
-          <span id="msec-chev-${sec.key}" style="color:var(--text3);font-size:13px;transition:transform .2s;${isOpen?'transform:rotate(180deg)':''}">▾</span>
+          ${stories.length?`<button class="btn btn-xs btn-ghost" onclick="selectAllSec('${sectionKey}');event.stopPropagation()">${selCnt===stories.length&&stories.length?'Deselect all':'Select all'}</button>`:''}
+          <span id="msec-chev-${sectionKey}" style="color:var(--text3);font-size:13px;transition:transform .2s;${isOpen?'transform:rotate(180deg)':''}">▾</span>
         </div>
       </div>
-      <div id="msec-body-${sec.key}" style="display:${isOpen?'block':'none'}">`;
-    if(!stories.length) html+=`<div class="empty-state" style="padding:14px 13px"><div class="empty-msg">No stories</div></div>`;
-    else stories.forEach(s=>{
-      const k=sec.key+'::'+s.id; const sel=ui.selectedStories.has(k);
-      const sk=k.replace(/[^a-z0-9]/gi,'-');
-      const modeIcon=s.mode==='working'?'▶':s.mode==='watching'?'👁':'';
-      const sbL=s.status==='urgent'?'🔴':s.status==='in-progress'?'🟡':s.status==='completed'?'🟢':s.status==='on-hold'?'🟣':s.status==='not-done'?'⚫':s.status==='postponed'?'🔵':s.status==='shelved'?'🗄':'⚪';
-      const carry=s.carriedForward?` 🔁+${s.carriedDays||1}d`:'';
-      html+=`<div class="migrate-story-row${sel?' msr-selected':''}" id="msr-${sk}" onclick="toggleMigrateStory('${k}')">
-        <div class="migrate-cb"><span class="migrate-cb-check" style="display:${sel?'block':'none'}">✓</span></div>
-        <div class="migrate-story-info">
-          <div class="migrate-story-title">${esc(s.title||'Untitled')} ${modeIcon}${carry}</div>
-          <div class="migrate-story-meta">${sbL} ${s.status||'no status'}${s.correspondent?' · 👤 '+esc(s.correspondent):''}${s.created?' · '+new Date(s.created).toLocaleDateString('en-GB'):''}</div>
-        </div>
-      </div>`;
-    });
+      <div id="msec-body-${sectionKey}" style="display:${isOpen?'block':'none'}">`;
+    if(!stories.length){
+      html+=`<div class="empty-state" style="padding:14px 13px"><div class="empty-msg">No stories</div></div>`;
+    } else {
+      stories.forEach(s=>{
+        const actualSec=s._subsec||sec.key;
+        const k=actualSec+'::'+s.id;
+        const sel=ui.selectedStories.has(k);
+        const sk2=k.replace(/[^a-z0-9]/gi,'-');
+        const sbL=s.status==='urgent'?'🔴':s.status==='in-progress'?'🟡':s.status==='completed'?'🟢':s.status==='on-hold'?'🟣':s.status==='not-done'?'⚫':s.status==='postponed'?'🔵':s.status==='shelved'?'🗄':'⚪';
+        const carry=s.carriedForward?` 🔁+${s.carriedDays||1}d`:'';
+        const subsecChip=s._subsec?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;${s._subsec==='ibu'?'background:var(--accent-bg);color:var(--accent)':'background:rgba(13,148,136,.08);color:var(--working)'}">${s._subsec==='ibu'?'IBU':'Other'}</span> `:'';
+        html+=`<div class="migrate-story-row${sel?' msr-selected':''}" id="msr-${sk2}" onclick="toggleMigrateStory('${k}')">
+          <div class="migrate-cb"><span class="migrate-cb-check" style="display:${sel?'block':'none'}">✓</span></div>
+          <div class="migrate-story-info">
+            <div class="migrate-story-title">${subsecChip}${esc(s.title||'Untitled')}${carry}</div>
+            <div class="migrate-story-meta">${sbL} ${s.status||'no status'}${s.correspondent?' · 👤 '+esc(s.correspondent):''}</div>
+          </div>
+        </div>`;
+      });
+    }
     html+='</div></div>';
   });
-  return html;
+  return html||'<div class="empty-state"><div class="empty-msg">No stories on this date</div></div>';
 }
 
 /* ─── ACCORDION ─── */
@@ -3438,8 +3693,20 @@ let ui_openTasks=new Set();
 
 function addTask(data){
   if(!state.tasks) state.tasks=[];
-  const t={...data, id:genId(), created:Date.now(), taskStatus:'pending', carriedForward:false, carriedFromDate:null, carriedDays:0};
+  const id=genId();
+  const today=todayStr();
+  const t={...data, id, created:Date.now(), taskStatus:'pending', carriedForward:false, carriedFromDate:null, carriedDays:0};
   state.tasks.push(t);
+
+  // Log to today's archive so it always appears when browsing that date
+  if(!state.archive[today]){
+    state.archive[today]={type:'day',label:archiveLabel(today),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{state.archive[today].sections[s.key]=[];});
+  }
+  if(!state.archive[today].tasksLog) state.archive[today].tasksLog=[];
+  if(!state.archive[today].tasksLog.some(x=>x.id===id)){
+    state.archive[today].tasksLog.push({...t});
+  }
   saveAndPush();
 }
 function updateTask(id,data){
@@ -3488,20 +3755,36 @@ function setTaskStatus(id, status, postponeTo){
   if(status==='postponed-to'&&postponeTo){ upd.postponeTo=postponeTo; }
   updateTask(id,upd);
 
+  // Update archive log entry for this task on its creation date
+  const task=(state.tasks||[]).find(t=>t.id===id);
+  if(task){
+    const createdDate=task.carriedFromDate||(task.created?dateStr(new Date(typeof task.created==='number'?task.created:parseInt(task.created))):todayStr());
+    if(!state.archive[createdDate]){
+      state.archive[createdDate]={type:'day',label:archiveLabel(createdDate),sections:{},notes:'',created:Date.now()};
+      SECTIONS.forEach(s=>{state.archive[createdDate].sections[s.key]=[];});
+    }
+    if(!state.archive[createdDate].tasksLog) state.archive[createdDate].tasksLog=[];
+    const li=state.archive[createdDate].tasksLog.findIndex(x=>x.id===id);
+    const updatedTask={...task,...upd};
+    if(li>=0) state.archive[createdDate].tasksLog[li]=updatedTask;
+    else state.archive[createdDate].tasksLog.push(updatedTask);
+    saveAndPush();
+  }
+
   // If recurring task marked done — auto-create next occurrence
   if(status==='done'){
-    const task=(state.tasks||[]).find(t=>t.id===id);
-    if(task&&task.isRecurring&&task.recurFreq){
-      const nextDate=nextRecurrenceDate(task);
+    const task2=(state.tasks||[]).find(t=>t.id===id);
+    if(task2&&task2.isRecurring&&task2.recurFreq){
+      const nextDate=nextRecurrenceDate(task2);
       const newTask={
-        title:       task.title,
-        notes:       task.notes||'',
+        title:       task2.title,
+        notes:       task2.notes||'',
         deadline_date: nextDate,
-        reminder:    task.reminder||'off',
+        reminder:    task2.reminder||'off',
         isRecurring: true,
-        recurFreq:   task.recurFreq,
-        recurDays:   task.recurDays||0,
-        recurLabel:  task.recurLabel||'',
+        recurFreq:   task2.recurFreq,
+        recurDays:   task2.recurDays||0,
+        recurLabel:  task2.recurLabel||'',
       };
       addTask(newTask);
       toast('✓ Done — next occurrence created for '+nextDate);
@@ -3668,12 +3951,49 @@ function confirmTaskTransfer(id, mode){
 function renderTasksSection(){
   if(!state.tasks) state.tasks=[];
   const today=todayStr();
+  const isStandalone=ui.view==='tasks';
+  const cur=isStandalone?(ui.tasksDate||today):today;
+  const isToday=cur===today;
+
+  let html=`<div id="tasks-section" style="scroll-margin-top:180px">`;
+
+  // Date navigator only when shown as standalone tab
+  if(isStandalone) html+=renderTabDateNav('tasksDate','Tasks');
+
+  if(!isToday){
+    // Show archived tasks for this date
+    const archTasks=(state.archive[cur]?.tasks)||[];
+    const archTasksLog=(state.archive[cur]?.tasksLog)||[];
+    const allArchTasks=[...archTasks,...archTasksLog];
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
+    </div>`;
+    if(!allArchTasks.length){
+      html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks recorded on this date</div></div>`;
+    } else {
+      allArchTasks.forEach(t=>{
+        const st=t.taskStatus==='done'||t._deleted?'✅':t.taskStatus==='not-done'?'⚫':t.taskStatus==='transferred'?'⇄':'⏳';
+        const label=t._deleted?'Deleted':t.taskStatus==='done'?'Done':t.taskStatus==='not-done'?'Not Done':t.taskStatus==='transferred'?'Transferred':'Pending';
+        html+=`<div class="task-card ts-pending" style="margin-bottom:6px;opacity:${t._deleted?.6:1}">
+          <div class="task-top" style="cursor:default">
+            <div style="flex:1">
+              <div class="task-title" style="text-decoration:${t._deleted?'line-through':''}">${esc(t.title||'Untitled')}</div>
+              ${t.deadline_date?`<div class="task-chips"><span class="task-chip">📅 ${t.deadline_date}</span></div>`:''}
+            </div>
+            <span class="task-status-badge tsb-${t.taskStatus==='done'?'done':t.taskStatus==='not-done'?'postponed':'pending'}">${st} ${label}</span>
+          </div>
+        </div>`;
+      });
+    }
+    html+=`</div>`;
+    return html;
+  }
+
   const tasks=state.tasks;
   const pendingCount=tasks.filter(t=>t.taskStatus!=='done').length;
   const doneCount=tasks.filter(t=>t.taskStatus==='done').length;
 
-  let html=`<div id="tasks-section" style="scroll-margin-top:180px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
       ${pendingCount?`<span style="font-size:11px;font-family:var(--mono);color:var(--text3);background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:4px">${pendingCount} pending</span>`:''}
