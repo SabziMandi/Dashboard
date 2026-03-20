@@ -1254,9 +1254,53 @@ function startRealtimeSync(){
   if(firestoreUnsub) firestoreUnsub();
   firestoreUnsub=fireDb.collection('nd').doc('data').onSnapshot(snap=>{
     if(snap.exists){
-      // Merge incoming data into state without touching UI flags
       const incoming=snap.data();
-      Object.assign(state, incoming);
+      // Smart merge: for arrays (leaves, tasks, notes), keep whichever is longer/newer
+      // This prevents a device with stale data from wiping entries added on another device
+      const arrayKeys=['leaves','tasks','notes'];
+      const mergedArrays={};
+      arrayKeys.forEach(k=>{
+        const local=state[k]||[];
+        const remote=incoming[k]||[];
+        // Merge by ID: union of both, with remote winning on conflicts
+        const map=new Map();
+        local.forEach(item=>{if(item.id) map.set(item.id,item);});
+        remote.forEach(item=>{if(item.id) map.set(item.id,item);}); // remote overrides local
+        mergedArrays[k]=[...map.values()];
+      });
+      // For archive: deep merge — keep all keys from both
+      const localArchive=state.archive||{};
+      const remoteArchive=incoming.archive||{};
+      const mergedArchive={...localArchive};
+      Object.keys(remoteArchive).forEach(dateKey=>{
+        if(!mergedArchive[dateKey]){
+          mergedArchive[dateKey]=remoteArchive[dateKey];
+        } else {
+          // Merge notesLog and tasksLog arrays by ID
+          ['notesLog','tasksLog'].forEach(logKey=>{
+            const localLog=mergedArchive[dateKey][logKey]||[];
+            const remoteLog=remoteArchive[dateKey][logKey]||[];
+            const logMap=new Map();
+            localLog.forEach(item=>{if(item.id) logMap.set(item.id,item);});
+            remoteLog.forEach(item=>{if(item.id) logMap.set(item.id,item);});
+            mergedArchive[dateKey][logKey]=[...logMap.values()];
+          });
+          // Merge story sections
+          if(remoteArchive[dateKey].sections){
+            SECTIONS.forEach(sec=>{
+              const localSec=mergedArchive[dateKey].sections?.[sec.key]||[];
+              const remoteSec=remoteArchive[dateKey].sections?.[sec.key]||[];
+              const secMap=new Map();
+              localSec.forEach(s=>{if(s.id) secMap.set(s.id,s);});
+              remoteSec.forEach(s=>{if(s.id) secMap.set(s.id,s);});
+              if(!mergedArchive[dateKey].sections) mergedArchive[dateKey].sections={};
+              mergedArchive[dateKey].sections[sec.key]=[...secMap.values()];
+            });
+          }
+        }
+      });
+      // Apply all other scalar fields from remote
+      Object.assign(state, incoming, mergedArrays, {archive:mergedArchive});
       if(!state.archive) state.archive={};
       saveLocal();
       render(); renderDateStrip(); setSyncUI('live');
@@ -3082,15 +3126,22 @@ function renderArchiveHTML(key){
   const notesLog=state.archive[key]?.notesLog||[];
   const tasksLog=state.archive[key]?.tasksLog||[];
   if(notesLog.length||tasksLog.length){
-    html+=`<div class="accordion"><div class="acc-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.acc-chevron').classList.toggle('open')">
-      <span class="acc-icon">📝</span><span class="acc-name">Notes logged on this day</span><span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:8px">${notesLog.length}</span>
-      <span class="acc-chevron">▾</span></div>
+    const statusLabel=n=>n._deleted?'🗑 Deleted':n.status==='done'?'✅ Done':n.status==='pass'||n.status==='passed'?'↪ Passed':'📌 Active';
+    const cardCls=n=>n._deleted?'note-pass':n.status==='done'?'note-done':n.status==='pass'||n.status==='passed'?'note-pass':'';
+    html+=`<div class="accordion">
+      <div class="acc-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.acc-chevron').classList.toggle('open')">
+        <span class="acc-icon">📝</span>
+        <span class="acc-name">Notes on this day</span>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:8px">${notesLog.length} note${notesLog.length===1?'':'s'}</span>
+        <span class="acc-chevron">▾</span>
+      </div>
       <div class="acc-body" style="display:flex;flex-direction:column;gap:6px">
-        ${notesLog.map(n=>`<div class="note-card ${n._deleted?'note-pass':n.status==='done'?'note-done':'note-pass'}">
-          <div class="note-text" style="text-decoration:${n.status==='done'||n._deleted?'line-through':''};opacity:${n._deleted?.7:1}">${esc(n.text)}</div>
+        ${notesLog.map(n=>`<div class="note-card ${cardCls(n)}">
+          <div class="note-text" style="text-decoration:${n.status==='done'||n._deleted?'line-through':''}">${esc(n.text)}</div>
           <div class="note-meta">
-            <span>${n._deleted?'🗑 Deleted':n.status==='done'?'✅ Done':'↪ Passed'}</span>
-            ${n.resolvedOn?`<span>· ${new Date(n.resolvedOn).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
+            ${n.created?`<span>${new Date(n.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
+            <span>${statusLabel(n)}</span>
+            ${n.deadline_date?`<span>📅 ${n.deadline_date}</span>`:''}
           </div>
         </div>`).join('')}
         ${tasksLog.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;opacity:.7">
@@ -3871,7 +3922,21 @@ function editNote(id){
 
 function addNote(data){
   if(!state.notes) state.notes=[];
-  state.notes.push({...data, id:genId(), created:Date.now(), status:'active', carriedForward:false, carriedFromDate:null, carriedDays:0});
+  const id=genId();
+  const today=todayStr();
+  const note={...data, id, created:Date.now(), status:'active', carriedForward:false, carriedFromDate:null, carriedDays:0};
+  state.notes.push(note);
+
+  // Also log to today's archive so it always appears when browsing that date
+  if(!state.archive[today]){
+    state.archive[today]={type:'day',label:archiveLabel(today),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{state.archive[today].sections[s.key]=[];});
+  }
+  if(!state.archive[today].notesLog) state.archive[today].notesLog=[];
+  // Store reference — we'll refresh this log when status changes
+  const existing=state.archive[today].notesLog.findIndex(n=>n.id===id);
+  if(existing<0) state.archive[today].notesLog.push({...note});
+
   saveAndPush();
 }
 function updateNote(id, data){
@@ -3918,6 +3983,13 @@ function setNoteStatus(id, status){
   }
 
   updateNote(id,{status, resolvedOn:Date.now()});
+
+  // Also update the archive log entry for this note on its creation date
+  if(state.archive[createdDate]?.notesLog){
+    const li=state.archive[createdDate].notesLog.findIndex(n=>n.id===id);
+    if(li>=0) state.archive[createdDate].notesLog[li]={...state.archive[createdDate].notesLog[li], status, resolvedOn:Date.now()};
+  }
+
   toast(status==='done'?'✅ Note marked Done — saved to '+archiveLabel(createdDate):'↪ Note passed — saved to '+archiveLabel(createdDate));
   renderDateStrip();
   render();
