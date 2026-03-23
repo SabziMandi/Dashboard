@@ -2713,7 +2713,7 @@ function remarksHTML(text, id, sec, storyId, archKey){
   const isEditing=hasCRUD&&_editingMainRemark.has(storyId);
   if(isEditing){
     return`<div class="card-remarks" onclick="event.stopPropagation()">
-      <textarea class="ftextarea" id="mr-edit-${storyId}" style="min-height:60px;white-space:pre-wrap;margin-bottom:6px" onkeydown="if(event.key==='Enter'){event.stopPropagation();}">${esc(text||'')}</textarea>
+      <textarea class="ftextarea" id="mr-edit-${storyId}" style="min-height:60px;white-space:pre-wrap;margin-bottom:6px">${esc(text||'')}</textarea>
       <div style="display:flex;gap:6px">
         <button class="btn btn-accent btn-sm" onclick="event.stopPropagation();saveMainRemark('${sec}','${storyId}',${archKeyJS})">Save</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();_editingMainRemark.delete('${storyId}');render()">Cancel</button>
@@ -3893,6 +3893,7 @@ function deleteStoryRemark(sec, storyId, remarkId, archKey){
 }
 function submitStoryRemark(sec, storyId, archKey){
   const el=document.getElementById('sr-input-'+storyId); if(!el) return;
+  if(!el.value.trim()){ toast('Enter remark text'); return; }
   addStoryRemark(sec, storyId, el.value, archKey);
 }
 function submitStoryRemarkEdit(sec, storyId, remarkId, archKey){
@@ -3910,13 +3911,13 @@ function buildStoryRemarksHTML(sec, s, archKey){
   const list=s.remarksList||[];
   const editingId=_storyRemarkEditId[s.id];
   let html='<div class="story-remarks-list">';
-  html+=`<div style="font-size:10.5px;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">💬 Remarks${list.length?' ('+list.length+')':''}</div>`;
+  html+=`<div style="font-size:10.5px;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">🗒 Updates / Log${list.length?' ('+list.length+')':''}</div>`;
   list.forEach(r=>{
     const dt=new Date(r.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
     if(editingId===r.id){
       html+=`<div class="sremark" onclick="event.stopPropagation()">
         <div class="sremark-body" style="width:100%">
-          <textarea class="ftextarea" id="sr-edit-${s.id}-${r.id}" style="min-height:52px;white-space:pre-wrap;width:100%" onkeydown="if(event.key==='Enter'){event.stopPropagation();}">${esc(r.text)}</textarea>
+          <textarea class="ftextarea" id="sr-edit-${s.id}-${r.id}" style="min-height:52px;white-space:pre-wrap;width:100%">${esc(r.text)}</textarea>
           <div style="display:flex;gap:6px;margin-top:5px">
             <button class="btn btn-accent btn-sm" onclick="event.stopPropagation();submitStoryRemarkEdit('${sec}','${s.id}','${r.id}',${archKeyJS})">Save</button>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delete _storyRemarkEditId['${s.id}'];render()">Cancel</button>
@@ -3937,8 +3938,7 @@ function buildStoryRemarksHTML(sec, s, archKey){
     }
   });
   html+=`<div class="sremark-add" onclick="event.stopPropagation()">
-    <input class="finput" id="sr-input-${s.id}" placeholder="Add a remark…" style="flex:1;font-size:12px"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.stopPropagation();submitStoryRemark('${sec}','${s.id}',${archKeyJS});event.preventDefault()}">
+    <textarea class="ftextarea" id="sr-input-${s.id}" placeholder="Add a remark… (Enter for new line)" style="flex:1;font-size:12px;min-height:44px;resize:vertical;white-space:pre-wrap"></textarea>
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();submitStoryRemark('${sec}','${s.id}',${archKeyJS})">+ Add</button>
   </div>`;
   html+='</div>';
@@ -4829,7 +4829,7 @@ function renderMeetingForm(){
           </div>
         </div>
       </div>
-      <div class="fgroup full"><label class="flabel">Agenda</label><textarea class="ftextarea" id="mf-agenda" placeholder="What will be discussed…" style="min-height:60px;white-space:pre-wrap" onkeydown="if(event.key==='Enter'){event.stopPropagation();}"></textarea></div>
+      <div class="fgroup full"><label class="flabel">Agenda</label><textarea class="ftextarea" id="mf-agenda" placeholder="What will be discussed…" style="min-height:60px;white-space:pre-wrap"></textarea></div>
       <div class="fgroup full">
         <label class="flabel">Participants</label>
         <div id="mf-participants-wrap"></div>
@@ -4909,7 +4909,7 @@ function renderMeetingCard(m){
       ${(m.remarks||[]).map(r=>{
         if(editingRemarkId===r.id){
           return`<div style="margin-bottom:6px">
-            <textarea class="ftextarea" id="mref-text-${m.id}-${r.id}" style="min-height:52px;white-space:pre-wrap" onkeydown="if(event.key==='Enter'){event.stopPropagation();}">${esc(r.text)}</textarea>
+            <textarea class="ftextarea" id="mref-text-${m.id}-${r.id}" style="min-height:52px;white-space:pre-wrap">${esc(r.text)}</textarea>
             <div style="display:flex;gap:6px;margin-top:5px">
               <button class="btn btn-accent btn-sm" onclick="submitMeetingRemarkEdit('${m.id}','${r.id}')">Save</button>
               <button class="btn btn-ghost btn-sm" onclick="delete ui_editMeetingRemarkId['${m.id}'];render()">Cancel</button>
@@ -4926,7 +4926,7 @@ function renderMeetingCard(m){
         </div>`;
       }).join('')}
       ${showRemarkForm?`<div style="margin-top:8px">
-        <textarea class="ftextarea" id="mrf-text-${m.id}" placeholder="Add a remark…" style="min-height:52px;white-space:pre-wrap" onkeydown="if(event.key==='Enter'){event.stopPropagation();}"></textarea>
+        <textarea class="ftextarea" id="mrf-text-${m.id}" placeholder="Add a remark…" style="min-height:52px;white-space:pre-wrap"></textarea>
         <div style="display:flex;gap:6px;margin-top:5px">
           <button class="btn btn-accent btn-sm" onclick="submitMeetingRemark('${m.id}')">Save Remark</button>
           <button class="btn btn-ghost btn-sm" onclick="ui_meetingRemarkForms['${m.id}']=false;render()">Cancel</button>
@@ -5577,7 +5577,7 @@ function renderStoryCard(sec,s,archKey){
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
     ${remarksHTML(s.remarks, s.id+'_cr', sec, s.id, archKey)}
-    ${(sec==='ibu'||sec==='other')?buildStoryRemarksHTML(sec,s,archKey):''}
+    ${buildStoryRemarksHTML(sec,s,archKey)}
     ${s.location==='Field'?buildStoryTravelHTML(sec,s,archKey):''}
     ${linksHtml}
     ${s.completion_note||s.completion_links?`<div class="completion-box"><div class="completion-label">✅ Completion Notes</div>${s.completion_note?`<div class="completion-note">${esc(s.completion_note)}</div>`:''} ${clHtml}</div>`:''}
@@ -5718,7 +5718,7 @@ function renderForm(sec,archKey){
         <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
       </select>
     </div>
-    <div class="fgroup full"><label class="flabel">Remarks</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Notes, context…" onkeydown="if(event.key==='Enter'){event.stopPropagation();}" style="white-space:pre-wrap;min-height:80px">${esc(editStoryObj?.remarks||'')}</textarea></div>
+    <div class="fgroup full"><label class="flabel">Remarks</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Notes, context…" style="white-space:pre-wrap;min-height:80px">${esc(editStoryObj?.remarks||'')}</textarea></div>
     <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
   </div>
   <div class="form-footer">
@@ -5769,7 +5769,7 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
         <option value="off"${(ev.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${ev.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${ev.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${ev.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${ev.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${ev.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${ev.reminder==='1week'?' selected':''}>1 week</option>
       </select>
     </div>
-    <div class="fgroup full"><label class="flabel">Remarks &amp; Any Relevant Detail</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Context, previous coverage, contacts, logistics…" onkeydown="if(event.key==='Enter'){event.stopPropagation();}" style="white-space:pre-wrap;min-height:80px">${esc(ev.remarks||'')}</textarea></div>
+    <div class="fgroup full"><label class="flabel">Remarks &amp; Any Relevant Detail</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Context, previous coverage, contacts, logistics…" style="white-space:pre-wrap;min-height:80px">${esc(ev.remarks||'')}</textarea></div>
     <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(ev.links||'')}"></div>
   </div>
   <div class="form-footer">
@@ -5830,8 +5830,14 @@ function init(){
     });
   }
 
-  // Check every 5 minutes if the date has changed (midnight rollover)
-  // Also refreshes the header date so it never shows yesterday's date
+  // Global: Enter in any textarea = new paragraph on both desktop and mobile.
+  // Stops propagation so it never triggers accordion toggles or form submits.
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && e.target.tagName==='TEXTAREA'){
+      e.stopPropagation();
+      // Don't preventDefault — let the browser insert the newline naturally.
+    }
+  }, true); // capture phase so it fires before any inline handlers
   setInterval(()=>{
     const today=todayStr();
     if(state.lastActiveDate && state.lastActiveDate !== today){
