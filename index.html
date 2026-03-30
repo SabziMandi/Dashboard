@@ -699,16 +699,17 @@ body {
 .uc-row.ucr-completed{ border-left-color: var(--done); }
 .uc-row.ucr-on-hold  { border-left-color: var(--onhold); }
 .uc-top {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: flex-start; gap: 8px;
   padding: 9px 13px; cursor: pointer; user-select: none;
 }
 .uc-expand-icon {
   font-size: 13px; color: var(--upcoming); flex-shrink: 0;
   transition: transform .2s; width: 18px; text-align: center;
+  margin-top: 2px;
 }
 .uc-expand-icon.open { transform: rotate(90deg); }
-.uc-title { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.uc-meta-line { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+.uc-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uc-meta-line { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; margin-top: 2px; }
 .uc-chip { font-size: 10.5px; color: var(--text3); font-family: var(--mono); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
 .uc-chip.uc-chip-overdue { color: var(--urgent); font-weight: 600; }
@@ -1105,13 +1106,12 @@ button.tasks-tab-btn {
 /* ════════════════════════════════════════
    CONSTANTS
 ════════════════════════════════════════ */
-// Section order: IBU → Other Lives → Requests → Upcoming
-// 'watching' section removed; replaced by ww-badge on IBU/Other
+// Section order: Stories → Requests → Upcoming
 const SECTIONS = [
-  { key:'ibu',      name:'Lives',          icon:'📡', hasWW:true, renameable:false, isCombined:true },
-  { key:'other',    name:'Other Stories',  icon:'🌍', hasWW:true, renameable:true,  hidden:true },
-  { key:'requests', name:'Requests for Future', icon:'📨', hasWW:false },
-  { key:'upcoming', name:'Upcoming Events', icon:'🗓', hasWW:false, isUpcoming:true },
+  { key:'ibu',      name:'Stories',               icon:'📡', hasWW:true, renameable:false, isCombined:true },
+  { key:'other',    name:'Other Stories',          icon:'🌍', hasWW:true, renameable:true,  hidden:true },
+  { key:'requests', name:'Requests for Future',    icon:'📨', hasWW:false },
+  { key:'upcoming', name:'Upcoming Events',        icon:'🗓', hasWW:false, isUpcoming:true },
 ];
 const REMINDER_DELAYS = {
   '15min':900000,'30min':1800000,'1hr':3600000,'4hr':14400000,'1day':86400000,'1week':604800000
@@ -1179,23 +1179,19 @@ function todayStr()    { return dateStr(new Date()); }
 function yesterdayStr(){ const d=new Date(); d.setDate(d.getDate()-1); return dateStr(d); }
 function tomorrowStr() { const d=new Date(); d.setDate(d.getDate()+1); return dateStr(d); }
 function addDays(s,n)  { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dateStr(d); }
-function isBST(d){
-  const ls=(y,m)=>{ let dt=new Date(y,m,31); while(dt.getDay()!==0) dt.setDate(dt.getDate()-1); return dt; };
-  return d>=ls(d.getFullYear(),2) && d<ls(d.getFullYear(),9);
-}
-function ukLabel(){ return isBST(new Date())?'BST':'GMT'; }
-function ukOffMin(d){ return isBST(d)?60:0; }
+function ukLabel(){ return 'GMT'; }
+function ukOffMin(){ return 0; }  // always GMT (UTC+0), never BST
 const IST_OFF=330;
 function ukToIST(s){
   const m=s.match(/^(\d{1,2}):(\d{2})$/); if(!m) return '';
-  const now=new Date(); const uk=+m[1]*60+ +m[2];
-  const ist=((uk-ukOffMin(now)+IST_OFF)%1440+1440)%1440;
+  const uk=+m[1]*60+ +m[2];
+  const ist=((uk+IST_OFF)%1440+1440)%1440;
   return p2(Math.floor(ist/60))+':'+p2(ist%60);
 }
 function istToUK(s){
   const m=s.match(/^(\d{1,2}):(\d{2})$/); if(!m) return '';
-  const now=new Date(); const ist=+m[1]*60+ +m[2];
-  const uk=((ist-IST_OFF+ukOffMin(now))%1440+1440)%1440;
+  const ist=+m[1]*60+ +m[2];
+  const uk=((ist-IST_OFF)%1440+1440)%1440;
   return p2(Math.floor(uk/60))+':'+p2(uk%60);
 }
 function weekMondayStr(ds){
@@ -1385,7 +1381,10 @@ function startRealtimeSync(){
       state.backupSnapshots=localBackups; // restore local backups after merge
       if(!state.archive) state.archive={};
       saveLocal();
-      render(); renderDateStrip(); setSyncUI('live');
+      // Clean up any stuck not-done entries that remote data may have restored,
+      // then push the cleaned state back so all devices stay in sync.
+      const cleaned=cleanupStuckNotDone();
+      if(!cleaned) { render(); renderDateStrip(); setSyncUI('live'); }
     }
     else pushToCloud();
   }, ()=>setSyncUI('offline'));
@@ -1954,7 +1953,7 @@ function buildSlotRowHTML(idx,slot){
     <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
       <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
     </div>
-    <div class="fgroup" style="margin:0"><label class="flabel">UK Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
+    <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
     <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00" maxlength="5" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
     <div style="display:flex;flex-direction:column;gap:2px;align-self:flex-end;padding-bottom:1px">
       <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 7px">↑</button>
@@ -2088,9 +2087,57 @@ function markNotDone(sec,id,archKey){
   render();
 }
 function markStoryNotDone(sec,id,archKey){
+  // Combined sections (ibu/other) stay visible until the daily rollover.
+  // All other sections (requests, etc.) archive immediately — "not done" is terminal.
+  const isCombined=(sec==='ibu'||sec==='other');
   updateStory(sec,id,{status:'not-done',carriedForward:false,notDoneOn:Date.now()},archKey);
-  toast('⚫ Marked Not Done — story stays on today\'s board');
-  render();
+  if(!archKey && !isCombined){
+    _archiveAndRemoveFromBoard(sec,id);
+    toast('⚫ Marked Not Done — archived');
+  } else {
+    toast('⚫ Marked Not Done');
+  }
+  saveAndPush(); renderDateStrip(); render();
+}
+
+// Helper: archive a story to its original entry date and remove it from the working board.
+// Always uses the story's own creation/carry date — never "today" — so the entry
+// appears in the archive under the day it was actually created.
+function _archiveAndRemoveFromBoard(sec,id){
+  const arr=state.sections[sec]||[];
+  const story=arr.find(s=>s.id===id); if(!story) return;
+  // Determine the correct archive date: original creation date, not today
+  const archDate=story.carriedFromDate ||
+    (story.created
+      ? dateStr(new Date(typeof story.created==='number'?story.created:parseInt(story.created)))
+      : todayStr());
+  if(!state.archive[archDate]){
+    state.archive[archDate]={type:'day',label:archiveLabel(archDate),sections:{},notes:'',created:Date.now()};
+    SECTIONS.forEach(s=>{ state.archive[archDate].sections[s.key]=[]; });
+  }
+  if(!state.archive[archDate].sections[sec]) state.archive[archDate].sections[sec]=[];
+  if(!state.archive[archDate].sections[sec].some(s=>s.id===id)){
+    state.archive[archDate].sections[sec].push({...story, autoArchivedOn:todayStr()});
+  }
+  state.sections[sec]=arr.filter(s=>s.id!==id);
+  ui.openCards.delete(id);
+}
+
+// Startup cleanup: rescue any not-done entries in non-combined sections that were
+// stuck before this fix (e.g. marked not-done days ago and never archived).
+// Also called after Firebase sync so remote state can't resurrect stuck entries.
+function cleanupStuckNotDone(){
+  let cleaned=0;
+  SECTIONS.filter(s=>!s.isUpcoming&&s.key!=='ibu'&&s.key!=='other').forEach(sec=>{
+    const stuck=(state.sections[sec.key]||[]).filter(s=>s.status==='not-done');
+    if(!stuck.length) return;
+    stuck.forEach(story=>{
+      _archiveAndRemoveFromBoard(sec.key, story.id);
+      cleaned++;
+    });
+  });
+  if(cleaned>0){ saveAndPush(); }  // push to Firebase so both devices stay clean
+  return cleaned;
 }
 function shelveStory(sec,id,archKey){
   updateStory(sec,id,{status:'shelved',carriedForward:false,shelvedAt:Date.now()},archKey);
@@ -2336,10 +2383,10 @@ function storyToText(s){
     s.broadcast_times.forEach((t,i)=>{
       const plat=t.plat||t.lbl||('Live '+(i+1));
       const prog=t.prog?(' · '+t.prog):'';
-      ln.push(`  ${(plat+prog).padEnd(14)}: UK ${t.uk||'–'} (${ukLabel()}) | IST ${t.ist||'–'}`);
+      ln.push(`  ${(plat+prog).padEnd(14)}: GMT ${t.uk||'–'} | IST ${t.ist||'–'}`);
     });
   } else if(s.time_uk||s.time_ist){
-    ln.push('  Broadcast     : UK '+(s.time_uk||'–')+' ('+ukLabel()+') | IST '+(s.time_ist||'–'));
+    ln.push('  Broadcast     : GMT '+(s.time_uk||'–')+' | IST '+(s.time_ist||'–'));
   }
   if(s.deadline_date){
     let dl='  Deadline      : '+s.deadline_date;
@@ -2697,11 +2744,13 @@ function openMobileMore(){
 
 function bnbNav(tab){
   if(tab==='tasks'){
+    ui.openSections.add('tasks');
     ui.view='tasks'; render(); window.scrollTo({top:0});
   } else if(tab==='meetings'){
     ui.openSections.add('meetings');
     ui.view='meetings'; render(); window.scrollTo({top:0});
   } else if(tab==='leaves'){
+    ui.openSections.add('leaves');
     ui.view='leaves'; render(); window.scrollTo({top:0});
   } else if(tab==='upcoming'){
     ui.openSections.add('upcoming');
@@ -4579,21 +4628,21 @@ function renderCombinedAccordion(archKey){
   let html=`<div class="accordion${isOpen?' acc-open':''}" id="acc-ibu">
     <div class="acc-header" onclick="toggleAccordion('ibu')">
       <span class="acc-icon">📡</span>
-      <span class="acc-name">Lives &amp; Other Stories</span>
+      <span class="acc-name">Stories</span>
       <div class="acc-meta">
         ${uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:''}
         ${ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:''}
         ${cc?`<span style="font-size:10px;color:var(--carry);background:var(--carry-bg);border:1px solid rgba(234,88,12,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">🔁 ${cc}</span>`:''}
-        ${(ui.filter!=='all'||ui.search)?`<span class="acc-count">${combinedFiltered.length} shown of ${ibuActive.length+otherActive.length}</span>`:`<span class="acc-count">${ibuActive.length} Lives · ${otherActive.length} Other</span>`}
+        ${(ui.filter!=='all'||ui.search)?`<span class="acc-count">${combinedFiltered.length} shown of ${ibuActive.length+otherActive.length}</span>`:`<span class="acc-count">${ibuActive.length+otherActive.length} stories</span>`}
         ${ui.filter!=='all'?`<span style="font-size:10px;font-family:var(--mono);color:var(--accent);cursor:pointer" onclick="setFilter('all',null);event.stopPropagation()">✕ ${ui.filter}</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
       <div class="sec-head" style="flex-wrap:wrap;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Lives</button>
+        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Stories</button>
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('other',${archKeyJS});event.stopPropagation()">✉ Other</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Live Story</button>
+        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Story</button>
         <button class="btn btn-ghost btn-sm" style="border-color:rgba(13,148,136,.4);color:var(--working)" onclick="toggleForm('other',${archKeyJS});event.stopPropagation()">+ Other Story</button>
       </div>
       ${isIBUFormOpen?renderForm('ibu',archKey):''}
@@ -5572,12 +5621,13 @@ function renderUpcomingRow(sec,s,archKey){
   return`<div class="${rowCls}" data-id="${s.id}">
   <div class="uc-top" onclick="toggleCard('${s.id}')">
     <span class="uc-expand-icon${isOpen?' open':''}">▶</span>
-    <span class="uc-title">${esc(s.title||'Untitled')}</span>
+    <div style="flex:1;min-width:0">
+      <div class="uc-title">${esc(s.title||'Untitled')}</div>
+      ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font)">${esc((s.detail||s.correspondent||'').split('\n')[0].slice(0,80))}</div>`:''} 
+    </div>
     <div class="uc-meta-line">
-      ${corrChip}
       ${s.expected_date?`<span class="uc-chip">${esc(s.expected_date)}${typeLabel}</span>`:''}
       ${dueChip}
-      ${s.deadline_date?`<span class="uc-chip">⏱ ${esc(s.deadline_date)}</span>`:''}
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
     </div>
     <button class="btn btn-ghost btn-xs btn-danger" style="flex-shrink:0;padding:3px 7px" onclick="event.stopPropagation();confirmDelete('${sec}','${s.id}',${archKeyJS})" title="Delete">🗑</button>
@@ -5676,10 +5726,10 @@ function renderStoryCard(sec,s,archKey){
           ? s.broadcast_times.map((t,i)=>{
               const platLabel=t.plat||t.lbl||('Slot '+(i+1));
               const progStr=t.prog?` · ${t.prog}`:'';
-              const timeStr=[t.uk?`UK ${t.uk} ${ukLabel()}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
+              const timeStr=[t.uk?`GMT ${t.uk}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
               return field(platLabel+progStr, timeStr||'–');
             }).join('')
-          : (s.time_uk||s.time_ist)?field('UK ('+ukLabel()+')',s.time_uk)+field('IST',s.time_ist):''
+          : (s.time_uk||s.time_ist)?field('GMT',s.time_uk)+field('IST',s.time_ist):''
         }
         ${s.req_name||s.req_team?field('Requested By',[s.req_name,s.req_team,s.req_location].filter(Boolean).join(' · ')):''}
       
@@ -5798,14 +5848,14 @@ function renderForm(sec,archKey){
     </div>
     <div class="form-divider">Broadcast Times</div>
     <div class="fgroup full" style="margin-bottom:4px">
-      <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Select platform and enter UK time — IST auto-fills. Add a slot for each scheduled broadcast.</div>
+      <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Select platform and enter GMT time — IST auto-fills. Add a slot for each scheduled broadcast.</div>
       <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
     </div>
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline GMT Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
       <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">Request Details</div>
@@ -5862,7 +5912,7 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline GMT <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_uk||'')}"></div>
       <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">People &amp; Status</div>
@@ -5910,9 +5960,9 @@ function confirmDelete(sec,id,archKey){ const arr=getArr(sec,archKey); const s=a
 function updateClock(){
   const el=document.getElementById('live-clock'); if(!el) return;
   const now=new Date();
-  const uk=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'});
+  const gmt=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
   const ist=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
-  el.textContent='UK '+uk+' · IST '+ist;
+  el.textContent='GMT '+gmt+' · IST '+ist;
 }
 
 /* ════════════════════════════════════════
@@ -5921,6 +5971,7 @@ function updateClock(){
 function init(){
   loadLocal();
   checkDateChange();
+  cleanupStuckNotDone();  // archive any not-done entries stuck in non-combined sections
   scheduleAllReminders();
   const cfg=getFireConfig(); if(cfg) initFirebase(cfg, true);
   window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); pushToCloud(); } });
