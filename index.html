@@ -896,6 +896,12 @@ button.tasks-tab-btn {
 .leave-body { display: none; padding: 4px 13px 12px; border-top: 1px solid var(--border); }
 .leave-body.open { display: block; }
 .leave-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+/* Badge row: sits below dates on mobile, inline on desktop */
+.leave-badges-row { width: auto !important; }
+@media(max-width:720px){
+  .leave-badges-row { width: 100% !important; padding-left: 2px !important; }
+  .leave-top { align-items: flex-start !important; }
+}
 
 /* Employee settings panel */
 .emp-settings {
@@ -1179,20 +1185,36 @@ function todayStr()    { return dateStr(new Date()); }
 function yesterdayStr(){ const d=new Date(); d.setDate(d.getDate()-1); return dateStr(d); }
 function tomorrowStr() { const d=new Date(); d.setDate(d.getDate()+1); return dateStr(d); }
 function addDays(s,n)  { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dateStr(d); }
-function ukLabel(){ return 'GMT'; }
-function ukOffMin(){ return 0; }  // always GMT (UTC+0), never BST
-const IST_OFF=330;
+// UK time helpers — auto-detect BST (UTC+1 in summer) vs GMT (UTC+0 in winter)
+// Uses the browser's own Intl engine so daylight saving transitions are always correct.
+function _londonOffsetMin(){
+  // Returns London's current UTC offset in minutes (60 in BST, 0 in GMT)
+  const now=new Date();
+  // Format the same moment in UTC and in London, then diff the hours
+  const utcH=+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC',hour12:false}).split(':')[0];
+  const lonH=+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London',hour12:false}).split(':')[0];
+  const diff=((lonH-utcH)+24)%24;  // 0 = GMT, 1 = BST
+  return diff*60;
+}
+function ukLabel(){ return _londonOffsetMin()===60?'BST':'GMT'; }
+function ukOffMin(){ return _londonOffsetMin(); }
+const IST_OFF=330;  // IST is always UTC+5:30
+
 function ukToIST(s){
   const m=s.match(/^(\d{1,2}):(\d{2})$/); if(!m) return '';
-  const uk=+m[1]*60+ +m[2];
-  const ist=((uk+IST_OFF)%1440+1440)%1440;
-  return p2(Math.floor(ist/60))+':'+p2(ist%60);
+  const ukMin=+m[1]*60+ +m[2];
+  // Convert UK local → UTC → IST
+  const utcMin=((ukMin-ukOffMin())%1440+1440)%1440;
+  const istMin=((utcMin+IST_OFF)%1440+1440)%1440;
+  return p2(Math.floor(istMin/60))+':'+p2(istMin%60);
 }
 function istToUK(s){
   const m=s.match(/^(\d{1,2}):(\d{2})$/); if(!m) return '';
-  const ist=+m[1]*60+ +m[2];
-  const uk=((ist-IST_OFF)%1440+1440)%1440;
-  return p2(Math.floor(uk/60))+':'+p2(uk%60);
+  const istMin=+m[1]*60+ +m[2];
+  // Convert IST → UTC → UK local
+  const utcMin=((istMin-IST_OFF)%1440+1440)%1440;
+  const ukMin=((utcMin+ukOffMin())%1440+1440)%1440;
+  return p2(Math.floor(ukMin/60))+':'+p2(ukMin%60);
 }
 function weekMondayStr(ds){
   const d=new Date(ds+'T00:00:00');
@@ -4633,17 +4655,17 @@ function renderCombinedAccordion(archKey){
         ${uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:''}
         ${ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:''}
         ${cc?`<span style="font-size:10px;color:var(--carry);background:var(--carry-bg);border:1px solid rgba(234,88,12,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">🔁 ${cc}</span>`:''}
-        ${(ui.filter!=='all'||ui.search)?`<span class="acc-count">${combinedFiltered.length} shown of ${ibuActive.length+otherActive.length}</span>`:`<span class="acc-count">${ibuActive.length+otherActive.length} stories</span>`}
+        ${(ui.filter!=='all'||ui.search)?`<span class="acc-count">${combinedFiltered.length} shown of ${ibuActive.length+otherActive.length}</span>`:`<span class="acc-count">${ibuActive.length} Live · ${otherActive.length} Other</span>`}
         ${ui.filter!=='all'?`<span style="font-size:10px;font-family:var(--mono);color:var(--accent);cursor:pointer" onclick="setFilter('all',null);event.stopPropagation()">✕ ${ui.filter}</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
       <div class="sec-head" style="flex-wrap:wrap;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Stories</button>
+        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Live</button>
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('other',${archKeyJS});event.stopPropagation()">✉ Other</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Story</button>
-        <button class="btn btn-ghost btn-sm" style="border-color:rgba(13,148,136,.4);color:var(--working)" onclick="toggleForm('other',${archKeyJS});event.stopPropagation()">+ Other Story</button>
+        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Live</button>
+        <button class="btn btn-ghost btn-sm" style="border-color:rgba(13,148,136,.4);color:var(--working)" onclick="toggleForm('other',${archKeyJS});event.stopPropagation()">+ Other</button>
       </div>
       ${isIBUFormOpen?renderForm('ibu',archKey):''}
       ${isOtherFormOpen?renderForm('other',archKey):''}
@@ -5535,22 +5557,22 @@ function renderLeaveCard(l,today,isPast){
   };
   const pFrom=fmtDateParts(l.dateFrom);
   const pTo=fmtDateParts(l.dateTo);
-  const colStyle='display:grid;grid-template-columns:2.2ch 3.2ch 4.2ch 1fr;gap:0 7px;font-family:var(--mono);font-size:11.5px;color:var(--text2);flex:1;row-gap:4px;';
+  const colStyle='display:grid;grid-template-columns:2.2ch 3.2ch 4.2ch 1fr;gap:0 7px;font-family:var(--mono);font-size:11.5px;color:var(--text2);flex:1;row-gap:4px;min-width:0;';
   const dateGrid=`<div style="${colStyle}">
-    <span style="text-align:right">${pFrom.day}</span><span>${pFrom.month}</span><span>${pFrom.year}</span><span>${pFrom.weekday}</span>
-    <span style="text-align:right">${pTo.day}</span><span>${pTo.month}</span><span>${pTo.year}</span><span>${pTo.weekday}</span>
+    <span style="text-align:right">${pFrom.day}</span><span>${pFrom.month}</span><span>${pFrom.year}</span><span class="hide-mobile">${pFrom.weekday}</span>
+    <span style="text-align:right">${pTo.day}</span><span>${pTo.month}</span><span>${pTo.year}</span><span class="hide-mobile">${pTo.weekday}</span>
   </div>`;
   const cardCls='leave-card'+(l.status==='approved'?' lc-approved':l.status==='pending'?' lc-pending':'')+(isPast?' lc-past':'')+(isOnLeave?' lc-today':'');
   return`<div class="${cardCls}" data-id="${l.id}">
-  <div class="leave-top" onclick="toggleLeaveOpen('${l.id}')">
-    <span class="leave-employee" style="min-width:130px;max-width:130px;overflow:hidden;text-overflow:ellipsis">${esc(l.employeeName||'Unknown')}</span>
+  <div class="leave-top" onclick="toggleLeaveOpen('${l.id}')" style="flex-wrap:wrap;row-gap:5px">
+    <span class="leave-employee" style="min-width:100px;max-width:130px;overflow:hidden;text-overflow:ellipsis;flex-shrink:0">${esc(l.employeeName||'Unknown')}</span>
     ${dateGrid}
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0">
+    <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;flex-shrink:0;width:100%;padding-left:0" class="leave-badges-row">
       <span class="leave-type-badge ${typeInfo.cls}">${typeInfo.label}</span>
       <span class="leave-status-badge ${l.status==='approved'?'lsb-approved':'lsb-pending'}">${l.status==='approved'?'✓ Approved':'⏳ Pending'}</span>
       <span class="leave-duration">${durationLabel}</span>
     </div>
-    <span class="chevron${isOpen?' open':''}" id="lc-${l.id}">▾</span>
+    <span class="chevron${isOpen?' open':''}" id="lc-${l.id}" style="flex-shrink:0">▾</span>
   </div>
   <div class="leave-body${isOpen?' open':''}" id="lb-${l.id}">
     <div class="card-fields" style="margin-top:8px">
@@ -5681,7 +5703,7 @@ function renderStoryCard(sec,s,archKey){
   const wwLabel=mode==='working'?'▶ Working':mode==='watching'?'👁 Watching':'● Set mode';
   const subsecBadge=(sec==='ibu'||sec==='other')
     ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'}" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch" style="cursor:pointer">${
-        sec==='ibu'?(s.live_type==='nonibu'?'Non-IBU':'IBU'):'Other Story'
+        sec==='ibu'?(s.live_type==='nonibu'?'Non-Live':'Live'):'Other'
       } ⇄</span>`
     : '';
   const isIBU=sec==='ibu'&&!archKey;
@@ -5799,17 +5821,17 @@ function renderForm(sec,archKey){
   const existingSlots=editStoryObj?.broadcast_times||[];
 
   return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}">
-  <div class="form-title">${isEdit?'✏ Edit Story':'+ New Story'}</div>
+  <div class="form-title">${isEdit?(sec==='ibu'?'✏ Edit Live Story':'✏ Edit Story'):(sec==='ibu'?'+ New Live Story':'+ New Story')}</div>
   <div class="form-grid">
     <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off" value="${esc(editStoryObj?.title||'')}"></div>
     ${isIBU?`<div class="fgroup full">
       <label class="flabel">Live Type</label>
       <div style="display:flex;gap:8px;margin-top:4px">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
-          <input type="radio" name="live-type${sfx}" id="f-live-ibu${sfx}" value="ibu" ${(editStoryObj?.live_type||'ibu')==='ibu'?'checked':''} style="accent-color:var(--accent)"> <span>IBU</span>
+          <input type="radio" name="live-type${sfx}" id="f-live-ibu${sfx}" value="ibu" ${(editStoryObj?.live_type||'ibu')==='ibu'?'checked':''} style="accent-color:var(--accent)"> <span>Live (IBU)</span>
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
-          <input type="radio" name="live-type${sfx}" id="f-live-nonibu${sfx}" value="nonibu" ${editStoryObj?.live_type==='nonibu'?'checked':''} style="accent-color:var(--working)"> <span>Non-IBU</span>
+          <input type="radio" name="live-type${sfx}" id="f-live-nonibu${sfx}" value="nonibu" ${editStoryObj?.live_type==='nonibu'?'checked':''} style="accent-color:var(--working)"> <span>Non-Live</span>
         </label>
       </div>
     </div>`:''}
@@ -5855,7 +5877,7 @@ function renderForm(sec,archKey){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline GMT Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
       <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">Request Details</div>
@@ -5912,7 +5934,7 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline GMT <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_uk||'')}"></div>
       <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">People &amp; Status</div>
@@ -5960,9 +5982,9 @@ function confirmDelete(sec,id,archKey){ const arr=getArr(sec,archKey); const s=a
 function updateClock(){
   const el=document.getElementById('live-clock'); if(!el) return;
   const now=new Date();
-  const gmt=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
+  const ukTime=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'});
   const ist=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'});
-  el.textContent='GMT '+gmt+' · IST '+ist;
+  el.textContent=ukLabel()+' '+ukTime+' · IST '+ist;
 }
 
 /* ════════════════════════════════════════
