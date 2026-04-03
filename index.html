@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="BBC Dashboard">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
 <meta name="theme-color" content="#F5F1EB">
 <meta name="mobile-web-app-capable" content="yes">
-<title>BBC Dashboard</title>
+<meta name="description" content="BBC Dashboard — newsroom planning tool">
+<title>Dashboard</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
@@ -2224,16 +2227,59 @@ function toggleWWMode(sec,id,archKey){
 /* ════════════════════════════════════════
    REMINDERS
 ════════════════════════════════════════ */
-function scheduleReminder(s){
-  if(reminderTimers[s.id]) clearTimeout(reminderTimers[s.id]);
-  if(!s.reminder||s.reminder==='off') return;
-  const d=REMINDER_DELAYS[s.reminder]; if(!d) return;
-  reminderTimers[s.id]=setTimeout(()=>{
-    const msg='⏰ '+s.title;
-    if(Notification.permission==='granted') new Notification('Newsroom',{body:msg}); else toast(msg);
-  },d);
+
+/* Send a message to the Service Worker and get a reply */
+function _swMsg(data){
+  return new Promise(resolve=>{
+    if(!navigator.serviceWorker?.controller){ resolve(null); return; }
+    const ch=new MessageChannel();
+    ch.port1.onmessage=e=>resolve(e.data);
+    navigator.serviceWorker.controller.postMessage(data,[ch.port2]);
+  });
 }
-function scheduleAllReminders(){ SECTIONS.forEach(s=>state.sections[s.key].forEach(st=>scheduleReminder(st))); }
+
+function scheduleReminder(s){
+  // Always clear existing in-page timer first
+  if(reminderTimers[s.id]){ clearTimeout(reminderTimers[s.id]); delete reminderTimers[s.id]; }
+  if(!s.reminder||s.reminder==='off') return;
+  const delay=REMINDER_DELAYS[s.reminder]; if(!delay) return;
+
+  const fireAt=Date.now()+delay;
+  const body='⏰ '+s.title;
+
+  // Primary path: hand off to Service Worker (works when app is closed)
+  if(Notification.permission==='granted' && navigator.serviceWorker?.controller){
+    _swMsg({ type:'SCHEDULE', reminder:{ id:s.id, title:s.title, body, fireAt } });
+  }
+
+  // Fallback: in-page setTimeout (works while app is open)
+  reminderTimers[s.id]=setTimeout(()=>{
+    if(Notification.permission==='granted'){
+      new Notification('BBC Dashboard',{body, icon:'./icon-192.png'});
+    } else {
+      toast(body);
+    }
+    delete reminderTimers[s.id];
+  },delay);
+}
+
+function cancelReminder(id){
+  if(reminderTimers[id]){ clearTimeout(reminderTimers[id]); delete reminderTimers[id]; }
+  _swMsg({ type:'CANCEL', id });
+}
+
+function cancelAllReminders(){
+  Object.keys(reminderTimers).forEach(id=>clearTimeout(reminderTimers[id]));
+  Object.keys(reminderTimers).forEach(id=>delete reminderTimers[id]);
+  _swMsg({ type:'CANCEL_ALL' });
+}
+
+function scheduleAllReminders(){
+  SECTIONS.forEach(s=>state.sections[s.key].forEach(st=>scheduleReminder(st)));
+  // Also schedule task and meeting reminders
+  (state.tasks||[]).forEach(t=>{ if(t.reminder&&t.reminder!=='off'&&t.taskStatus!=='done'){ scheduleReminder({id:'task-'+t.id, title:t.title, reminder:t.reminder}); } });
+  (state.meetings||[]).forEach(m=>{ if(m.reminder&&m.reminder!=='off'&&m.status!=='done'&&m.status!=='cancelled'){ scheduleReminder({id:'meeting-'+m.id, title:m.name||'Meeting', reminder:m.reminder}); } });
+}
 
 /* ════════════════════════════════════════
    FILTER
@@ -3275,7 +3321,18 @@ function onDeadlineISTChange(sec,archKey){
 }
 function updateArchiveNotes(key,val){ if(state.archive[key]) state.archive[key].notes=val; saveAndPush(); }
 function updateRemarks(v){ state.remarks=v; saveAndPush(); }
-function reqNotif(){ Notification.requestPermission().then(p=>{ if(p==='granted'){toast('Notifications enabled ✓');render();}else toast('Reminders will show as toasts'); }); }
+function reqNotif(){
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){
+      toast('Notifications enabled ✓');
+      // Re-schedule all reminders now that permission is granted
+      scheduleAllReminders();
+      render();
+    } else {
+      toast('Reminders will show as in-app toasts only');
+    }
+  });
+}
 function deleteArchiveEntry(key){ if(!confirm('Delete "'+archiveLabel(key)+'"? Cannot be undone.')) return; delete state.archive[key]; saveAndPush(); renderDateStrip(); setView('today',null); }
 
 /* ════════════════════════════════════════
@@ -5994,6 +6051,24 @@ function init(){
   loadLocal();
   checkDateChange();
   cleanupStuckNotDone();  // archive any not-done entries stuck in non-combined sections
+
+  // ── Service Worker registration ──────────────────────────────
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./service-worker.js', {scope:'./'})
+      .then(reg=>{
+        console.log('[SW] Registered, scope:', reg.scope);
+        // Once SW is controlling the page, schedule all reminders through it
+        navigator.serviceWorker.ready.then(()=>{
+          scheduleAllReminders();
+        });
+      })
+      .catch(err=>console.warn('[SW] Registration failed:', err));
+
+    // Ping the SW every 30 min to check for overdue reminders and keep it alive
+    setInterval(()=>_swMsg({type:'PING'}), 30 * 60 * 1000);
+  }
+  // ─────────────────────────────────────────────────────────────
+
   scheduleAllReminders();
   const cfg=getFireConfig(); if(cfg) initFirebase(cfg, true);
   window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); pushToCloud(); } });
