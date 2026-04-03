@@ -2238,29 +2238,93 @@ function _swMsg(data){
   });
 }
 
+/* ── Compute the UTC ms timestamp at which this reminder should fire ──
+   Rules:
+   • Meeting   — fires REMINDER_DELAY before meeting date+time (London time)
+   • Task      — fires REMINDER_DELAY before 09:00 London on deadline_date
+   • Story     — fires REMINDER_DELAY before deadline_date + deadline_uk (London)
+                 or 09:00 London on deadline_date if no time given
+   • Upcoming  — same as story; falls back to expected_date at 09:00 London
+   • No date   — falls back to Date.now() + delay (from-save behaviour)
+   Returns null if the computed time is already in the past (skip this one). */
+function _computeFireAt(s){
+  const delay=REMINDER_DELAYS[s.reminder]; if(!delay) return null;
+
+  /* Helper: build a UTC ms timestamp from a YYYY-MM-DD date string and a
+     HH:MM time string that is in London local time (BST or GMT). */
+  const londonToUtcMs=(dateStr, timeStr)=>{
+    if(!dateStr) return null;
+    try{
+      const [h,m]=(timeStr||'09:00').split(':').map(Number);
+      const ukMin=h*60+m;
+      // midnight of that date in UTC
+      const midnightUtc=new Date(dateStr+'T00:00:00Z').getTime();
+      // convert London local minutes to UTC minutes by subtracting London offset
+      const utcMin=ukMin-ukOffMin();
+      return midnightUtc+utcMin*60000;
+    }catch(e){ return null; }
+  };
+
+  let targetMs=null;
+
+  // 1. Meeting — date + time both in London time
+  if(s._type==='meeting' && s.date){
+    targetMs=londonToUtcMs(s.date, s.time||'09:00');
+  }
+
+  // 2. Task — deadline_date, no time; use 09:00 London as working-day start
+  else if(s._type==='task' && s.deadline_date){
+    targetMs=londonToUtcMs(s.deadline_date, '09:00');
+  }
+
+  // 3. Story / Upcoming — prefer deadline_date + deadline_uk; fall back to
+  //    deadline_date alone; then expected_date (Upcoming only)
+  else {
+    if(s.deadline_date&&s.deadline_uk){
+      targetMs=londonToUtcMs(s.deadline_date, s.deadline_uk);
+    } else if(s.deadline_date){
+      targetMs=londonToUtcMs(s.deadline_date, '09:00');
+    } else if(s.expected_date){
+      targetMs=londonToUtcMs(s.expected_date, '09:00');
+    }
+  }
+
+  // 4. No date anywhere — fall back to "from save time + delay"
+  if(!targetMs) return Date.now()+delay;
+
+  const fireAt=targetMs-delay;
+  // Skip if the fire time is already in the past
+  if(fireAt<=Date.now()) return null;
+  return fireAt;
+}
+
 function scheduleReminder(s){
   // Always clear existing in-page timer first
   if(reminderTimers[s.id]){ clearTimeout(reminderTimers[s.id]); delete reminderTimers[s.id]; }
   if(!s.reminder||s.reminder==='off') return;
-  const delay=REMINDER_DELAYS[s.reminder]; if(!delay) return;
 
-  const fireAt=Date.now()+delay;
-  const body='⏰ '+s.title;
+  const fireAt=_computeFireAt(s);
+  if(!fireAt) return;  // past deadline — nothing to schedule
+
+  const delay=fireAt-Date.now();
+  const body='⏰ '+( s.title||s.name||'Reminder');
 
   // Primary path: hand off to Service Worker (works when app is closed)
   if(Notification.permission==='granted' && navigator.serviceWorker?.controller){
-    _swMsg({ type:'SCHEDULE', reminder:{ id:s.id, title:s.title, body, fireAt } });
+    _swMsg({ type:'SCHEDULE', reminder:{ id:s.id, title:s.title||s.name||'', body, fireAt } });
   }
 
-  // Fallback: in-page setTimeout (works while app is open)
-  reminderTimers[s.id]=setTimeout(()=>{
-    if(Notification.permission==='granted'){
-      new Notification('BBC Dashboard',{body, icon:'./icon-192.png'});
-    } else {
-      toast(body);
-    }
-    delete reminderTimers[s.id];
-  },delay);
+  // Fallback: in-page setTimeout (works while app is open, covers SW not yet ready)
+  if(delay>0 && delay<2147483647){  // setTimeout max ~24.8 days
+    reminderTimers[s.id]=setTimeout(()=>{
+      if(Notification.permission==='granted'){
+        new Notification('Dashboard',{body, icon:'./icon-192.png'});
+      } else {
+        toast(body);
+      }
+      delete reminderTimers[s.id];
+    }, delay);
+  }
 }
 
 function cancelReminder(id){
@@ -2275,10 +2339,22 @@ function cancelAllReminders(){
 }
 
 function scheduleAllReminders(){
-  SECTIONS.forEach(s=>state.sections[s.key].forEach(st=>scheduleReminder(st)));
-  // Also schedule task and meeting reminders
-  (state.tasks||[]).forEach(t=>{ if(t.reminder&&t.reminder!=='off'&&t.taskStatus!=='done'){ scheduleReminder({id:'task-'+t.id, title:t.title, reminder:t.reminder}); } });
-  (state.meetings||[]).forEach(m=>{ if(m.reminder&&m.reminder!=='off'&&m.status!=='done'&&m.status!=='cancelled'){ scheduleReminder({id:'meeting-'+m.id, title:m.name||'Meeting', reminder:m.reminder}); } });
+  // Stories — pass full object; _type not needed (no date field ambiguity)
+  SECTIONS.forEach(sec=>
+    (state.sections[sec.key]||[]).forEach(s=>scheduleReminder(s))
+  );
+  // Tasks — tag with _type so _computeFireAt uses deadline_date correctly
+  (state.tasks||[]).forEach(t=>{
+    if(t.reminder&&t.reminder!=='off'&&t.taskStatus!=='done'){
+      scheduleReminder({...t, _type:'task', id:'task-'+t.id});
+    }
+  });
+  // Meetings — tag with _type; pass date+time
+  (state.meetings||[]).forEach(m=>{
+    if(m.reminder&&m.reminder!=='off'&&m.status!=='done'&&m.status!=='cancelled'){
+      scheduleReminder({...m, _type:'meeting', id:'meeting-'+m.id, title:m.name||'Meeting'});
+    }
+  });
 }
 
 /* ════════════════════════════════════════
