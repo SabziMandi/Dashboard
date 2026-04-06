@@ -1844,7 +1844,13 @@ function captureFormState(){
     const ist=(document.getElementById('bt-ist-'+idx)||{}).value||'';
     const plat=(document.getElementById('bt-plat-'+idx)||{}).value||'';
     const prog=(document.getElementById('bt-prog-'+idx)||{}).value||'';
-    slots.push({idx,uk,ist,plat,prog});
+    const dl_date=(document.getElementById('bt-dl-date-'+idx)||{}).value||'';
+    const dl_uk=(document.getElementById('bt-dl-uk-'+idx)||{}).value||'';
+    const dl_ist=(document.getElementById('bt-dl-ist-'+idx)||{}).value||'';
+    const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value||'';
+    const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value||'';
+    const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value||'';
+    slots.push({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc});
   });
   saved.__broadcastSlots=slots;
   return saved;
@@ -1882,7 +1888,7 @@ function restoreFormState(saved){
     showFieldRow(sec,archKey);
   });
   if(saved.__broadcastSlots&&saved.__broadcastSlots.length){
-    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog})=>{
+    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc})=>{
       const ukEl=document.getElementById('bt-uk-'+idx);
       const istEl=document.getElementById('bt-ist-'+idx);
       const platEl=document.getElementById('bt-plat-'+idx);
@@ -1891,6 +1897,18 @@ function restoreFormState(saved){
       if(istEl) istEl.value=ist;
       if(platEl) platEl.value=plat;
       if(progEl) progEl.value=prog||'';
+      const dlDateEl=document.getElementById('bt-dl-date-'+idx);
+      const dlUKEl=document.getElementById('bt-dl-uk-'+idx);
+      const dlISTEl=document.getElementById('bt-dl-ist-'+idx);
+      const comNameEl=document.getElementById('bt-com-name-'+idx);
+      const comTeamEl=document.getElementById('bt-com-team-'+idx);
+      const comLocEl=document.getElementById('bt-com-loc-'+idx);
+      if(dlDateEl) dlDateEl.value=dl_date||'';
+      if(dlUKEl)   dlUKEl.value=dl_uk||'';
+      if(dlISTEl)  dlISTEl.value=dl_ist||'';
+      if(comNameEl) comNameEl.value=com_name||'';
+      if(comTeamEl) comTeamEl.value=com_team||'';
+      if(comLocEl)  comLocEl.value=com_loc||'';
     });
   }
 }
@@ -1926,7 +1944,13 @@ function getBroadcastSlots(sec,archKey){
     const prog=(document.getElementById('bt-prog-'+idx)||{}).value||'';
     const uk=  (document.getElementById('bt-uk-'+idx)||{}).value||'';
     const ist= (document.getElementById('bt-ist-'+idx)||{}).value||'';
-    slots.push({ uk, ist, plat, prog, lbl:plat }); // lbl=plat for backward compat
+    const dl_date=(document.getElementById('bt-dl-date-'+idx)||{}).value||'';
+    const dl_uk=(document.getElementById('bt-dl-uk-'+idx)||{}).value||'';
+    const dl_ist=(document.getElementById('bt-dl-ist-'+idx)||{}).value||'';
+    const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value||'';
+    const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value||'';
+    const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value||'';
+    slots.push({ uk, ist, plat, prog, lbl:plat, dl_date, dl_uk, dl_ist, com_name, com_team, com_loc });
   });
   return slots;
 }
@@ -1959,6 +1983,14 @@ function btISTChange(idx){
   const v=(document.getElementById('bt-ist-'+idx)||{}).value||'';
   const c=istToUK(v); if(c){ const e=document.getElementById('bt-uk-'+idx); if(e) e.value=c; }
 }
+function btSlotDLUKChange(idx){
+  const v=(document.getElementById('bt-dl-uk-'+idx)||{}).value||'';
+  const c=ukToIST(v); if(c){ const e=document.getElementById('bt-dl-ist-'+idx); if(e) e.value=c; }
+}
+function btSlotDLISTChange(idx){
+  const v=(document.getElementById('bt-dl-ist-'+idx)||{}).value||'';
+  const c=istToUK(v); if(c){ const e=document.getElementById('bt-dl-uk-'+idx); if(e) e.value=c; }
+}
 const DEFAULT_PLATFORM_LABELS=['TV Live','Radio Live','Radio Two-way','Radio Pre-Rec','TV Rant','Radio Rant'];
 function getPlatformLabels(){ return [...DEFAULT_PLATFORM_LABELS,...(state.customPlatformLabels||[])]; }
 function onPlatformLabelChange(idx){
@@ -1976,21 +2008,36 @@ function onPlatformLabelChange(idx){
 }
 function buildSlotRowHTML(idx,slot){
   const platSel=getPlatformLabels().map(l=>`<option value="${esc(l)}"${l===(slot.plat||'')?' selected':''}>${esc(l)}</option>`).join('');
-  return`<div style="display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1fr auto;gap:6px;align-items:end">
-    <div class="fgroup" style="margin:0"><label class="flabel">Platform</label>
-      <select class="fselect" id="bt-plat-${idx}" onchange="onPlatformLabelChange(${idx})">
-        <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
-      </select>
+  return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:7px">
+    <div style="display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1fr auto;gap:6px;align-items:end;margin-bottom:6px">
+      <div class="fgroup" style="margin:0"><label class="flabel">Platform</label>
+        <select class="fselect" id="bt-plat-${idx}" onchange="onPlatformLabelChange(${idx})">
+          <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
+        </select>
+      </div>
+      <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
+        <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
+      </div>
+      <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00" maxlength="5" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
+      <div style="display:flex;flex-direction:column;gap:2px;align-self:flex-end;padding-bottom:1px">
+        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 7px">↑</button>
+        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 7px">↓</button>
+        <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 7px">✕</button>
+      </div>
     </div>
-    <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
-      <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
-    </div>
-    <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
-    <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00" maxlength="5" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
-    <div style="display:flex;flex-direction:column;gap:2px;align-self:flex-end;padding-bottom:1px">
-      <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 7px">↑</button>
-      <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 7px">↓</button>
-      <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 7px">✕</button>
+    <div style="border-top:1px dashed var(--border);padding-top:6px;margin-top:2px">
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Per-slot details (optional)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:5px">
+        <div class="fgroup" style="margin:0"><label class="flabel">Slot Deadline Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline GMT</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00" maxlength="5" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30" maxlength="5" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div class="fgroup" style="margin:0"><label class="flabel">Commissioner</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Their Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Their Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
+      </div>
     </div>
   </div>`;
 }
@@ -3217,7 +3264,13 @@ function submitForm(sec,archKey){
       const ist=(document.getElementById('bt-ist-'+idx)||{}).value?.trim()||'';
       const plat=(document.getElementById('bt-plat-'+idx)||{}).value?.trim()||'';
       const prog=(document.getElementById('bt-prog-'+idx)||{}).value?.trim()||'';
-      if(uk||ist||plat||prog) broadcast_times.push({uk,ist,plat,prog,lbl:plat});
+      const dl_date=(document.getElementById('bt-dl-date-'+idx)||{}).value?.trim()||'';
+      const dl_uk=(document.getElementById('bt-dl-uk-'+idx)||{}).value?.trim()||'';
+      const dl_ist=(document.getElementById('bt-dl-ist-'+idx)||{}).value?.trim()||'';
+      const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value?.trim()||'';
+      const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value?.trim()||'';
+      const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value?.trim()||'';
+      if(uk||ist||plat||prog) broadcast_times.push({uk,ist,plat,prog,lbl:plat,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc});
     });
     const liveTypeEl=document.querySelector(`input[name="live-type${sfx}"]:checked`);
     const live_type=liveTypeEl?liveTypeEl.value:'';
@@ -3236,7 +3289,6 @@ function submitForm(sec,archKey){
       req_team:      g('f-req-team'+sfx).trim(),
       req_location:  g('f-req-location'+sfx).trim(),
       status:        g('f-status'+sfx),
-      remarks:       g('f-remarks'+sfx).trim(),
       links:         g('f-links'+sfx).trim(),
       reminder:      g('f-reminder'+sfx),
       deadline_date: g('f-deadline-date'+sfx),
@@ -4360,6 +4412,47 @@ function buildStoryRemarksHTML(sec, s, archKey){
     <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();submitStoryRemark('${sec}','${s.id}',${archKeyJS})">+ Add</button>
   </div>`;
   html+='</div>';
+  return html;
+}
+
+/* Inline remarks CRUD panel for use inside the edit form */
+function renderFormRemarksList(sec, s, archKey){
+  const archKeyJS=archKey?`'${archKey}'`:'null';
+  const list=s.remarksList||[];
+  const editingId=_storyRemarkEditId[s.id];
+  let html=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:4px">`;
+  if(list.length){
+    list.forEach(r=>{
+      const dt=new Date(r.created).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      if(editingId===r.id){
+        html+=`<div style="margin-bottom:8px">
+          <textarea class="ftextarea" id="sr-edit-${s.id}-${r.id}" style="min-height:52px;white-space:pre-wrap;width:100%">${esc(r.text)}</textarea>
+          <div style="display:flex;gap:6px;margin-top:5px">
+            <button class="btn btn-accent btn-sm" onclick="submitStoryRemarkEdit('${sec}','${s.id}','${r.id}',${archKeyJS})">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="delete _storyRemarkEditId['${s.id}'];render()">Cancel</button>
+          </div>
+        </div>`;
+      } else {
+        html+=`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="font-size:12.5px;color:var(--text2);line-height:1.55;white-space:pre-wrap">${esc(r.text)}</div>
+            <div style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-top:3px">${dt}${r.edited?' · edited':''}</div>
+          </div>
+          <div style="display:flex;gap:3px;flex-shrink:0">
+            <button class="btn btn-ghost btn-xs" onclick="_storyRemarkEditId['${s.id}']='${r.id}';render()" title="Edit">✏</button>
+            <button class="btn btn-ghost btn-xs btn-danger" onclick="if(confirm('Delete this remark?'))deleteStoryRemark('${sec}','${s.id}','${r.id}',${archKeyJS})" title="Delete">🗑</button>
+          </div>
+        </div>`;
+      }
+    });
+  } else {
+    html+=`<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No remarks yet.</div>`;
+  }
+  html+=`<div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end">
+    <textarea class="ftextarea" id="sr-input-${s.id}" placeholder="Add a remark…" style="flex:1;font-size:12px;min-height:44px;resize:vertical;white-space:pre-wrap"></textarea>
+    <button class="btn btn-accent btn-sm" onclick="submitStoryRemark('${sec}','${s.id}',${archKeyJS})">+ Add</button>
+  </div>`;
+  html+=`</div>`;
   return html;
 }
 
@@ -6054,7 +6147,11 @@ function renderStoryCard(sec,s,archKey){
               const platLabel=t.plat||t.lbl||('Slot '+(i+1));
               const progStr=t.prog?` · ${t.prog}`:'';
               const timeStr=[t.uk?`GMT ${t.uk}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
-              return field(platLabel+progStr, timeStr||'–');
+              const slotVal=[timeStr||'–',
+                t.dl_date?`⏱ ${t.dl_date}${t.dl_uk?' '+t.dl_uk+' GMT':''}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:null,
+                t.com_name?`👤 ${[t.com_name,t.com_team,t.com_loc].filter(Boolean).join(' · ')}`:null,
+              ].filter(Boolean).join(' · ');
+              return field(platLabel+progStr, slotVal);
             }).join('')
           : (s.time_uk||s.time_ist)?field('GMT',s.time_uk)+field('IST',s.time_ist):''
         }
@@ -6064,7 +6161,7 @@ function renderStoryCard(sec,s,archKey){
       ${reqTime?field('Logged At',reqTime):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
-    ${remarksHTML(s.remarks, s.id+'_cr', sec, s.id, archKey)}
+    ${s.remarks?`<div class="card-remarks" onclick="event.stopPropagation()" style="font-size:12px;color:var(--text3);font-style:italic;padding:6px 0">💬 ${esc(s.remarks)} <span style="font-size:10px;font-family:var(--mono)">(legacy remark — edit story to migrate)</span></div>`:''}
     ${buildStoryRemarksHTML(sec,s,archKey)}
     ${s.location==='Field'?buildStoryTravelHTML(sec,s,archKey):''}
     ${linksHtml}
@@ -6207,7 +6304,12 @@ function renderForm(sec,archKey){
         <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
       </select>
     </div>
-    <div class="fgroup full"><label class="flabel">Remarks</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Notes, context…" style="white-space:pre-wrap;min-height:80px">${esc(editStoryObj?.remarks||'')}</textarea></div>
+    <div class="fgroup full">
+      <label class="flabel">Remarks</label>
+      ${isEdit&&editStoryObj
+        ? renderFormRemarksList(sec,editStoryObj,archKey)
+        : `<div style="font-size:11.5px;color:var(--text3);padding:6px 0;font-family:var(--mono)">Save the story first, then reopen to add remarks.</div>`}
+    </div>
     <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
   </div>
   <div class="form-footer">
