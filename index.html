@@ -701,6 +701,9 @@ body {
 .uc-row.ucr-overdue  { border-left-color: var(--urgent); }
 .uc-row.ucr-completed{ border-left-color: var(--done); }
 .uc-row.ucr-on-hold  { border-left-color: var(--onhold); }
+.uc-row.ucr-past     { border-left-color: var(--text3); opacity: .7; }
+.leave-card { overflow-anchor: none; }
+.leave-body { overflow-anchor: none; }
 .uc-top {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 9px 13px; cursor: pointer; user-select: none;
@@ -712,6 +715,7 @@ body {
 }
 .uc-expand-icon.open { transform: rotate(90deg); }
 .uc-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uc-title.uc-title-past { text-decoration: line-through; color: var(--text3); }
 .uc-meta-line { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; margin-top: 2px; }
 .uc-chip { font-size: 10.5px; color: var(--text3); font-family: var(--mono); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
@@ -876,6 +880,7 @@ button.tasks-tab-btn {
 .leave-top {
   display: flex; align-items: center; gap: 9px;
   padding: 10px 13px; cursor: pointer; user-select: none;
+  touch-action: pan-y;
 }
 .leave-employee { font-size: 13px; font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 100px; }
 .leave-dates { font-size: 12px; font-family: var(--mono); color: var(--text2); flex: 1; }
@@ -1176,6 +1181,8 @@ let ui = {
   migrateOpenSecs: new Set(SECTIONS.map(s=>s.key)),
   quickDayTarget: null,
   migrateSourceKey: null, // null = today, string = archive date
+  showArchivedUpcoming: false, // toggle archived (past-due) upcoming events sub-section
+  showPassedUpcoming: false,   // toggle passed upcoming events sub-section
 };
 let fireDb=null, firestoreUnsub=null, reminderTimers={};
 
@@ -2383,6 +2390,22 @@ function getStories(sec,archKey,includeShelved){
   if(ui.filter==='working')  return a.filter(s=>s.mode==='working');
   if(ui.filter==='watching') return a.filter(s=>s.mode==='watching');
   if(ui.filter!=='all')      return a.filter(s=>s.status===ui.filter);
+
+  // Sort by soonest deadline/expected date first; entries with no date go last
+  const secObj=SECTIONS.find(s=>s.key===sec)||{};
+  a.sort((x,y)=>{
+    // For upcoming: sort by expected_date (or deadline_date if no expected_date)
+    const getDate=s=>{
+      if(secObj.isUpcoming) return s.expected_date||s.deadline_date||'';
+      // For other sections: sort by deadline_date + deadline_uk time
+      return s.deadline_date||(s.deadline_uk?s.deadline_date:'');
+    };
+    const dx=getDate(x), dy=getDate(y);
+    if(!dx&&!dy) return 0;
+    if(!dx) return 1;   // no date → bottom
+    if(!dy) return -1;
+    return dx.localeCompare(dy); // earlier date first
+  });
   return a;
 }
 function getStoriesWW(sec,archKey){
@@ -3807,16 +3830,10 @@ function renderUpcomingView(){
   // For past dates: show archive entries
   const cur=ui.upcomingDate||today;
   if(cur!==today && state.archive[cur]?.sections?.upcoming?.length){
-    // Show archived upcoming entries for this date
+    // Show archived upcoming entries for this date with full CRUD
     const entries=state.archive[cur].sections.upcoming||[];
-    html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${entries.length} upcoming event${entries.length===1?'':'s'} on this date</div>`;
-    entries.forEach(s=>{
-      html+=`<div class="uc-row" style="margin-bottom:6px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(s.title||'Untitled')}</div>
-        ${s.correspondent?`<div style="font-size:11px;color:var(--text3);margin-top:3px">👤 ${esc(s.correspondent)}</div>`:''}
-        ${s.expected_date?`<div style="font-size:11px;color:var(--text3)">📅 ${esc(s.expected_date)}</div>`:''}
-      </div>`;
-    });
+    html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${entries.length} upcoming event${entries.length===1?'':'s'} archived on this date</div>`;
+    entries.forEach(s=>{ html+=renderUpcomingRow('upcoming',s,cur); });
   } else {
     html+=renderAccordion(sec,null);
   }
@@ -3836,23 +3853,57 @@ function renderNotesView(){
     // Past/future date: show notesLog from archive for that date
     const notesLog=state.archive[cur]?.notesLog||[];
     if(!notesLog.length){
-      html+=`<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-msg">No notes logged on this date</div></div>`;
+      html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add Note</button>
+      </div>`;
+      if(ui_noteForm){
+        html+=`<div class="note-add-form">
+          <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
+          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea></div>
+          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline"></div>
+          <div style="display:flex;gap:7px">
+            <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
+            <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
+          </div>
+        </div>`;
+      }
+      if(!ui_noteForm) html+=`<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-msg">No notes logged on this date</div></div>`;
     } else {
-      html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${notesLog.length} note${notesLog.length===1?'':'s'} on this day</div>`;
+      html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px">${notesLog.length} note${notesLog.length===1?'':'s'} on this day</span>
+        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add Note</button>
+      </div>`;
+      if(ui_noteForm){
+        html+=`<div class="note-add-form">
+          <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
+          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea></div>
+          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline"></div>
+          <div style="display:flex;gap:7px">
+            <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
+            <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
+          </div>
+        </div>`;
+      }
       notesLog.forEach(n=>{
-        const statusLabel=n._deleted?'🗑 Deleted':n.status==='done'?'✅ Done':n.status==='pass'||n.status==='passed'?'↪ Passed':'📌 Active';
-        const cardCls=n._deleted?'note-pass':n.status==='done'?'note-done':n.status==='pass'||n.status==='passed'?'note-pass':'note-carried';
-        const created=n.created?new Date(n.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · ':'';
-        html+=`<div class="note-card ${cardCls}" style="margin-bottom:8px">
-          <div class="note-text" style="text-decoration:${n.status==='done'||n._deleted?'line-through':''}">${esc(n.text)}</div>
+        // Use live note if still exists
+        const live=(state.notes||[]).find(x=>x.id===n.id);
+        const nd=live||n;
+        const isLive=!!live&&!nd._deleted;
+        const statusLabel=nd._deleted?'🗑 Deleted':nd.status==='done'?'✅ Done':nd.status==='pass'||nd.status==='passed'?'↪ Passed':'📌 Active';
+        const cCls=nd._deleted?'note-pass':nd.status==='done'?'note-done':nd.status==='pass'||nd.status==='passed'?'note-pass':nd.carriedForward?'note-carried':'';
+        const created=nd.created?new Date(nd.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · ':'';
+        html+=`<div class="note-card ${cCls}">
+          <div class="note-text" style="text-decoration:${nd.status==='done'||nd._deleted?'line-through':''};white-space:pre-wrap">${esc(nd.text)}</div>
           <div class="note-meta">
             <span>${created}${statusLabel}</span>
-            ${n.deadline_date?`<span>📅 ${n.deadline_date}</span>`:''}
+            ${nd.deadline_date?`<span>📅 ${nd.deadline_date}</span>`:''}
           </div>
-          ${n.status==='active'?`<div class="note-btns" style="margin-top:6px">
-            <button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${n.id}','done')">✅ Done</button>
-            <button class="btn btn-ghost btn-sm" onclick="setNoteStatus('${n.id}','pass')">↪ Pass</button>
-            <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}')">✏ Edit</button>
+          ${isLive?`<div class="note-btns" style="margin-top:6px">
+            ${nd.status!=='done'?`<button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${nd.id}','done')">✅ Done</button>`:''}
+            ${nd.status==='active'?`<button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="setNoteStatus('${nd.id}','pass')">↪ Pass</button>`:''}
+            ${nd.status!=='active'?`<button class="btn btn-ghost btn-sm" onclick="updateNote('${nd.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>`:''}
+            <button class="btn btn-ghost btn-sm" onclick="editNote('${nd.id}')">✏ Edit</button>
+            <button class="btn btn-ghost btn-sm btn-danger" onclick="if(confirm('Delete this note?'))deleteNote('${nd.id}')">🗑</button>
           </div>`:''}
         </div>`;
       });
@@ -3908,23 +3959,45 @@ function renderArchiveHTML(key){
         <span class="acc-chevron">▾</span>
       </div>
       <div class="acc-body" style="display:flex;flex-direction:column;gap:6px">
-        ${notesLog.map(n=>`<div class="note-card ${cardCls(n)}">
-          <div class="note-text" style="text-decoration:${n.status==='done'||n._deleted?'line-through':''}">${esc(n.text)}</div>
-          <div class="note-meta">
-            ${n.created?`<span>${new Date(n.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`:''}
-            <span>${statusLabel(n)}</span>
-            ${n.deadline_date?`<span>📅 ${n.deadline_date}</span>`:''}
-          </div>
-        </div>`).join('')}
+        ${notesLog.map(n=>{
+          // Use live note from state.notes if it still exists, else use snapshot
+          const live=(state.notes||[]).find(x=>x.id===n.id);
+          const nd=live||n;
+          const isLive=!!live&&!nd._deleted;
+          const sLabel=statusLabel(nd);
+          const cCls=cardCls(nd);
+          const created=nd.created?new Date(nd.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · ':'';
+          return`<div class="note-card ${cCls}" style="margin-bottom:0">
+            <div class="note-text" style="text-decoration:${nd.status==='done'||nd._deleted?'line-through':''};white-space:pre-wrap">${esc(nd.text)}</div>
+            <div class="note-meta">
+              <span>${created}${sLabel}</span>
+              ${nd.deadline_date?`<span>📅 ${nd.deadline_date}</span>`:''}
+            </div>
+            ${isLive?`<div class="note-btns" style="margin-top:6px">
+              ${nd.status!=='done'?`<button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${nd.id}','done')">✅ Done</button>`:''}
+              ${nd.status==='active'?`<button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="setNoteStatus('${nd.id}','pass')">↪ Pass</button>`:''}
+              ${nd.status!=='active'?`<button class="btn btn-ghost btn-sm" onclick="updateNote('${nd.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>`:''}
+              <button class="btn btn-ghost btn-sm" onclick="editNote('${nd.id}');render()">✏ Edit</button>
+              <button class="btn btn-ghost btn-sm btn-danger" onclick="if(confirm('Delete this note?'))deleteNote('${nd.id}')">🗑</button>
+            </div>`:''}
+          </div>`;
+        }).join('')}
         ${tasksLog.map(t=>{
-          const st=t._deleted?'🗑 Deleted':t.taskStatus==='done'?'✅ Done':t.taskStatus==='not-done'?'⚫ Not Done':t.taskStatus==='transferred'?'⇄ Transferred':'⏳ Pending';
-          const strike=t._deleted||t.taskStatus==='done'?'text-decoration:line-through;':'';
-          const op=t._deleted?'opacity:.6;':'';
-          return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;${op}">
-            <span style="font-size:12px">${t._deleted?'🗑':t.taskStatus==='done'?'✅':t.taskStatus==='not-done'?'⚫':'⏳'}</span>
+          const live=(state.tasks||[]).find(x=>x.id===t.id);
+          const td=live||t;
+          const isLive=!!live&&!td._deleted;
+          const isOpen2=ui_openTasks.has(td.id);
+          const st2=td._deleted?'🗑 Deleted':td.taskStatus==='done'?'✅ Done':td.taskStatus==='not-done'?'⚫ Not Done':td.taskStatus==='transferred'?'⇄ Transferred':'⏳ Pending';
+          const strike=td._deleted||td.taskStatus==='done'?'text-decoration:line-through;':'';
+          const op2=td._deleted?'opacity:.6;':'';
+          if(isLive){
+            return renderTaskCard(td,todayStr());
+          }
+          return`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;${op2}">
+            <span style="font-size:12px">${td._deleted?'🗑':td.taskStatus==='done'?'✅':td.taskStatus==='not-done'?'⚫':'⏳'}</span>
             <div style="flex:1">
-              <div style="font-size:12.5px;font-weight:600;color:var(--text);${strike}">${esc(t.title||'Untitled')}</div>
-              <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">Task · ${st}${t.deadline_date?' · '+t.deadline_date:''}</div>
+              <div style="font-size:12.5px;font-weight:600;color:var(--text);${strike}">${esc(td.title||'Untitled')}</div>
+              <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">Task · ${st2}${td.deadline_date?' · '+td.deadline_date:''}</div>
             </div>
           </div>`;
         }).join('')}
@@ -4147,16 +4220,49 @@ function renderAccordion(sec,archKey){
 
   html+=`<div id="stories-wrap-${sec.key}">`;
   if(isFormOpen) html+=renderForm(sec.key,archKey);
-  if(!stories.length&&!isFormOpen) html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet — click <strong>+ Add</strong></div></div>`;
-  else stories.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
 
-  // Shelved ribbon — always visible, displayed below active stories
-  if(shelvedCount>0){
-    html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-    html+=`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🗄 Shelved (${shelvedCount})</div>`;
-    html+=`<div class="shelved-section">`;
-    all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
-    html+=`</div></div>`;  // close shelved-section + border-top wrapper
+  if(secObj.isUpcoming){
+    const today=todayStr();
+    // Buckets:
+    // 1. active   — future/today, not terminal
+    // 2. overdue  — past due, not passed/completed/not-done
+    // 3. passed   — explicitly marked passed (status='passed' or 'not-done' set via Pass btn)
+    // 4. terminal — completed (shown inline via their own card styling)
+    const activeUpcoming  = stories.filter(s=>(!s.expected_date||s.expected_date>=today)&&s.status!=='passed'&&s.status!=='not-done'&&s.status!=='completed');
+    const overdueUpcoming = stories.filter(s=>s.expected_date&&s.expected_date<today&&s.status!=='passed'&&s.status!=='not-done'&&s.status!=='completed');
+    const passedUpcoming  = stories.filter(s=>s.status==='passed'||s.status==='not-done');
+    const completedUpcoming = stories.filter(s=>s.status==='completed');
+
+    const allActive=[...activeUpcoming,...overdueUpcoming,...completedUpcoming];
+
+    if(!allActive.length&&!isFormOpen&&!passedUpcoming.length){
+      html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
+    } else {
+      allActive.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+    }
+
+    // Passed section — struck out, at bottom, collapsible
+    if(passedUpcoming.length){
+      const passOpen=ui.showPassedUpcoming||false;
+      html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;margin-bottom:${passOpen?'6px':'0'}" onclick="ui.showPassedUpcoming=!ui.showPassedUpcoming;render()">
+          <span>${passOpen?'▾':'▸'}</span>↪ ${passedUpcoming.length} passed
+        </div>
+        ${passOpen?passedUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}
+      </div>`;
+    }
+  } else {
+    if(!stories.length&&!isFormOpen) html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet — click <strong>+ Add</strong></div></div>`;
+    else stories.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+
+    // Shelved ribbon — always visible, displayed below active stories
+    if(shelvedCount>0){
+      html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
+      html+=`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🗄 Shelved (${shelvedCount})</div>`;
+      html+=`<div class="shelved-section">`;
+      all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+      html+=`</div></div>`;
+    }
   }
 
   html+=`</div></div></div>`;  // close stories-wrap, acc-body, accordion
@@ -4573,25 +4679,59 @@ function renderTasksSection(){
     // Show archived tasks for this date
     const archTasks=(state.archive[cur]?.tasks)||[];
     const archTasksLog=(state.archive[cur]?.tasksLog)||[];
-    const allArchTasks=[...archTasks,...archTasksLog];
+    // Merge: prefer live state.tasks record if still exists, else fall back to log snapshot
+    const seenIds=new Set();
+    const allArchTasks=[];
+    [...archTasks,...archTasksLog].forEach(t=>{
+      if(seenIds.has(t.id)) return;
+      seenIds.add(t.id);
+      // If task still lives in state.tasks, use the live version for CRUD
+      const live=(state.tasks||[]).find(x=>x.id===t.id);
+      allArchTasks.push(live||t);
+    });
     html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
     </div>`;
-    if(!allArchTasks.length){
+    if(ui_taskForm){
+      html+=`<div class="task-form" id="task-form-wrap">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--upcoming)">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
+        <div class="form-grid">
+          <div class="fgroup full"><label class="flabel">Task *</label><input class="finput" id="tf-title" placeholder="What needs to be done…" autocomplete="off"></div>
+          <div class="fgroup full"><label class="flabel">Notes / Detail</label><textarea class="ftextarea" id="tf-notes" placeholder="Any context or extra detail…" style="min-height:56px"></textarea></div>
+          <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="tf-deadline-date"></div>
+          <div class="fgroup"><label class="flabel">Reminder</label>
+            <select class="fselect" id="tf-reminder">
+              <option value="off">Off</option><option value="1hr">1 hour before</option><option value="4hr">4 hours before</option><option value="1day">1 day before</option><option value="1week">1 week before</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:7px;margin-top:12px">
+          <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add Task'}</button>
+          <button class="btn btn-ghost" onclick="ui_taskForm=false;ui_editTaskId=null;render()">Cancel</button>
+        </div>
+      </div>`;
+    }
+    if(!allArchTasks.length&&!ui_taskForm){
       html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks recorded on this date</div></div>`;
     } else {
       allArchTasks.forEach(t=>{
-        const st=t.taskStatus==='done'||t._deleted?'✅':t.taskStatus==='not-done'?'⚫':t.taskStatus==='transferred'?'⇄':'⏳';
-        const label=t._deleted?'Deleted':t.taskStatus==='done'?'Done':t.taskStatus==='not-done'?'Not Done':t.taskStatus==='transferred'?'Transferred':'Pending';
-        html+=`<div class="task-card ts-pending" style="margin-bottom:6px;opacity:${t._deleted?.6:1}">
-          <div class="task-top" style="cursor:default">
-            <div style="flex:1">
-              <div class="task-title" style="text-decoration:${t._deleted?'line-through':''}">${esc(t.title||'Untitled')}</div>
-              ${t.deadline_date?`<div class="task-chips"><span class="task-chip">📅 ${t.deadline_date}</span></div>`:''}
+        // Live tasks get full interactive card; deleted/snapshot-only get read-only display
+        if((state.tasks||[]).find(x=>x.id===t.id)){
+          html+=renderTaskCard(t,today);
+        } else {
+          const st=t.taskStatus==='done'||t._deleted?'✅':t.taskStatus==='not-done'?'⚫':t.taskStatus==='transferred'?'⇄':'⏳';
+          const label=t._deleted?'Deleted':t.taskStatus==='done'?'Done':t.taskStatus==='not-done'?'Not Done':t.taskStatus==='transferred'?'Transferred':'Pending';
+          html+=`<div class="task-card ts-pending" style="margin-bottom:6px;opacity:${t._deleted?.6:1}">
+            <div class="task-top" style="cursor:default">
+              <div style="flex:1">
+                <div class="task-title" style="text-decoration:${t._deleted?'line-through':''}">${esc(t.title||'Untitled')}</div>
+                ${t.deadline_date?`<div class="task-chips"><span class="task-chip">📅 ${t.deadline_date}</span></div>`:''}
+              </div>
+              <span class="task-status-badge tsb-${t.taskStatus==='done'?'done':t.taskStatus==='not-done'?'postponed':'pending'}">${st} ${label}</span>
             </div>
-            <span class="task-status-badge tsb-${t.taskStatus==='done'?'done':t.taskStatus==='not-done'?'postponed':'pending'}">${st} ${label}</span>
-          </div>
-        </div>`;
+          </div>`;
+        }
       });
     }
     html+=`</div>`;
@@ -4861,7 +5001,17 @@ function addNote(data){
 function updateNote(id, data){
   if(!state.notes) return;
   const i=state.notes.findIndex(n=>n.id===id);
-  if(i>=0){ state.notes[i]={...state.notes[i],...data}; saveAndPush(); }
+  if(i>=0){
+    state.notes[i]={...state.notes[i],...data};
+    // Keep archive log entry in sync
+    const note=state.notes[i];
+    const createdDate=note.carriedFromDate||(note.created?dateStr(new Date(typeof note.created==='number'?note.created:parseInt(note.created))):todayStr());
+    if(state.archive[createdDate]?.notesLog){
+      const li=state.archive[createdDate].notesLog.findIndex(n=>n.id===id);
+      if(li>=0) state.archive[createdDate].notesLog[li]={...state.archive[createdDate].notesLog[li],...data};
+    }
+    saveAndPush();
+  }
 }
 function deleteNote(id){
   const note=(state.notes||[]).find(n=>n.id===id); if(!note) return;
@@ -5367,7 +5517,7 @@ function renderRemarksAccordion(){
         <div class="note-btns">
           <button class="btn btn-ghost btn-xs" onclick="updateNote('${n.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>
           <button class="btn btn-ghost btn-xs" onclick="editNote('${n.id}')">✏ Edit</button>
-          <button class="btn btn-ghost btn-xs btn-danger" onclick="deleteNote('${n.id}')">🗑</button>
+          <button class="btn btn-ghost btn-xs btn-danger" onclick="if(confirm('Delete this note?'))deleteNote('${n.id}')">🗑</button>
         </div>
       </div>`;
     });
@@ -5469,7 +5619,10 @@ function submitLeaveForm(){
   if(ui_editLeaveId){ updateLeave(ui_editLeaveId,data); toast('Leave updated ✓'); ui_editLeaveId=null; }
   else { addLeave(data); toast('Leave added ✓'); }
   ui_leaveForm=false; render();
-  setTimeout(()=>document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  setTimeout(()=>{
+    const sec=document.getElementById('leaves-section');
+    if(sec){const r=sec.getBoundingClientRect();if(r.top<0||r.top>window.innerHeight) sec.scrollIntoView({behavior:'smooth',block:'start'});}
+  },80);
 }
 function editLeave(id){
   const l=(state.leaves||[]).find(l=>l.id===id);if(!l)return;
@@ -5482,14 +5635,20 @@ function editLeave(id){
     set('lf-to',       l.dateTo||'');
     set('lf-status',   l.status||'pending');
     set('lf-reason',   l.reason||'');
-    document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'});
+    // Only scroll to leaves-section if the form is not already in view
+    const sec=document.getElementById('leaves-section');
+    if(sec){const r=sec.getBoundingClientRect();if(r.top<0||r.top>window.innerHeight) sec.scrollIntoView({behavior:'smooth',block:'start'});}
   },80);
 }
 function toggleLeaveOpen(id){
+  const savedY=window.scrollY;
   if(ui_openLeaves.has(id))ui_openLeaves.delete(id);else ui_openLeaves.add(id);
   const b=document.getElementById('lb-'+id),c=document.getElementById('lc-'+id);
   if(b)b.classList.toggle('open',ui_openLeaves.has(id));
   if(c)c.classList.toggle('open',ui_openLeaves.has(id));
+  // Restore scroll immediately after layout reflow — prevents browser
+  // scroll-anchoring from snapping the position when leave-body expands
+  requestAnimationFrame(()=>window.scrollTo({top:savedY,behavior:'instant'}));
 }
 function saveEmployeeNames(){
   const names=[];
@@ -5745,27 +5904,36 @@ function renderUpcomingRow(sec,s,archKey){
   const archKeyJS=archKey?`'${archKey}'`:'null';
   const today=todayStr();
 
-  const sbL=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In Progress':s.status==='completed'?'Completed':s.status==='on-hold'?'On Hold':s.status==='not-done'?'Not Done':s.status==='postponed'?'Postponed':s.status==='shelved'?'Shelved':'';
-  const sbC=s.status==='urgent'?'sb-urgent':s.status==='in-progress'?'sb-in-progress':s.status==='completed'?'sb-completed':s.status==='on-hold'?'sb-on-hold':s.status==='not-done'?'sb-not-done':s.status==='postponed'?'sb-postponed':s.status==='shelved'?'sb-shelved':'sb-not-started';
+  const isPassed=s.status==='passed'||s.status==='not-done';
+  const isCompleted=s.status==='completed';
+  const isOverdue=s.expected_date&&s.expected_date<today&&!isPassed&&!isCompleted;
 
-  // Due chip — suppress for terminal statuses
+  const sbL=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In Progress':s.status==='completed'?'Completed':s.status==='on-hold'?'On Hold':s.status==='passed'||s.status==='not-done'?'Passed':s.status==='postponed'?'Postponed':s.status==='shelved'?'Shelved':'';
+  const sbC=s.status==='urgent'?'sb-urgent':s.status==='in-progress'?'sb-in-progress':s.status==='completed'?'sb-completed':s.status==='on-hold'?'sb-on-hold':s.status==='passed'||s.status==='not-done'?'sb-not-done':s.status==='postponed'?'sb-postponed':s.status==='shelved'?'sb-shelved':'sb-not-started';
+
+  // Due chip
   let dueChip='';
-  if(s.expected_date && s.status!=='not-done' && s.status!=='completed'){
+  if(s.expected_date&&!isPassed){
     const diff=new Date(s.expected_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
     const days=Math.round(diff/86400000);
-    if(s.expected_date<today) dueChip=`<span class="uc-chip uc-chip-overdue">⚠ Overdue</span>`;
-    else if(days===0) dueChip=`<span class="uc-chip uc-chip-due">📅 Today</span>`;
-    else dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
+    if(isOverdue){
+      const overdueDays=Math.abs(days);
+      dueChip=`<span class="uc-chip uc-chip-overdue">⚠ Overdue${overdueDays>0?' '+overdueDays+'d':''}</span>`;
+    } else if(days===0){
+      dueChip=`<span class="uc-chip uc-chip-due">📅 Today</span>`;
+    } else {
+      dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
+    }
   }
 
   // Border class
   let rowCls='uc-row';
-  if(s.status==='completed') rowCls+=' ucr-completed';
+  if(isPassed)           rowCls+=' ucr-past';
+  else if(isCompleted)   rowCls+=' ucr-completed';
   else if(s.status==='on-hold') rowCls+=' ucr-on-hold';
-  else if(s.status!=='not-done' && s.expected_date&&s.expected_date<today) rowCls+=' ucr-overdue';
+  else if(isOverdue)     rowCls+=' ucr-overdue';
 
   const typeLabel=s.expected_type&&s.expected_type!=='date'?` (${s.expected_type})`:'';
-  const corrChip=s.correspondent?`<span class="uc-chip">👤 ${esc(s.correspondent)}</span>`:'';
 
   const field=(lbl,val)=>val?`<div><div class="cfield-label">${lbl}</div><div class="cfield-value">${esc(val)}</div></div>`:'';
   let linksHtml='';
@@ -5777,8 +5945,8 @@ function renderUpcomingRow(sec,s,archKey){
   <div class="uc-top" onclick="toggleCard('${s.id}')">
     <span class="uc-expand-icon${isOpen?' open':''}">▶</span>
     <div style="flex:1;min-width:0">
-      <div class="uc-title">${esc(s.title||'Untitled')}</div>
-      ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font)">${esc((s.detail||s.correspondent||'').split('\n')[0].slice(0,80))}</div>`:''} 
+      <div class="uc-title${isPassed?' uc-title-past':''}">${esc(s.title||'Untitled')}</div>
+      ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font)">${esc((s.detail||s.correspondent||'').split('\n')[0].slice(0,80))}</div>`:''}
     </div>
     <div class="uc-meta-line">
       ${s.expected_date?`<span class="uc-chip">${esc(s.expected_date)}${typeLabel}</span>`:''}
@@ -5809,10 +5977,14 @@ function renderUpcomingRow(sec,s,archKey){
     </div>
     <div class="card-btns">
       <button class="btn btn-ghost btn-sm" onclick="editStory('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">✏ Edit</button>
-      ${s.status==='completed'
-        ?`<button class="btn btn-done-active btn-sm" disabled>✅ Done</button>
-          <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Not Done</button>`
-        :`<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>`
+      ${isPassed
+        ?`<button class="btn btn-ghost btn-sm" onclick="updateStory('${sec}','${s.id}',{status:'not-started'},${archKeyJS});event.stopPropagation()">↩ Restore</button>`
+        :isCompleted
+          ?`<button class="btn btn-done-active btn-sm" disabled>✅ Done</button>
+            <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Reopen</button>`
+          :`<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>
+            ${isOverdue?`<button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="updateStory('${sec}','${s.id}',{status:'passed'},${archKeyJS});event.stopPropagation()">↪ Pass</button>`:''}
+           `
       }
       <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
     </div>
@@ -6133,15 +6305,10 @@ function init(){
     navigator.serviceWorker.register('./service-worker.js', {scope:'./'})
       .then(reg=>{
         console.log('[SW] Registered, scope:', reg.scope);
-        // Once SW is controlling the page, schedule all reminders through it
-        navigator.serviceWorker.ready.then(()=>{
-          scheduleAllReminders();
-        });
+        navigator.serviceWorker.ready.then(()=>{ scheduleAllReminders(); });
+        setInterval(()=>_swMsg({type:'PING'}), 30 * 60 * 1000);
       })
-      .catch(err=>console.warn('[SW] Registration failed:', err));
-
-    // Ping the SW every 30 min to check for overdue reminders and keep it alive
-    setInterval(()=>_swMsg({type:'PING'}), 30 * 60 * 1000);
+      .catch(()=>{}); // silently skip if SW script not available (e.g. single-file deployment)
   }
   // ─────────────────────────────────────────────────────────────
 
