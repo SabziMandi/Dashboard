@@ -1443,8 +1443,12 @@ function startRealtimeSync(){
 
       // Apply all other scalar fields from remote — but preserve local-only fields
       const localBackups=state.backupSnapshots; // backups are local-only
+      const localLAD=state.lastActiveDate;      // never let cloud roll back lastActiveDate
       Object.assign(state, incoming, mergedArrays, {archive:mergedArchive, sections:mergedSections});
       state.backupSnapshots=localBackups; // restore local backups after merge
+      // Keep whichever lastActiveDate is more recent — prevents Firebase from re-triggering checkDateChange
+      if(localLAD && (!state.lastActiveDate || localLAD > state.lastActiveDate))
+        state.lastActiveDate=localLAD;
       if(!state.archive) state.archive={};
       saveLocal();
       // Clean up any stuck not-done entries that remote data may have restored,
@@ -1616,7 +1620,7 @@ function checkDateChange(){
       // For week/month, compute first day
       if(story.expected_type==='week') targetDate=weekMondayStr(story.expected_date);
       else if(story.expected_type==='month') targetDate=story.expected_date+'-01';
-      if(targetDate<=today){
+      if(targetDate < today){   // strictly past — events due TODAY stay visible all day
         // Move to archive entry for target date
         const archKey=story.expected_type==='week'?weekKey(targetDate):story.expected_type==='month'?monthKey(story.expected_date):targetDate;
         if(!state.archive[archKey]){
@@ -2521,6 +2525,7 @@ function scheduleAllReminders(){
    FILTER
 ════════════════════════════════════════ */
 function getStories(sec,archKey,includeShelved){
+  const secObj=SECTIONS.find(s=>s.key===sec)||{};   // must be first — used in filter guard
   const arr=(archKey?state.archive[archKey]?.sections[sec]:state.sections[sec])||[];
   let a=arr.slice();
   if(!includeShelved) a=a.filter(s=>s.status!=='shelved');
@@ -2542,10 +2547,10 @@ function getStories(sec,archKey,includeShelved){
   }
   if(ui.filter==='working')  return a.filter(s=>s.mode==='working');
   if(ui.filter==='watching') return a.filter(s=>s.mode==='watching');
-  if(ui.filter!=='all')      return a.filter(s=>s.status===ui.filter);
+  // Upcoming events are not governed by the story status filter bar — skip it
+  if(ui.filter!=='all' && !secObj.isUpcoming) return a.filter(s=>s.status===ui.filter);
 
   // Sort by soonest deadline/expected date first; entries with no date go last
-  const secObj=SECTIONS.find(s=>s.key===sec)||{};
   a.sort((x,y)=>{
     // For upcoming: sort by expected_date (or deadline_date if no expected_date)
     const getDate=s=>{
@@ -4080,11 +4085,11 @@ function renderTodayHTML(){
     <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportTxt()">⬇ Export</button>
   </div>`;
 
-  // On desktop: all sections scroll on Today page
-  // On mobile: Tasks/Leaves/Upcoming/Note open via bottom nav tabs (not shown here)
+  // On desktop and mobile: all main sections + Upcoming show on Today page
+  // Tasks/Meetings/Leaves/Notes are behind bottom nav tabs on mobile
   SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).forEach(sec=>{ html+=renderAccordion(sec,null); });
-  html+=`<div class="hide-on-mobile-view">`;
   html+=renderAccordion(SECTIONS.find(s=>s.isUpcoming),null);
+  html+=`<div class="hide-on-mobile-view">`;
   html+=renderTasksSection();
   html+=renderMeetingsSection();
   html+=renderRemarksAccordion();
@@ -4511,36 +4516,34 @@ function renderAccordion(sec,archKey){
   if(secObj.isUpcoming){
     const today=todayStr();
     // Buckets:
-    // 1. active      — future/today, not terminal, sorted soonest first
-    // 2. completed   — shown inline (green border) within active area
-    // 3. overdue     — past due, not explicitly passed, shown in active area with overdue badge
-    // 4. past/passed — explicitly passed OR overdue, shown at bottom faded+struck-through, date-sorted oldest→newest
-    const activeUpcoming  = stories.filter(s=>
-      (!s.expected_date||s.expected_date>=today)&&
-      s.status!=='passed'&&s.status!=='not-done'
+    // 1. active  — expected_date >= today (or no date), not terminal
+    // 2. completed — shown inline in active area
+    // 3. expired — expected_date < today AND not completed → always shown at bottom,
+    //              faded + struck-through, sorted most-recent first
+    //              (no manual "Pass" required — date expiry is automatic)
+    const activeUpcoming = stories.filter(s=>
+      s.status!=='completed' &&
+      (!s.expected_date || s.expected_date >= today)
     );
-    const overdueUpcoming = stories.filter(s=>
-      s.expected_date&&s.expected_date<today&&
-      s.status!=='passed'&&s.status!=='not-done'&&s.status!=='completed'
-    );
-    const completedUpcoming = stories.filter(s=>s.status==='completed');
-    // Past = explicitly passed/not-done — shown at bottom always
-    const pastUpcoming = stories.filter(s=>s.status==='passed'||s.status==='not-done')
-      .sort((a,b)=>(b.expected_date||'').localeCompare(a.expected_date||'')); // most-recent-past first
+    const completedUpcoming = stories.filter(s => s.status === 'completed');
+    // Expired = past expected_date, not completed — shown at bottom always
+    const expiredUpcoming = stories
+      .filter(s => s.expected_date && s.expected_date < today && s.status !== 'completed')
+      .sort((a,b) => (b.expected_date||'').localeCompare(a.expected_date||'')); // newest-past first
 
-    const allActive=[...activeUpcoming,...overdueUpcoming,...completedUpcoming];
+    const allActive = [...activeUpcoming, ...completedUpcoming];
 
-    if(!allActive.length&&!isFormOpen&&!pastUpcoming.length){
+    if(!allActive.length && !isFormOpen && !expiredUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
     } else {
       allActive.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
     }
 
-    // Past/passed entries — always visible at bottom, faded, struck-through, date-sorted
-    if(pastUpcoming.length){
+    // Expired entries — always visible at bottom, faded, struck-through, date-sorted
+    if(expiredUpcoming.length){
       html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">↪ ${pastUpcoming.length} passed</div>
-        ${pastUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📁 ${expiredUpcoming.length} expired</div>
+        ${expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
       </div>`;
     }
   } else {
@@ -4991,8 +4994,8 @@ function renderTasksSection(){
   const cur=isStandalone?(ui.tasksDate||today):today;
   const isToday=cur===today;
 
-  const isOpen=ui.openSections.has('tasks');
   const allTasks=state.tasks||[];
+  const isOpen=ui.openSections.has('tasks');
   const pendingCount=allTasks.filter(t=>t.taskStatus!=='done'&&t.taskStatus!=='transferred').length;
   const doneCount=allTasks.filter(t=>t.taskStatus==='done').length;
   const accHeader=`<div class="accordion${isOpen?' acc-open':''}" id="acc-tasks">
@@ -6250,36 +6253,30 @@ function renderUpcomingRow(sec,s,archKey){
   const archKeyJS=archKey?`'${archKey}'`:'null';
   const today=todayStr();
 
-  const isPassed=s.status==='passed'||s.status==='not-done';
+  const isExpired=s.expected_date&&s.expected_date<today&&s.status!=='completed';
   const isCompleted=s.status==='completed';
-  const isOverdue=s.expected_date&&s.expected_date<today&&!isPassed&&!isCompleted;
+  const isOverdue=false; // overdue is now just "expired" — handled by isExpired
 
   const sbL=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In Progress':s.status==='completed'?'Completed':s.status==='on-hold'?'On Hold':s.status==='passed'||s.status==='not-done'?'Passed':s.status==='postponed'?'Postponed':s.status==='shelved'?'Shelved':'';
   const sbC=s.status==='urgent'?'sb-urgent':s.status==='in-progress'?'sb-in-progress':s.status==='completed'?'sb-completed':s.status==='on-hold'?'sb-on-hold':s.status==='passed'||s.status==='not-done'?'sb-not-done':s.status==='postponed'?'sb-postponed':s.status==='shelved'?'sb-shelved':'sb-not-started';
 
   // Due chip
   let dueChip='';
-  if(s.expected_date&&!isPassed){
+  if(s.expected_date && !isExpired){
     const diff=new Date(s.expected_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
     const days=Math.round(diff/86400000);
-    if(isOverdue){
-      const overdueDays=Math.abs(days);
-      dueChip=`<span class="uc-chip uc-chip-overdue">⚠ Overdue${overdueDays>0?' '+overdueDays+'d':''}</span>`;
-    } else if(days===0){
-      dueChip=`<span class="uc-chip uc-chip-due">📅 Today</span>`;
-    } else {
-      dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
-    }
-  } else if(isPassed&&s.expected_date){
-    dueChip=`<span class="uc-chip" style="color:var(--text3)">was ${s.expected_date}</span>`;
+    if(days===0)      dueChip=`<span class="uc-chip uc-chip-due">📅 Today</span>`;
+    else if(days>0)   dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
+  } else if(isExpired && s.expected_date){
+    const diff=Math.round((new Date(today+'T00:00:00').getTime()-new Date(s.expected_date+'T00:00:00').getTime())/86400000);
+    dueChip=`<span class="uc-chip uc-chip-overdue">📁 ${diff}d ago</span>`;
   }
 
   // Border class
   let rowCls='uc-row';
-  if(isPassed)           rowCls+=' ucr-past';
-  else if(isCompleted)   rowCls+=' ucr-completed';
+  if(isExpired)                rowCls+=' ucr-past';
+  else if(isCompleted)         rowCls+=' ucr-completed';
   else if(s.status==='on-hold') rowCls+=' ucr-on-hold';
-  else if(isOverdue)     rowCls+=' ucr-overdue';
 
   const typeLabel=s.expected_type&&s.expected_type!=='date'?` (${s.expected_type})`:'';
 
@@ -6293,7 +6290,7 @@ function renderUpcomingRow(sec,s,archKey){
   <div class="uc-top" onclick="toggleCard('${s.id}')">
     <span class="uc-expand-icon${isOpen?' open':''}">▶</span>
     <div style="flex:1;min-width:0">
-      <div class="uc-title${isPassed?' uc-title-past':''}">${esc(s.title||'Untitled')}</div>
+      <div class="uc-title${isExpired?' uc-title-past':''}">${esc(s.title||'Untitled')}</div>
       ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font)">${esc((s.detail||s.correspondent||'').split('\n')[0].slice(0,80))}</div>`:''}
     </div>
     <div class="uc-meta-line">
@@ -6325,14 +6322,10 @@ function renderUpcomingRow(sec,s,archKey){
     </div>
     <div class="card-btns">
       <button class="btn btn-ghost btn-sm" onclick="editStory('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">✏ Edit</button>
-      ${isPassed
-        ?`<button class="btn btn-ghost btn-sm" onclick="updateStory('${sec}','${s.id}',{status:'not-started'},${archKeyJS});event.stopPropagation()">↩ Restore</button>`
-        :isCompleted
-          ?`<button class="btn btn-done-active btn-sm" disabled>✅ Done</button>
-            <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Reopen</button>`
-          :`<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>
-            ${isOverdue?`<button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="updateStory('${sec}','${s.id}',{status:'passed'},${archKeyJS});event.stopPropagation()">↪ Pass</button>`:''}
-           `
+      ${isCompleted
+        ?`<button class="btn btn-done-active btn-sm" disabled>✅ Done</button>
+          <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Reopen</button>`
+        :`<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>`
       }
       <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
     </div>
