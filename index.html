@@ -701,9 +701,15 @@ body {
 .uc-row.ucr-overdue  { border-left-color: var(--urgent); }
 .uc-row.ucr-completed{ border-left-color: var(--done); }
 .uc-row.ucr-on-hold  { border-left-color: var(--onhold); }
-.uc-row.ucr-past     { border-left-color: var(--text3); opacity: .7; }
+.uc-row.ucr-past     { border-left-color: var(--text3); opacity: .6; }
+.uc-row.ucr-past:hover { border-color: var(--border); box-shadow: none; }
 .leave-card { overflow-anchor: none; }
 .leave-body { overflow-anchor: none; }
+/* Prevent scroll-anchor adjustment when accordions or leave cards expand.
+   Applied to each expanding container — NOT to html/body (too broad). */
+.accordion  { overflow-anchor: none; }
+.acc-body   { overflow-anchor: none; }
+.app-header { overflow-anchor: none; }
 .uc-top {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 9px 13px; cursor: pointer; user-select: none;
@@ -747,6 +753,11 @@ body {
 .note-deadline-chip.ok { color: var(--upcoming); font-weight: 500; }
 .note-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .note-add-form { background: var(--surface); border: 1.5px solid var(--upcoming); border-radius: 8px; padding: 13px; margin-bottom: 10px; animation: slideIn .15s ease; }
+/* Broadcast slot row card */
+.bt-row {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 12px; margin-bottom: 8px;
+}
 
 /* Story inline remarks list */
 .story-remarks-list { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 9px; }
@@ -1200,7 +1211,6 @@ function addDays(s,n)  { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+
 function _londonOffsetMin(){
   // Returns London's current UTC offset in minutes (60 in BST, 0 in GMT)
   const now=new Date();
-  // Format the same moment in UTC and in London, then diff the hours
   const utcH=+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC',hour12:false}).split(':')[0];
   const lonH=+now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London',hour12:false}).split(':')[0];
   const diff=((lonH-utcH)+24)%24;  // 0 = GMT, 1 = BST
@@ -1210,18 +1220,42 @@ function ukLabel(){ return _londonOffsetMin()===60?'BST':'GMT'; }
 function ukOffMin(){ return _londonOffsetMin(); }
 const IST_OFF=330;  // IST is always UTC+5:30
 
+/* ── Time normalisation ──────────────────────────────────────────
+   Accepts: "1430" "14.30" "14:30" "230" "2.30" "2:30" "900" "9"
+   Returns: "HH:MM" or '' if unparseable.                        */
+function normaliseTime(raw){
+  if(!raw) return '';
+  const s=String(raw).trim();
+  // Already HH:MM or H:MM
+  let m=s.match(/^(\d{1,2}):(\d{2})$/);
+  if(m) return p2(+m[1])+':'+p2(+m[2]);
+  // HH.MM or H.MM
+  m=s.match(/^(\d{1,2})\.(\d{2})$/);
+  if(m) return p2(+m[1])+':'+p2(+m[2]);
+  // 3-digit: 930 → 09:30
+  m=s.match(/^(\d)(\d{2})$/);
+  if(m) return p2(+m[1])+':'+p2(+m[2]);
+  // 4-digit: 1430 → 14:30
+  m=s.match(/^(\d{2})(\d{2})$/);
+  if(m) return p2(+m[1])+':'+p2(+m[2]);
+  // Bare hour: "9" or "14" → "09:00" / "14:00"
+  m=s.match(/^(\d{1,2})$/);
+  if(m) return p2(+m[1])+':00';
+  return '';
+}
+
 function ukToIST(s){
-  const m=s.match(/^(\d{1,2}):(\d{2})$/); if(!m) return '';
+  const t=normaliseTime(s); if(!t) return '';
+  const m=t.match(/^(\d{2}):(\d{2})$/);
   const ukMin=+m[1]*60+ +m[2];
-  // Convert UK local → UTC → IST
   const utcMin=((ukMin-ukOffMin())%1440+1440)%1440;
   const istMin=((utcMin+IST_OFF)%1440+1440)%1440;
   return p2(Math.floor(istMin/60))+':'+p2(istMin%60);
 }
 function istToUK(s){
-  const m=s.match(/^(\d{1,2}):(\d{2})$/); if(!m) return '';
+  const t=normaliseTime(s); if(!t) return '';
+  const m=t.match(/^(\d{2}):(\d{2})$/);
   const istMin=+m[1]*60+ +m[2];
-  // Convert IST → UTC → UK local
   const utcMin=((istMin-IST_OFF)%1440+1440)%1440;
   const ukMin=((utcMin+ukOffMin())%1440+1440)%1440;
   return p2(Math.floor(ukMin/60))+':'+p2(ukMin%60);
@@ -1601,6 +1635,27 @@ function checkDateChange(){
     }
     if(upcomingMigrated>0) toast(`🗓 ${upcomingMigrated} Upcoming stor${upcomingMigrated===1?'y':'ies'} auto-migrated to archive`);
     if(carried>0) saveLocal();
+
+    // ── Backfill skipped days ────────────────────────────────────────────────
+    // If the app wasn't opened on intermediate days (e.g. weekends), those days
+    // never get archive entries and disappear from the date strip.
+    // Create empty stub entries for every calendar day between prev and today
+    // so they always appear as navigable pills (count will be 0 but day is visible).
+    {
+      const msPerDay=86400000;
+      const prevMs=new Date(prev+'T00:00:00').getTime();
+      const todayMs=new Date(today+'T00:00:00').getTime();
+      let cursor=prevMs+msPerDay; // start the day after prev
+      while(cursor<todayMs){
+        const d=dateStr(new Date(cursor));
+        if(!state.archive[d]){
+          state.archive[d]={type:'day',label:archiveLabel(d),sections:{},notes:'',created:cursor};
+          SECTIONS.forEach(s=>{state.archive[d].sections[s.key]=[];});
+        }
+        cursor+=msPerDay;
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
   }
   state.lastActiveDate=today;
   saveLocal();
@@ -1975,21 +2030,37 @@ function moveBroadcastSlot(idx,dir){
   if(dir==='up'&&i>0) c.insertBefore(rows[i],rows[i-1]);
   else if(dir==='down'&&i<rows.length-1) c.insertBefore(rows[i+1],rows[i]);
 }
-function btUKChange(idx){
-  const v=(document.getElementById('bt-uk-'+idx)||{}).value||'';
-  const c=ukToIST(v); if(c){ const e=document.getElementById('bt-ist-'+idx); if(e) e.value=c; }
+/* ── Time field helpers ──────────────────────────────────────────
+   Each pair: normalise the typed value → write HH:MM back → convert. */
+function _applyTime(srcId, destId, convertFn){
+  const src=document.getElementById(srcId); if(!src) return;
+  const norm=normaliseTime(src.value);
+  if(norm) src.value=norm;                       // rewrite field to HH:MM
+  const dest=document.getElementById(destId); if(!dest) return;
+  const converted=convertFn(norm||src.value);
+  if(converted) dest.value=converted;
 }
-function btISTChange(idx){
-  const v=(document.getElementById('bt-ist-'+idx)||{}).value||'';
-  const c=istToUK(v); if(c){ const e=document.getElementById('bt-uk-'+idx); if(e) e.value=c; }
+
+function btUKChange(idx){  _applyTime('bt-uk-'+idx,  'bt-ist-'+idx,  ukToIST); }
+function btISTChange(idx){ _applyTime('bt-ist-'+idx, 'bt-uk-'+idx,   istToUK); }
+function btSlotDLUKChange(idx){  _applyTime('bt-dl-uk-'+idx,  'bt-dl-ist-'+idx, ukToIST); }
+function btSlotDLISTChange(idx){ _applyTime('bt-dl-ist-'+idx, 'bt-dl-uk-'+idx,  istToUK); }
+
+function onUKChange(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _applyTime('f-time-uk'+sfx, 'f-time-ist'+sfx, ukToIST);
 }
-function btSlotDLUKChange(idx){
-  const v=(document.getElementById('bt-dl-uk-'+idx)||{}).value||'';
-  const c=ukToIST(v); if(c){ const e=document.getElementById('bt-dl-ist-'+idx); if(e) e.value=c; }
+function onISTChange(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _applyTime('f-time-ist'+sfx, 'f-time-uk'+sfx, istToUK);
 }
-function btSlotDLISTChange(idx){
-  const v=(document.getElementById('bt-dl-ist-'+idx)||{}).value||'';
-  const c=istToUK(v); if(c){ const e=document.getElementById('bt-dl-uk-'+idx); if(e) e.value=c; }
+function onDeadlineUKChange(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _applyTime('f-deadline-uk'+sfx, 'f-deadline-ist'+sfx, ukToIST);
+}
+function onDeadlineISTChange(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _applyTime('f-deadline-ist'+sfx, 'f-deadline-uk'+sfx, istToUK);
 }
 const DEFAULT_PLATFORM_LABELS=['TV Live','Radio Live','Radio Two-way','Radio Pre-Rec','TV Rant','Radio Rant'];
 function getPlatformLabels(){ return [...DEFAULT_PLATFORM_LABELS,...(state.customPlatformLabels||[])]; }
@@ -2008,8 +2079,9 @@ function onPlatformLabelChange(idx){
 }
 function buildSlotRowHTML(idx,slot){
   const platSel=getPlatformLabels().map(l=>`<option value="${esc(l)}"${l===(slot.plat||'')?' selected':''}>${esc(l)}</option>`).join('');
-  return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:7px">
-    <div style="display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1fr auto;gap:6px;align-items:end;margin-bottom:6px">
+  // Responsive: top 4+action row wraps on narrow screens; per-slot 3-col also wraps
+  return`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;align-items:end;margin-bottom:6px">
       <div class="fgroup" style="margin:0"><label class="flabel">Platform</label>
         <select class="fselect" id="bt-plat-${idx}" onchange="onPlatformLabelChange(${idx})">
           <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
@@ -2018,28 +2090,27 @@ function buildSlotRowHTML(idx,slot){
       <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
         <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
       </div>
-      <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30" maxlength="5" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
-      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00" maxlength="5" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
-      <div style="display:flex;flex-direction:column;gap:2px;align-self:flex-end;padding-bottom:1px">
-        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 7px">↑</button>
-        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 7px">↓</button>
-        <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 7px">✕</button>
+      <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
+      <div style="display:flex;flex-direction:row;gap:4px;align-self:flex-end;padding-bottom:1px;flex-wrap:nowrap">
+        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
+        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
+        <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 8px">✕</button>
       </div>
     </div>
-    <div style="border-top:1px dashed var(--border);padding-top:6px;margin-top:2px">
-      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Per-slot details (optional)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:5px">
+    <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:2px">
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Per-slot details (optional)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Slot Deadline Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline GMT</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00" maxlength="5" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30" maxlength="5" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline GMT</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Commissioner</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
         <div class="fgroup" style="margin:0"><label class="flabel">Their Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
         <div class="fgroup" style="margin:0"><label class="flabel">Their Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
       </div>
-    </div>
-  </div>`;
+    </div>`;
 }
 function buildBroadcastSlotsHTML(existingSlots){
   _btSlotCounter=0;
@@ -2049,7 +2120,7 @@ function buildBroadcastSlotsHTML(existingSlots){
     // backward compat: old slots used lbl, new use plat
     const normSlot={...slot, plat:slot.plat||slot.lbl||'', prog:slot.prog||''};
     _btSlotCounter=i;
-    html+=`<div class="bt-row" data-idx="${i}" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:7px">${buildSlotRowHTML(i,normSlot)}</div>`;
+    html+=`<div class="bt-row" data-idx="${i}">${buildSlotRowHTML(i,normSlot)}</div>`;
   });
   return html;
 }
@@ -3253,20 +3324,20 @@ function submitForm(sec,archKey){
       links:        g('f-links'+sfx).trim(),
       reminder:     g('f-reminder'+sfx),
       deadline_date:g('f-deadline-date'+sfx),
-      deadline_uk:  g('f-deadline-uk'+sfx).trim(),
-      deadline_ist: g('f-deadline-ist'+sfx).trim(),
+      deadline_uk:  normaliseTime(g('f-deadline-uk'+sfx)),
+      deadline_ist: normaliseTime(g('f-deadline-ist'+sfx)),
     };
   } else {
     let broadcast_times=[];
     document.querySelectorAll('.bt-row').forEach(row=>{
       const idx=row.dataset.idx;
-      const uk=(document.getElementById('bt-uk-'+idx)||{}).value?.trim()||'';
-      const ist=(document.getElementById('bt-ist-'+idx)||{}).value?.trim()||'';
+      const uk=normaliseTime((document.getElementById('bt-uk-'+idx)||{}).value?.trim()||'');
+      const ist=normaliseTime((document.getElementById('bt-ist-'+idx)||{}).value?.trim()||'');
       const plat=(document.getElementById('bt-plat-'+idx)||{}).value?.trim()||'';
       const prog=(document.getElementById('bt-prog-'+idx)||{}).value?.trim()||'';
       const dl_date=(document.getElementById('bt-dl-date-'+idx)||{}).value?.trim()||'';
-      const dl_uk=(document.getElementById('bt-dl-uk-'+idx)||{}).value?.trim()||'';
-      const dl_ist=(document.getElementById('bt-dl-ist-'+idx)||{}).value?.trim()||'';
+      const dl_uk=normaliseTime((document.getElementById('bt-dl-uk-'+idx)||{}).value?.trim()||'');
+      const dl_ist=normaliseTime((document.getElementById('bt-dl-ist-'+idx)||{}).value?.trim()||'');
       const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value?.trim()||'';
       const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value?.trim()||'';
       const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value?.trim()||'';
@@ -3292,8 +3363,8 @@ function submitForm(sec,archKey){
       links:         g('f-links'+sfx).trim(),
       reminder:      g('f-reminder'+sfx),
       deadline_date: g('f-deadline-date'+sfx),
-      deadline_uk:   g('f-deadline-uk'+sfx).trim(),
-      deadline_ist:  g('f-deadline-ist'+sfx).trim(),
+      deadline_uk:   normaliseTime(g('f-deadline-uk'+sfx)),
+      deadline_ist:  normaliseTime(g('f-deadline-ist'+sfx)),
     };
   }
   if(!data.title){ toast('Please enter a title'); return; }
@@ -3415,6 +3486,7 @@ function buildStoryTravelHTML(sec,s,archKey){
       <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}flight']='new';render();event.stopPropagation()">✈️ +Flight</button>
       <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}hotel']='new';render();event.stopPropagation()">🏨 +Hotel</button>
       <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}expense']='new';render();event.stopPropagation()">💳 +Expense</button>
+      ${travel.length?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="exportTravelTxt('${sec}','${s.id}',${ak});event.stopPropagation()" title="Download travel details as text file">⬇ Export</button>`:''}
     </div>`;
   ['cab','flight','hotel','expense'].forEach(t=>{
     if(_storyTravelForms[s.id+t]==='new') h+=buildStoryTravelFormHTML(sec,s.id,t,null,archKey);
@@ -3450,26 +3522,113 @@ function buildStoryTravelHTML(sec,s,archKey){
   return h;
 }
 
-function onUKChange(sec,archKey){
-  const sfx='-'+sec+(archKey?'-arch':'');
-  const c=ukToIST((document.getElementById('f-time-uk'+sfx)||{}).value||'');
-  if(c){ const e=document.getElementById('f-time-ist'+sfx); if(e) e.value=c; }
+function exportTravelTxt(sec, storyId, archKey){
+  const arr=getArr(sec,archKey);
+  const story=arr?.find(s=>s.id===storyId);
+  if(!story||!story.travel?.length){ toast('No travel entries to export'); return; }
+
+  const hr='─'.repeat(48);
+  const pad=(label,value)=>value?(label+':').padEnd(18)+value:'';
+  const ln=[];
+
+  ln.push('FIELD TRIP / TRAVEL DETAILS');
+  ln.push(hr);
+  ln.push(pad('Story',story.title||'Untitled'));
+  if(story.correspondent) ln.push(pad('Correspondent',story.correspondent));
+  if(story.location){
+    const loc=[story.location,story.field_location].filter(Boolean).join(' — ');
+    ln.push(pad('Location',loc));
+  }
+  ln.push(pad('Exported',new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+  ln.push('');
+
+  // Group by person
+  const byPerson={};
+  story.travel.forEach(e=>{
+    const name=(e.data?.forName||'(Unassigned)');
+    if(!byPerson[name]) byPerson[name]=[];
+    byPerson[name].push(e);
+  });
+
+  Object.entries(byPerson).forEach(([person,entries])=>{
+    ln.push('');
+    ln.push('PERSON: '+person);
+    ln.push(hr);
+
+    entries.forEach(e=>{
+      const d=e.data||{};
+      const icons={cab:'CAB',flight:'FLIGHT',hotel:'HOTEL',expense:'EXPENSE'};
+      ln.push('');
+      ln.push('  ['+icons[e.type]+']');
+
+      if(e.type==='cab'){
+        if(d.from||d.to)    ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → ')));
+        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+        if(d.driver)         ln.push(pad('  Driver',d.driver+(d.phone?' ('+d.phone+')':'')));
+        if(d.cabNum)         ln.push(pad('  Cab No.',d.cabNum));
+        if(d.notes)          ln.push(pad('  Notes',d.notes));
+      } else if(e.type==='flight'){
+        if(d.direction)      ln.push(pad('  Direction',d.direction==='return'?'Return':'Outbound'));
+        if(d.from||d.to)     ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → ')));
+        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+        if(d.airline)        ln.push(pad('  Airline',d.airline));
+        if(d.flightNum)      ln.push(pad('  Flight No.',d.flightNum));
+        if(d.notes)          ln.push(pad('  Notes',d.notes));
+      } else if(e.type==='hotel'){
+        if(d.hotelName)      ln.push(pad('  Hotel',d.hotelName));
+        if(d.where)          ln.push(pad('  Location',d.where));
+        if(d.checkIn)        ln.push(pad('  Check-in',d.checkIn));
+        if(d.checkOut)       ln.push(pad('  Check-out',d.checkOut));
+        if(d.priceDay)       ln.push(pad('  Price/day',d.priceDay));
+        if(d.payment)        ln.push(pad('  Payment',d.payment==='counter'?'At counter':'Paid'));
+        if(d.notes)          ln.push(pad('  Notes',d.notes));
+      } else if(e.type==='expense'){
+        if(d.what)           ln.push(pad('  What',d.what));
+        if(d.when)           ln.push(pad('  Date',d.when));
+        if(d.where)          ln.push(pad('  Where',d.where));
+        if(d.amount)         ln.push(pad('  Amount',d.amount));
+        if(d.paidBy)         ln.push(pad('  Paid by',d.paidBy));
+        if(d.paidUsing)      ln.push(pad('  Method',d.paidUsing));
+        if(d.notes)          ln.push(pad('  Notes',d.notes));
+      }
+    });
+  });
+
+  // Expense summary
+  const expenses=story.travel.filter(e=>e.type==='expense');
+  if(expenses.length){
+    ln.push('');
+    ln.push('');
+    ln.push('EXPENSE SUMMARY');
+    ln.push(hr);
+    expenses.forEach(e=>{
+      const d=e.data||{};
+      const row=[
+        d.what||'—',
+        d.amount||'—',
+        d.paidBy?'by '+d.paidBy:'',
+        d.paidUsing?'via '+d.paidUsing:'',
+        d.when?'('+d.when+')':'',
+      ].filter(Boolean).join('  ');
+      ln.push('  '+row);
+    });
+  }
+
+  ln.push('');
+  ln.push(hr);
+  ln.push('Generated by Newsroom Dashboard');
+
+  const blob=new Blob([ln.join('\n')],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const slug=(story.title||'travel').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40);
+  a.href=url; a.download='travel-'+slug+'.txt';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  toast('Travel details downloaded ✓');
 }
-function onISTChange(sec,archKey){
-  const sfx='-'+sec+(archKey?'-arch':'');
-  const c=istToUK((document.getElementById('f-time-ist'+sfx)||{}).value||'');
-  if(c){ const e=document.getElementById('f-time-uk'+sfx); if(e) e.value=c; }
-}
-function onDeadlineUKChange(sec,archKey){
-  const sfx='-'+sec+(archKey?'-arch':'');
-  const c=ukToIST((document.getElementById('f-deadline-uk'+sfx)||{}).value||'');
-  if(c){ const e=document.getElementById('f-deadline-ist'+sfx); if(e) e.value=c; }
-}
-function onDeadlineISTChange(sec,archKey){
-  const sfx='-'+sec+(archKey?'-arch':'');
-  const c=istToUK((document.getElementById('f-deadline-ist'+sfx)||{}).value||'');
-  if(c){ const e=document.getElementById('f-deadline-uk'+sfx); if(e) e.value=c; }
-}
+
 function updateArchiveNotes(key,val){ if(state.archive[key]) state.archive[key].notes=val; saveAndPush(); }
 function updateRemarks(v){ state.remarks=v; saveAndPush(); }
 function reqNotif(){
@@ -3569,8 +3728,25 @@ function upcomingDueBadge(s){
 ════════════════════════════════════════ */
 function renderDateStrip(){
   const strip=document.getElementById('date-strip'); if(!strip) return;
-  const keys=sortedArchiveKeys();
+  const today=todayStr();
   const yest=yesterdayStr(), tomm=tomorrowStr();
+
+  // Build a complete set of day keys for the last 30 days so no day is missing.
+  // Archive entries that exist are used as-is; missing days get stub 0-count pills.
+  const allKeys=new Set(sortedArchiveKeys());
+  for(let i=2;i<=30;i++){
+    const d=addDays(today,-i);
+    if(d!==yest&&d!==tomm) allKeys.add(d);
+  }
+  // Keep week/month keys too but filter plain dates to recent ones only
+  const keys=[...allKeys].filter(k=>{
+    if(k.startsWith('week-')||k.startsWith('month-')) return true;
+    return k<today&&k!==yest&&k!==tomm; // plain dates older than yesterday
+  }).sort((a,b)=>{
+    const df=k=>k.startsWith('week-')?k.slice(5):k.startsWith('month-')?k.slice(6)+'-01':k;
+    return df(b).localeCompare(df(a));
+  });
+
   const todayActive=ui.view==='today';
   const yestActive=ui.view==='archive'&&ui.archiveKey===yest;
   const tommActive=ui.view==='archive'&&ui.archiveKey===tomm;
@@ -3581,8 +3757,16 @@ function renderDateStrip(){
   html+=`<div class="dpill dp-yesterday${yestActive?' dp-active':''}" onclick="setView('archive','${yest}')" title="Yesterday">◀ Yesterday<span class="dpill-count">${yestCount}</span></div>`;
   html+=`<div class="dpill dp-today${todayActive?' dp-active':''}" onclick="setView('today',null)">● Today<span class="dpill-count">${todayCount}</span></div>`;
   html+=`<div class="dpill dp-tomorrow${tommActive?' dp-active':''}" onclick="setView('archive','${tomm}')" title="Tomorrow">Tomorrow ▶<span class="dpill-count">${tommCount}</span></div>`;
-  const older=keys.filter(k=>k!==yest&&k!==tomm);
-  if(older.length){ html+=`<div class="dpill-sep"></div>`; older.forEach(key=>{ const cnt=archiveStoryCount(key); const active=ui.view==='archive'&&ui.archiveKey===key; const cls=key.startsWith('week-')?' dp-week':key.startsWith('month-')?' dp-month':' dp-date'; html+=`<div class="dpill${cls}${active?' dp-active':''}" onclick="setView('archive','${key}')" title="${archiveLabel(key)}">${archiveShortLabel(key)}<span class="dpill-count">${cnt}</span></div>`; }); }
+  const older=keys.filter(k=>k!==yest&&k!==tomm&&k!==today);
+  if(older.length){
+    html+=`<div class="dpill-sep"></div>`;
+    older.forEach(key=>{
+      const cnt=state.archive[key]?archiveStoryCount(key):0;
+      const active=ui.view==='archive'&&ui.archiveKey===key;
+      const cls=key.startsWith('week-')?' dp-week':key.startsWith('month-')?' dp-month':' dp-date';
+      html+=`<div class="dpill${cls}${active?' dp-active':''}" onclick="setView('archive','${key}')" title="${archiveLabel(key)}">${archiveShortLabel(key)}<span class="dpill-count">${cnt}</span></div>`;
+    });
+  }
   html+=`<div style="flex-shrink:0;width:18px"></div>`;
   strip.innerHTML=html;
   setTimeout(()=>{ const ac=strip.querySelector('.dp-active'); if(ac&&!todayActive) ac.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); },80);
@@ -4276,31 +4460,36 @@ function renderAccordion(sec,archKey){
   if(secObj.isUpcoming){
     const today=todayStr();
     // Buckets:
-    // 1. active   — future/today, not terminal
-    // 2. overdue  — past due, not passed/completed/not-done
-    // 3. passed   — explicitly marked passed (status='passed' or 'not-done' set via Pass btn)
-    // 4. terminal — completed (shown inline via their own card styling)
-    const activeUpcoming  = stories.filter(s=>(!s.expected_date||s.expected_date>=today)&&s.status!=='passed'&&s.status!=='not-done'&&s.status!=='completed');
-    const overdueUpcoming = stories.filter(s=>s.expected_date&&s.expected_date<today&&s.status!=='passed'&&s.status!=='not-done'&&s.status!=='completed');
-    const passedUpcoming  = stories.filter(s=>s.status==='passed'||s.status==='not-done');
+    // 1. active      — future/today, not terminal, sorted soonest first
+    // 2. completed   — shown inline (green border) within active area
+    // 3. overdue     — past due, not explicitly passed, shown in active area with overdue badge
+    // 4. past/passed — explicitly passed OR overdue, shown at bottom faded+struck-through, date-sorted oldest→newest
+    const activeUpcoming  = stories.filter(s=>
+      (!s.expected_date||s.expected_date>=today)&&
+      s.status!=='passed'&&s.status!=='not-done'
+    );
+    const overdueUpcoming = stories.filter(s=>
+      s.expected_date&&s.expected_date<today&&
+      s.status!=='passed'&&s.status!=='not-done'&&s.status!=='completed'
+    );
     const completedUpcoming = stories.filter(s=>s.status==='completed');
+    // Past = explicitly passed/not-done — shown at bottom always
+    const pastUpcoming = stories.filter(s=>s.status==='passed'||s.status==='not-done')
+      .sort((a,b)=>(b.expected_date||'').localeCompare(a.expected_date||'')); // most-recent-past first
 
     const allActive=[...activeUpcoming,...overdueUpcoming,...completedUpcoming];
 
-    if(!allActive.length&&!isFormOpen&&!passedUpcoming.length){
+    if(!allActive.length&&!isFormOpen&&!pastUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
     } else {
       allActive.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
     }
 
-    // Passed section — struck out, at bottom, collapsible
-    if(passedUpcoming.length){
-      const passOpen=ui.showPassedUpcoming||false;
+    // Past/passed entries — always visible at bottom, faded, struck-through, date-sorted
+    if(pastUpcoming.length){
       html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;margin-bottom:${passOpen?'6px':'0'}" onclick="ui.showPassedUpcoming=!ui.showPassedUpcoming;render()">
-          <span>${passOpen?'▾':'▸'}</span>↪ ${passedUpcoming.length} passed
-        </div>
-        ${passOpen?passedUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">↪ ${pastUpcoming.length} passed</div>
+        ${pastUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
       </div>`;
     }
   } else {
@@ -4448,8 +4637,8 @@ function renderFormRemarksList(sec, s, archKey){
   } else {
     html+=`<div style="font-size:12px;color:var(--text3);padding:4px 0 8px">No remarks yet.</div>`;
   }
-  html+=`<div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end">
-    <textarea class="ftextarea" id="sr-input-${s.id}" placeholder="Add a remark…" style="flex:1;font-size:12px;min-height:44px;resize:vertical;white-space:pre-wrap"></textarea>
+  html+=`<div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end;flex-wrap:wrap">
+    <textarea class="ftextarea" id="sr-input-${s.id}" placeholder="Add a remark…" style="flex:1;min-width:140px;font-size:12px;min-height:44px;resize:vertical;white-space:pre-wrap"></textarea>
     <button class="btn btn-accent btn-sm" onclick="submitStoryRemark('${sec}','${s.id}',${archKeyJS})">+ Add</button>
   </div>`;
   html+=`</div>`;
@@ -4889,10 +5078,27 @@ function renderTasksSection(){
   if(!tasks.length&&!ui_taskForm){
     html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks yet — click <strong>+ Add Task</strong></div></div>`;
   } else {
-    // Sort: pending/carried first, then postponed, then done at bottom
+    // Sort: active tasks by closest deadline to today (|days from today| ascending),
+    // future dates before past dates on equal distance, no-deadline last.
+    // Done / transferred / not-done always at the very bottom.
+    const statusRank=t=>{
+      if(t.taskStatus==='done')         return 10;
+      if(t.taskStatus==='transferred')  return 9;
+      if(t.taskStatus==='not-done')     return 8;
+      if(t.taskStatus==='postponed-to') return 5;
+      return 0; // pending / carried — sorted by deadline proximity
+    };
+    const todayMs=new Date(today+'T00:00:00').getTime();
+    const deadlineDist=t=>{
+      if(!t.deadline_date) return Infinity; // no deadline → bottom of active
+      const diff=new Date(t.deadline_date+'T00:00:00').getTime()-todayMs;
+      // Primary: absolute distance; secondary: future (positive) before past (negative)
+      return Math.abs(diff)*2 + (diff<0?1:0);
+    };
     const sorted=[...tasks].sort((a,b)=>{
-      const rank=t=>t.taskStatus==='done'?4:t.taskStatus==='transferred'?3:t.taskStatus==='not-done'?2:t.taskStatus==='postponed-to'?1:t.carriedForward?0:0;
-      return rank(a)-rank(b);
+      const ra=statusRank(a), rb=statusRank(b);
+      if(ra!==rb) return ra-rb;
+      return deadlineDist(a)-deadlineDist(b);
     });
     sorted.forEach(t=>{ html+=renderTaskCard(t,today); });
   }
@@ -5734,14 +5940,10 @@ function editLeave(id){
   },80);
 }
 function toggleLeaveOpen(id){
-  const savedY=window.scrollY;
   if(ui_openLeaves.has(id))ui_openLeaves.delete(id);else ui_openLeaves.add(id);
   const b=document.getElementById('lb-'+id),c=document.getElementById('lc-'+id);
   if(b)b.classList.toggle('open',ui_openLeaves.has(id));
   if(c)c.classList.toggle('open',ui_openLeaves.has(id));
-  // Restore scroll immediately after layout reflow — prevents browser
-  // scroll-anchoring from snapping the position when leave-body expands
-  requestAnimationFrame(()=>window.scrollTo({top:savedY,behavior:'instant'}));
 }
 function saveEmployeeNames(){
   const names=[];
@@ -6017,6 +6219,8 @@ function renderUpcomingRow(sec,s,archKey){
     } else {
       dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
     }
+  } else if(isPassed&&s.expected_date){
+    dueChip=`<span class="uc-chip" style="color:var(--text3)">was ${s.expected_date}</span>`;
   }
 
   // Border class
@@ -6279,8 +6483,8 @@ function renderForm(sec,archKey){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">Request Details</div>
     <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
@@ -6341,8 +6545,8 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" maxlength="5" value="${esc(ev.deadline_ist||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">People &amp; Status</div>
     <div class="fgroup"><label class="flabel">Correspondent Deployed</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
