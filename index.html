@@ -2032,35 +2032,70 @@ function moveBroadcastSlot(idx,dir){
 }
 /* ── Time field helpers ──────────────────────────────────────────
    Each pair: normalise the typed value → write HH:MM back → convert. */
-function _applyTime(srcId, destId, convertFn){
+/* ── Time field handlers ─────────────────────────────────────────────
+   _convertIfComplete  → oninput: only converts when value is a full time.
+                         Never rewrites the source field mid-type.
+   _normaliseAndConvert → onblur: normalises source to HH:MM then converts. */
+function _convertIfComplete(srcId, destId, convertFn){
+  const src=document.getElementById(srcId); if(!src) return;
+  const v=src.value.trim();
+  const complete=/^(\d{1,2}):(\d{2})$/.test(v)
+               ||/^(\d{1,2})\.(\d{2})$/.test(v)
+               ||/^\d{3}$/.test(v)
+               ||/^\d{4}$/.test(v);
+  if(!complete) return;
+  const norm=normaliseTime(v); if(!norm) return;
+  const dest=document.getElementById(destId); if(!dest) return;
+  const c=convertFn(norm); if(c) dest.value=c;
+}
+function _normaliseAndConvert(srcId, destId, convertFn){
   const src=document.getElementById(srcId); if(!src) return;
   const norm=normaliseTime(src.value);
-  if(norm) src.value=norm;                       // rewrite field to HH:MM
+  if(norm) src.value=norm;
   const dest=document.getElementById(destId); if(!dest) return;
-  const converted=convertFn(norm||src.value);
-  if(converted) dest.value=converted;
+  const c=convertFn(norm||src.value); if(c) dest.value=c;
 }
 
-function btUKChange(idx){  _applyTime('bt-uk-'+idx,  'bt-ist-'+idx,  ukToIST); }
-function btISTChange(idx){ _applyTime('bt-ist-'+idx, 'bt-uk-'+idx,   istToUK); }
-function btSlotDLUKChange(idx){  _applyTime('bt-dl-uk-'+idx,  'bt-dl-ist-'+idx, ukToIST); }
-function btSlotDLISTChange(idx){ _applyTime('bt-dl-ist-'+idx, 'bt-dl-uk-'+idx,  istToUK); }
+function btUKChange(idx){        _convertIfComplete('bt-uk-'+idx,     'bt-ist-'+idx,     ukToIST); }
+function btUKBlur(idx){          _normaliseAndConvert('bt-uk-'+idx,   'bt-ist-'+idx,     ukToIST); }
+function btISTChange(idx){       _convertIfComplete('bt-ist-'+idx,    'bt-uk-'+idx,      istToUK); }
+function btISTBlur(idx){         _normaliseAndConvert('bt-ist-'+idx,  'bt-uk-'+idx,      istToUK); }
+function btSlotDLUKChange(idx){  _convertIfComplete('bt-dl-uk-'+idx,  'bt-dl-ist-'+idx,  ukToIST); }
+function btSlotDLUKBlur(idx){    _normaliseAndConvert('bt-dl-uk-'+idx,'bt-dl-ist-'+idx,  ukToIST); }
+function btSlotDLISTChange(idx){ _convertIfComplete('bt-dl-ist-'+idx, 'bt-dl-uk-'+idx,   istToUK); }
+function btSlotDLISTBlur(idx){   _normaliseAndConvert('bt-dl-ist-'+idx,'bt-dl-uk-'+idx,  istToUK); }
 
 function onUKChange(sec,archKey){
   const sfx='-'+sec+(archKey?'-arch':'');
-  _applyTime('f-time-uk'+sfx, 'f-time-ist'+sfx, ukToIST);
+  _convertIfComplete('f-time-uk'+sfx, 'f-time-ist'+sfx, ukToIST);
+}
+function onUKBlur(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _normaliseAndConvert('f-time-uk'+sfx, 'f-time-ist'+sfx, ukToIST);
 }
 function onISTChange(sec,archKey){
   const sfx='-'+sec+(archKey?'-arch':'');
-  _applyTime('f-time-ist'+sfx, 'f-time-uk'+sfx, istToUK);
+  _convertIfComplete('f-time-ist'+sfx, 'f-time-uk'+sfx, istToUK);
+}
+function onISTBlur(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _normaliseAndConvert('f-time-ist'+sfx, 'f-time-uk'+sfx, istToUK);
 }
 function onDeadlineUKChange(sec,archKey){
   const sfx='-'+sec+(archKey?'-arch':'');
-  _applyTime('f-deadline-uk'+sfx, 'f-deadline-ist'+sfx, ukToIST);
+  _convertIfComplete('f-deadline-uk'+sfx, 'f-deadline-ist'+sfx, ukToIST);
+}
+function onDeadlineUKBlur(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _normaliseAndConvert('f-deadline-uk'+sfx, 'f-deadline-ist'+sfx, ukToIST);
 }
 function onDeadlineISTChange(sec,archKey){
   const sfx='-'+sec+(archKey?'-arch':'');
-  _applyTime('f-deadline-ist'+sfx, 'f-deadline-uk'+sfx, istToUK);
+  _convertIfComplete('f-deadline-ist'+sfx, 'f-deadline-uk'+sfx, istToUK);
+}
+function onDeadlineISTBlur(sec,archKey){
+  const sfx='-'+sec+(archKey?'-arch':'');
+  _normaliseAndConvert('f-deadline-ist'+sfx, 'f-deadline-uk'+sfx, istToUK);
 }
 const DEFAULT_PLATFORM_LABELS=['TV Live','Radio Live','Radio Two-way','Radio Pre-Rec','TV Rant','Radio Rant'];
 function getPlatformLabels(){ return [...DEFAULT_PLATFORM_LABELS,...(state.customPlatformLabels||[])]; }
@@ -2090,8 +2125,8 @@ function buildSlotRowHTML(idx,slot){
       <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
         <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
       </div>
-      <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})"></div>
-      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})" onblur="btUKBlur(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})" onblur="btISTBlur(${idx})"></div>
       <div style="display:flex;flex-direction:row;gap:4px;align-self:flex-end;padding-bottom:1px;flex-wrap:nowrap">
         <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
         <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
@@ -2102,8 +2137,8 @@ function buildSlotRowHTML(idx,slot){
       <div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Per-slot details (optional)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Slot Deadline Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline GMT</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline GMT</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Commissioner</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
@@ -4409,7 +4444,23 @@ function renderAccordion(sec,archKey){
   const fKey=sec.key+(archKey?'::'+archKey:'');
   const isFormOpen=ui.openForms.has(fKey);
   const activeStories=all.filter(s=>s.status!=='shelved');
-  const summary=activeStories.length>0?activeStories.slice(0,2).map(s=>s.title||'Untitled').join(' · '):'No stories yet';
+  let summary;
+  if(secObj.isUpcoming&&activeStories.length>0){
+    // Show the soonest upcoming entry (closest expected_date, non-passed/non-completed)
+    const today=todayStr();
+    const candidates=activeStories
+      .filter(s=>s.status!=='passed'&&s.status!=='not-done')
+      .sort((a,b)=>{
+        const da=a.expected_date||'9999', db=b.expected_date||'9999';
+        return da.localeCompare(db);
+      });
+    const pick=candidates[0];
+    summary=pick
+      ? (pick.title||'Untitled')+(pick.expected_date?' · '+pick.expected_date:'')
+      : (activeStories[0]?.title||'Untitled');
+  } else {
+    summary=activeStories.length>0?activeStories.slice(0,2).map(s=>s.title||'Untitled').join(' · '):'No stories yet';
+  }
   const uc=activeStories.filter(s=>s.status==='urgent').length;
   const ic=activeStories.filter(s=>s.status==='in-progress').length;
   const cc=activeStories.filter(s=>s.carriedForward&&s.status!=='completed'&&s.status!=='on-hold').length;
@@ -6483,8 +6534,8 @@ function renderForm(sec,archKey){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">Request Details</div>
     <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
@@ -6545,8 +6596,8 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">People &amp; Status</div>
     <div class="fgroup"><label class="flabel">Correspondent Deployed</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
