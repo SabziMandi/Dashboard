@@ -4101,19 +4101,59 @@ function renderTodayHTML(){
 function renderUpcomingView(){
   const today=todayStr();
   const sec=SECTIONS.find(s=>s.key==='upcoming');
+  const archKeyJS='null';
   let html=renderTabDateNav('upcomingDate','Upcoming Events');
-  // For today: show live upcoming entries
-  // For past dates: show archive entries
   const cur=ui.upcomingDate||today;
-  if(cur!==today && state.archive[cur]?.sections?.upcoming?.length){
-    // Show archived upcoming entries for this date with full CRUD
-    const entries=state.archive[cur].sections.upcoming||[];
-    html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${entries.length} upcoming event${entries.length===1?'':'s'} archived on this date</div>`;
-    entries.forEach(s=>{ html+=renderUpcomingRow('upcoming',s,cur); });
+
+  if(cur!==today){
+    // Past date — show archived entries with full CRUD
+    const entries=(state.archive[cur]?.sections?.upcoming)||[];
+    if(!entries.length){
+      html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events on this date</div></div>`;
+    } else {
+      html+=`<div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px">${entries.length} upcoming event${entries.length===1?'':'s'} archived on this date</div>`;
+      entries.forEach(s=>{ html+=renderUpcomingRow('upcoming',s,cur); });
+    }
   } else {
-    html+=renderAccordion(sec,null);
+    // Today — render entries directly (no accordion wrapper needed on dedicated tab)
+    const all=state.sections.upcoming||[];
+    const stories=getStories('upcoming',null);
+    const fKey='upcoming';
+    const isFormOpen=ui.openForms.has(fKey);
+
+    html+=`<div class="sec-head" style="margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
+      <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
+    </div>`;
+
+    if(isFormOpen) html+=renderForm('upcoming',null);
+
+    // Bucket logic — same as renderAccordion for upcoming
+    const activeUpcoming = stories.filter(s=>
+      s.status!=='completed' &&
+      (!s.expected_date || s.expected_date >= today)
+    );
+    const completedUpcoming = stories.filter(s=>s.status==='completed');
+    const expiredUpcoming = stories
+      .filter(s=>s.expected_date && s.expected_date < today && s.status!=='completed')
+      .sort((a,b)=>(b.expected_date||'').localeCompare(a.expected_date||''));
+
+    const allActive=[...activeUpcoming,...completedUpcoming];
+
+    if(!allActive.length && !isFormOpen && !expiredUpcoming.length){
+      html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
+    } else {
+      allActive.forEach(s=>{ html+=renderCard('upcoming',s,null); });
+    }
+
+    if(expiredUpcoming.length){
+      html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📁 ${expiredUpcoming.length} expired</div>
+        ${expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join('')}
+      </div>`;
+    }
   }
-  return`<div style="padding-bottom:12px">${html}</div>`;
+  return`<div style="padding-bottom:80px">${html}</div>`;
 }
 
 function renderNotesView(){
@@ -4998,6 +5038,8 @@ function renderTasksSection(){
   const isOpen=ui.openSections.has('tasks');
   const pendingCount=allTasks.filter(t=>t.taskStatus!=='done'&&t.taskStatus!=='transferred').length;
   const doneCount=allTasks.filter(t=>t.taskStatus==='done').length;
+
+  // Accordion header — only used when embedded in desktop Today page (not standalone)
   const accHeader=`<div class="accordion${isOpen?' acc-open':''}" id="acc-tasks">
     <div class="acc-header" onclick="toggleAccordion('tasks')">
       <span class="acc-icon">☑</span><span class="acc-name">Tasks</span>
@@ -5009,21 +5051,31 @@ function renderTasksSection(){
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">`;
 
+  // ── Archive date view (both standalone and embedded) ──────────────────────
   let html=`<div id="tasks-section" style="scroll-margin-top:180px">`;
   if(isStandalone) html+=renderTabDateNav('tasksDate','Tasks');
+
   if(!isToday){
-    // Show archived tasks for this date
     const archTasks=(state.archive[cur]?.tasks)||[];
     const archTasksLog=(state.archive[cur]?.tasksLog)||[];
-    // Merge: prefer live state.tasks record if still exists, else fall back to log snapshot
     const seenIds=new Set();
     const allArchTasks=[];
     [...archTasks,...archTasksLog].forEach(t=>{
       if(seenIds.has(t.id)) return;
       seenIds.add(t.id);
-      // If task still lives in state.tasks, use the live version for CRUD
       const live=(state.tasks||[]).find(x=>x.id===t.id);
       allArchTasks.push(live||t);
+    });
+    // Sort archived tasks the same way as today's tasks
+    const todayMs2=new Date(today+'T00:00:00').getTime();
+    const archSorted=[...allArchTasks].sort((a,b)=>{
+      const rank=t=>t.taskStatus==='done'?10:t.taskStatus==='transferred'?9:t.taskStatus==='not-done'?8:t.taskStatus==='postponed-to'?5:0;
+      const ra=rank(a),rb=rank(b); if(ra!==rb) return ra-rb;
+      if(!a.deadline_date&&!b.deadline_date) return 0;
+      if(!a.deadline_date) return 1; if(!b.deadline_date) return -1;
+      const da=Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-todayMs2);
+      const db=Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-todayMs2);
+      return da-db;
     });
     html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
@@ -5048,11 +5100,10 @@ function renderTasksSection(){
         </div>
       </div>`;
     }
-    if(!allArchTasks.length&&!ui_taskForm){
+    if(!archSorted.length&&!ui_taskForm){
       html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks recorded on this date</div></div>`;
     } else {
-      allArchTasks.forEach(t=>{
-        // Live tasks get full interactive card; deleted/snapshot-only get read-only display
+      archSorted.forEach(t=>{
         if((state.tasks||[]).find(x=>x.id===t.id)){
           html+=renderTaskCard(t,today);
         } else {
@@ -5071,16 +5122,17 @@ function renderTasksSection(){
       });
     }
     html+=`</div>`;
+    if(isStandalone) return`<div style="padding-bottom:80px">${html}</div>`;
     return accHeader+html+'</div></div></div>';
   }
 
+  // ── Today's tasks ─────────────────────────────────────────────────────────
   const tasks=state.tasks;
 
   html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
     <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
   </div>`;
 
-  // Add-task form
   if(ui_taskForm){
     html+=`<div class="task-form" id="task-form-wrap">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--upcoming)">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
@@ -5132,25 +5184,21 @@ function renderTasksSection(){
   if(!tasks.length&&!ui_taskForm){
     html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks yet — click <strong>+ Add Task</strong></div></div>`;
   } else {
-    // Sort: active tasks by closest deadline to today (|days from today| ascending),
-    // future dates before past dates on equal distance, no-deadline last.
-    // Done / transferred / not-done always at the very bottom.
     const statusRank=t=>{
       if(t.taskStatus==='done')         return 10;
       if(t.taskStatus==='transferred')  return 9;
       if(t.taskStatus==='not-done')     return 8;
       if(t.taskStatus==='postponed-to') return 5;
-      return 0; // pending / carried — sorted by deadline proximity
+      return 0;
     };
     const todayMs=new Date(today+'T00:00:00').getTime();
     const deadlineDist=t=>{
-      if(!t.deadline_date) return Infinity; // no deadline → bottom of active
+      if(!t.deadline_date) return Infinity;
       const diff=new Date(t.deadline_date+'T00:00:00').getTime()-todayMs;
-      // Primary: absolute distance; secondary: future (positive) before past (negative)
-      return Math.abs(diff)*2 + (diff<0?1:0);
+      return Math.abs(diff)*2+(diff<0?1:0);
     };
     const sorted=[...tasks].sort((a,b)=>{
-      const ra=statusRank(a), rb=statusRank(b);
+      const ra=statusRank(a),rb=statusRank(b);
       if(ra!==rb) return ra-rb;
       return deadlineDist(a)-deadlineDist(b);
     });
@@ -5158,6 +5206,8 @@ function renderTasksSection(){
   }
 
   html+=`</div>`;
+  // Standalone (mobile Tasks tab): render directly — no accordion wrapper
+  if(isStandalone) return`<div style="padding-bottom:80px">${html}</div>`;
   return accHeader+html+'</div></div>';
 }
 
