@@ -158,6 +158,46 @@ body {
 .header-search::placeholder { color: var(--text3); }
 .header-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
 
+/* Mobile-specific header overrides */
+@media(max-width:720px){
+  .header-row1 {
+    flex-direction: column; gap: 0; padding: 0;
+  }
+  .mobile-title-bar {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; padding: 8px 16px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-actions-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 5px 14px 6px; gap: 8px;
+  }
+  .mobile-actions-bar .wordmark { display: none; }
+  .mobile-search-bar {
+    display: none; width: 100%;
+    padding: 0 14px 8px;
+    animation: slideIn .15s ease;
+  }
+  .mobile-search-bar.open { display: block; }
+  .header-search { width: 100%; box-sizing: border-box; }
+  /* Hide desktop search on mobile */
+  .header-search.desktop-search { display: none; }
+  .mobile-search-btn {
+    background: none; border: 1px solid var(--border); border-radius: 7px;
+    color: var(--text2); font-size: 16px; padding: 4px 10px;
+    cursor: pointer; line-height: 1; flex-shrink: 0;
+    transition: border-color .15s, background .15s;
+  }
+  .mobile-search-btn:active { background: var(--surface2); }
+  .mobile-search-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+}
+@media(min-width:721px){
+  .mobile-title-bar { display: none; }
+  .mobile-actions-bar { display: none; }
+  .mobile-search-bar { display: none; }
+  .mobile-search-btn { display: none; }
+}
+
 /* Row 2 – Date hero */
 .date-nav-row {
   border-top: 1px solid var(--border);
@@ -705,6 +745,8 @@ body {
 .uc-row.ucr-past:hover { border-color: var(--border); box-shadow: none; }
 .leave-card { overflow-anchor: none; }
 .leave-body { overflow-anchor: none; }
+.meeting-card { overflow-anchor: none; }
+.meeting-body { overflow-anchor: none; }
 /* Prevent scroll-anchor adjustment when accordions or leave cards expand.
    Applied to each expanding container — NOT to html/body (too broad). */
 .accordion  { overflow-anchor: none; }
@@ -915,11 +957,14 @@ button.tasks-tab-btn {
 .leave-body { display: none; padding: 4px 13px 12px; border-top: 1px solid var(--border); }
 .leave-body.open { display: block; }
 .leave-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-/* Badge row: sits below dates on mobile, inline on desktop */
-.leave-badges-row { width: auto !important; }
+/* Badge row and leave top layout */
+.leave-top { align-items: flex-start; }
+.leave-badges-row { flex-shrink: 0; }
 @media(max-width:720px){
-  .leave-badges-row { width: 100% !important; padding-left: 2px !important; }
-  .leave-top { align-items: flex-start !important; }
+  .leave-top { flex-wrap: wrap; }
+  .leave-date-grid { min-width: 0; flex: 1; grid-template-columns: 2.2ch 3.2ch 4.2ch !important; }
+  .leave-weekday-col { display: none; }
+  .leave-badges-row { width: 100%; padding-left: 0; margin-top: 2px; }
 }
 
 /* Employee settings panel */
@@ -1062,20 +1107,37 @@ button.tasks-tab-btn {
 
 <header class="app-header">
   <div class="header-row1">
-    <div class="wordmark" onclick="goHome()" style="cursor:pointer" title="Go to Today"><span class="wordmark-dot"></span>BBC Dashboard</div>
-    <input class="header-search" id="search-input" type="search" placeholder="Search title, correspondent, producer, shoot-edit, location, remarks…" oninput="onSearch(this.value)">
-    <div class="header-actions">
+    <!-- Desktop layout: wordmark + search + actions all in one row -->
+    <div class="wordmark hide-mobile" onclick="goHome()" style="cursor:pointer" title="Go to Today"><span class="wordmark-dot"></span>BBC Dashboard</div>
+    <input class="header-search desktop-search hide-mobile" id="search-input" type="search" placeholder="Search title, correspondent, producer, shoot-edit, location, remarks…" oninput="onSearch(this.value)">
+    <div class="header-actions hide-mobile">
       <div class="sync-chip" id="sync-chip" onclick="openSyncModal()">
         <span class="sync-dot dot-local" id="sync-dot"></span>
         <span id="sync-label">Local only</span>
       </div>
-      <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportTxt()">⬇ Export .txt</button>
-      <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportJSON()" title="Save all your data as a backup file you can re-import">⬇ Export data</button>
-      <button class="btn btn-ghost btn-sm hide-mobile" onclick="openImportDialog()" title="Restore data from a previously exported file">⬆ Import data</button>
-      <button class="btn btn-ghost btn-sm hide-mobile" onclick="openStaffSettings()" title="Edit correspondent, producer and shoot-edit names">👥 Staff</button>
-      <button class="btn btn-ghost btn-sm hide-mobile" onclick="doEmailAll()">✉ Email All</button>
-      <button class="btn btn-ghost btn-sm hide-mobile" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
-      <button class="btn btn-ghost btn-sm show-mobile-only" onclick="openMobileMore()" title="More options">⋯ More</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTxt()">⬇ Export .txt</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportJSON()" title="Save all your data as a backup file you can re-import">⬇ Export data</button>
+      <button class="btn btn-ghost btn-sm" onclick="openImportDialog()" title="Restore data from a previously exported file">⬆ Import data</button>
+      <button class="btn btn-ghost btn-sm" onclick="openStaffSettings()" title="Edit correspondent, producer and shoot-edit names">👥 Staff</button>
+      <button class="btn btn-ghost btn-sm" onclick="doEmailAll()">✉ Email All</button>
+      <button class="btn btn-ghost btn-sm" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
+    </div>
+    <!-- Mobile layout: title bar + actions bar + collapsible search -->
+    <div class="mobile-title-bar show-mobile-only">
+      <div class="wordmark" onclick="goHome()" style="cursor:pointer" title="Go to Today"><span class="wordmark-dot"></span>BBC Dashboard</div>
+    </div>
+    <div class="mobile-actions-bar show-mobile-only">
+      <div class="sync-chip" id="sync-chip-mobile" onclick="openSyncModal()">
+        <span class="sync-dot dot-local" id="sync-dot-mobile"></span>
+        <span id="sync-label-mobile">Local</span>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <button class="mobile-search-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search">🔍</button>
+        <button class="btn btn-ghost btn-sm" onclick="openMobileMore()" title="More options">⋯ More</button>
+      </div>
+    </div>
+    <div class="mobile-search-bar show-mobile-only" id="mobile-search-bar">
+      <input class="header-search" id="search-input-mobile" type="search" placeholder="Search…" oninput="onSearch(this.value)" style="width:100%">
     </div>
   </div>
   <div class="header-collapsible" id="header-collapsible">
@@ -1135,7 +1197,7 @@ button.tasks-tab-btn {
 const SECTIONS = [
   { key:'ibu',      name:'Stories',               icon:'📡', hasWW:true, renameable:false, isCombined:true },
   { key:'other',    name:'Other Stories',          icon:'🌍', hasWW:true, renameable:true,  hidden:true },
-  { key:'requests', name:'Requests for Future',    icon:'📨', hasWW:false },
+  { key:'requests', name:'Requests for Future',    icon:'📨', hasWW:true },
   { key:'upcoming', name:'Upcoming Events',        icon:'🗓', hasWW:false, isUpcoming:true },
 ];
 const REMINDER_DELAYS = {
@@ -1491,11 +1553,16 @@ async function pushToCloud(){
 }
 function setSyncUI(s){
   const d=document.getElementById('sync-dot'), l=document.getElementById('sync-label');
-  if(!d||!l) return; d.className='sync-dot';
-  if(s==='live')    { d.classList.add('dot-live');    l.textContent='Synced'; }
-  else if(s==='offline') { d.classList.add('dot-offline'); l.textContent='Offline'; }
-  else if(s==='syncing') { d.classList.add('dot-syncing'); l.textContent='Syncing…'; }
-  else                   { d.classList.add('dot-local');   l.textContent='Local only'; }
+  const dm=document.getElementById('sync-dot-mobile'), lm=document.getElementById('sync-label-mobile');
+  function applySync(dot,lbl,short){
+    if(!dot||!lbl) return; dot.className='sync-dot';
+    if(s==='live')         { dot.classList.add('dot-live');    lbl.textContent=short?'Synced':'Synced'; }
+    else if(s==='offline') { dot.classList.add('dot-offline'); lbl.textContent=short?'Offline':'Offline'; }
+    else if(s==='syncing') { dot.classList.add('dot-syncing'); lbl.textContent=short?'Sync…':'Syncing…'; }
+    else                   { dot.classList.add('dot-local');   lbl.textContent=short?'Local':'Local only'; }
+  }
+  applySync(d,l,false);
+  applySync(dm,lm,true);
 }
 function saveAndPush(){ saveLocal(); if(fireDb){ setSyncUI('syncing'); pushToCloud(); } }
 
@@ -3026,6 +3093,115 @@ function copyEmailBody(encodedBody){
     toast('Select all text in the box and copy manually');
   }
 }
+
+/* ════════════════════════════════════════
+   EMAIL + EXPORT — MEETINGS / NOTES / LEAVES
+════════════════════════════════════════ */
+function meetingToText(m){
+  const DAY_NAMES={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
+  const recurDayLabel=m.isRecurring&&m.recurFreq==='weekly'&&(m.recurDaysOfWeek||[]).length
+    ? 'every '+m.recurDaysOfWeek.map(d=>DAY_NAMES[d]||d).join(' / ')
+    : m.isRecurring&&m.recurFreq==='daily'?'every day'
+    : m.isRecurring&&m.recurFreq==='custom'&&m.recurDays?'every '+m.recurDays+'d':'';
+  const timeIST=m.time?ukToIST(m.time):'';
+  const timeStr=m.isRecurring&&recurDayLabel
+    ? (m.time?m.time+' '+ukLabel()+' / '+timeIST+' IST':'')+' '+recurDayLabel
+    : m.time?m.time+' '+ukLabel()+(timeIST?' / '+timeIST+' IST':''):'';
+  const ln=[];
+  ln.push((m.name||'Untitled').toUpperCase());
+  if(timeStr) ln.push('  When     : '+timeStr.trim());
+  if(m.date&&!(m.isRecurring&&recurDayLabel)) ln.push('  Date     : '+new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+  if(m.status) ln.push('  Status   : '+m.status);
+  if(m.venue) ln.push('  Venue    : '+m.venue);
+  if(m.agenda) ln.push('  Agenda   : '+m.agenda);
+  if((m.participants||[]).length) ln.push('  People   : '+m.participants.map(p=>p.name+(p.isExternal?' (ext)':'')).join(', '));
+  if((m.remarks||[]).length){ ln.push('  Remarks:'); m.remarks.forEach(r=>ln.push('    - '+r.text)); }
+  return ln.join('\n');
+}
+function doEmailMeetings(){
+  const meetings=state.meetings||[];
+  if(!meetings.length){ toast('No meetings to email'); return; }
+  const hr='─'.repeat(44);
+  const lines=['MEETINGS',hr,''];
+  [...meetings].sort((a,b)=>((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||''))).forEach(m=>{ lines.push(meetingToText(m)); lines.push(''); });
+  sendMailto('[BBC Dashboard] Meetings — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+}
+function doExportMeetingsTxt(){
+  const meetings=state.meetings||[];
+  if(!meetings.length){ toast('No meetings to export'); return; }
+  const hr='─'.repeat(48);
+  const lines=['MEETINGS',hr,''];
+  [...meetings].sort((a,b)=>((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||''))).forEach(m=>{ lines.push(meetingToText(m)); lines.push(''); });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='meetings-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('Meetings exported ✓');
+}
+function doEmailNotes(){
+  const notes=state.notes||[];
+  if(!notes.length){ toast('No notes to email'); return; }
+  const hr='─'.repeat(44);
+  const lines=['NOTES',hr,''];
+  notes.filter(n=>n.status==='active').forEach(n=>{
+    if(n.headline) lines.push(n.headline.toUpperCase());
+    if(n.text) lines.push(n.text);
+    if(n.deadline_date) lines.push('  Deadline : '+n.deadline_date);
+    lines.push('');
+  });
+  sendMailto('[BBC Dashboard] Notes — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+}
+function doExportNotesTxt(){
+  const notes=state.notes||[];
+  if(!notes.length){ toast('No notes to export'); return; }
+  const hr='─'.repeat(48);
+  const lines=['NOTES',hr,''];
+  notes.forEach(n=>{
+    if(n.headline) lines.push(n.headline.toUpperCase());
+    if(n.text) lines.push(n.text);
+    lines.push('  Status   : '+n.status);
+    if(n.deadline_date) lines.push('  Deadline : '+n.deadline_date);
+    lines.push('');
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='notes-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('Notes exported ✓');
+}
+function doEmailLeaves(){
+  const leaves=state.leaves||[];
+  if(!leaves.length){ toast('No leaves to email'); return; }
+  const today=todayStr();
+  const hr='─'.repeat(44);
+  const lines=['LEAVES / STAFF AVAILABILITY',hr,''];
+  const active=leaves.filter(l=>l.dateTo>=today).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
+  const past=leaves.filter(l=>l.dateTo<today).sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom));
+  if(active.length){ lines.push('ACTIVE & UPCOMING'); active.forEach(l=>{ lines.push('  '+l.employeeName+' — '+l.leaveType+' ['+l.status+'] '+l.dateFrom+' to '+l.dateTo); if(l.reason) lines.push('  Reason: '+l.reason); lines.push(''); }); }
+  if(past.length){ lines.push('PAST LEAVES'); past.forEach(l=>{ lines.push('  '+l.employeeName+' — '+l.leaveType+' '+l.dateFrom+' to '+l.dateTo); lines.push(''); }); }
+  sendMailto('[BBC Dashboard] Leaves — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+}
+function doExportLeavesTxt(){
+  const leaves=state.leaves||[];
+  if(!leaves.length){ toast('No leaves to export'); return; }
+  const today=todayStr();
+  const hr='─'.repeat(48);
+  const lines=['LEAVES / STAFF AVAILABILITY',hr,''];
+  [...leaves].sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom)).forEach(l=>{
+    lines.push((l.employeeName||'Unknown').toUpperCase()+' — '+(l.leaveType||''));
+    lines.push('  From     : '+l.dateFrom);
+    lines.push('  To       : '+l.dateTo);
+    lines.push('  Status   : '+l.status);
+    if(l.reason) lines.push('  Reason   : '+l.reason);
+    lines.push('');
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='leaves-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('Leaves exported ✓');
+}
+
 function doEmailSection(sec,archKey){
   const meta=SECTIONS.find(s=>s.key===sec);
   const name=secName(sec);
@@ -3427,7 +3603,7 @@ function toggleComplForm(id){
 function submitComplForm(sec,id,archKey){
   const note=(document.getElementById('compl-note-'+id)||{}).value||'';
   const lnks=(document.getElementById('compl-links-'+id)||{}).value||'';
-  updateStory(sec,id,{completion_note:note.trim(),completion_links:lnks.trim(),status:'completed',carriedForward:false},archKey);
+  updateStory(sec,id,{completion_note:note.trim(),completion_links:lnks.trim(),status:'completed',carriedForward:false,completedOn:Date.now()},archKey);
   ui.complForms.delete(id); toast('Marked done ✓'); render();
 }
 function showFieldRow(sec,archKey){
@@ -3744,6 +3920,7 @@ function disconnectFirebase(){
 ════════════════════════════════════════ */
 function deadlineBadge(s){
   if(!s.deadline_date) return '';
+  if(s.status==='completed') return ''; // completed items never show overdue
   const dl=s.deadline_date+(s.deadline_uk?' '+s.deadline_uk:'');
   const diff=new Date(dl).getTime()-Date.now();
   const abs=Math.abs(diff), mins=Math.round(abs/60000);
@@ -4491,18 +4668,16 @@ function renderAccordion(sec,archKey){
   const activeStories=all.filter(s=>s.status!=='shelved');
   let summary;
   if(secObj.isUpcoming&&activeStories.length>0){
-    // Show the soonest upcoming entry (closest expected_date, non-passed/non-completed)
-    const today=todayStr();
-    const candidates=activeStories
-      .filter(s=>s.status!=='passed'&&s.status!=='not-done')
-      .sort((a,b)=>{
-        const da=a.expected_date||'9999', db=b.expected_date||'9999';
-        return da.localeCompare(db);
-      });
-    const pick=candidates[0];
-    summary=pick
-      ? (pick.title||'Untitled')+(pick.expected_date?' · '+pick.expected_date:'')
-      : (activeStories[0]?.title||'Untitled');
+    // Collapsed ribbon: "X pending · Y done · Z expired"
+    const today2=todayStr();
+    const pendingCnt=activeStories.filter(s=>s.status!=='completed'&&s.status!=='passed'&&s.status!=='not-done'&&(!s.expected_date||s.expected_date>=today2)).length;
+    const doneCnt=activeStories.filter(s=>s.status==='completed').length;
+    const expiredCnt=activeStories.filter(s=>s.expected_date&&s.expected_date<today2&&s.status!=='completed').length;
+    const parts=[];
+    if(pendingCnt) parts.push(pendingCnt+' pending');
+    if(doneCnt)    parts.push(doneCnt+' done');
+    if(expiredCnt) parts.push(expiredCnt+' expired');
+    summary=parts.join(' · ')||'No active events';
   } else {
     summary=activeStories.length>0?activeStories.slice(0,2).map(s=>s.title||'Untitled').join(' · '):'No stories yet';
   }
@@ -4534,19 +4709,20 @@ function renderAccordion(sec,archKey){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-${sec.key}">▾</span>
     </div>
-    <div class="acc-body${isOpen?' open':''}" id="acc-body-${sec.key}">
-      <div class="sec-head">
+    <div class="acc-body${isOpen?' open':''}" id="acc-body-${sec.key}">`;
+  {
+    const wwf=ui.wwFilter[sec.key]||'all';
+    const wwTabs=secObj.hasWW&&!archKey
+      ? `<button class="ww-tab wt-all${wwf==='all'?' wt-active':''}" data-sec="${sec.key}" data-val="all" onclick="setWWFilter('${sec.key}','all')">All</button>
+         <button class="ww-tab wt-working${wwf==='working'?' wt-active':''}" data-sec="${sec.key}" data-val="working" onclick="setWWFilter('${sec.key}','working')">▶ Working</button>
+         <button class="ww-tab wt-watching${wwf==='watching'?' wt-active':''}" data-sec="${sec.key}" data-val="watching" onclick="setWWFilter('${sec.key}','watching')">👁 Watching</button>`
+      : '';
+    html+=`<div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
+      ${wwTabs}
+      <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('${sec.key}',${archKeyJS});event.stopPropagation()">✉ Email</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('${sec.key}',${archKeyJS});event.stopPropagation()">+ Add</button>
-      </div>`;
-
-  // Working/Watching sub-tabs for IBU and Other Lives
-  if(secObj.hasWW && !archKey){
-    const wwf=ui.wwFilter[sec.key]||'all';
-    html+=`<div class="ww-tabs">
-      <button class="ww-tab wt-all${wwf==='all'?' wt-active':''}" data-sec="${sec.key}" data-val="all" onclick="setWWFilter('${sec.key}','all')">All</button>
-      <button class="ww-tab wt-working${wwf==='working'?' wt-active':''}" data-sec="${sec.key}" data-val="working" onclick="setWWFilter('${sec.key}','working')">▶ Working</button>
-      <button class="ww-tab wt-watching${wwf==='watching'?' wt-active':''}" data-sec="${sec.key}" data-val="watching" onclick="setWWFilter('${sec.key}','watching')">👁 Watching</button>
+      </div>
     </div>`;
   }
 
@@ -4556,30 +4732,35 @@ function renderAccordion(sec,archKey){
   if(secObj.isUpcoming){
     const today=todayStr();
     // Buckets:
-    // 1. active  — expected_date >= today (or no date), not terminal
-    // 2. completed — shown inline in active area
-    // 3. expired — expected_date < today AND not completed → always shown at bottom,
-    //              faded + struck-through, sorted most-recent first
-    //              (no manual "Pass" required — date expiry is automatic)
+    // 1. active    — not completed, expected_date >= today (or no date)
+    // 2. completed — faded + struck-through at bottom, sorted by completedOn desc
+    // 3. expired   — past expected_date, not completed — faded at bottom
     const activeUpcoming = stories.filter(s=>
       s.status!=='completed' &&
       (!s.expected_date || s.expected_date >= today)
     );
-    const completedUpcoming = stories.filter(s => s.status === 'completed');
-    // Expired = past expected_date, not completed — shown at bottom always
+    const completedUpcoming = stories
+      .filter(s => s.status === 'completed')
+      .sort((a,b) => (b.completedOn||b.created||0)-(a.completedOn||a.created||0));
     const expiredUpcoming = stories
       .filter(s => s.expected_date && s.expected_date < today && s.status !== 'completed')
-      .sort((a,b) => (b.expected_date||'').localeCompare(a.expected_date||'')); // newest-past first
+      .sort((a,b) => (b.expected_date||'').localeCompare(a.expected_date||''));
 
-    const allActive = [...activeUpcoming, ...completedUpcoming];
-
-    if(!allActive.length && !isFormOpen && !expiredUpcoming.length){
+    if(!activeUpcoming.length && !isFormOpen && !completedUpcoming.length && !expiredUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
     } else {
-      allActive.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+      activeUpcoming.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
     }
 
-    // Expired entries — always visible at bottom, faded, struck-through, date-sorted
+    // Completed entries — faded, struck-through, sorted newest first
+    if(completedUpcoming.length){
+      html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--done);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">✅ ${completedUpcoming.length} completed</div>
+        ${completedUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
+      </div>`;
+    }
+
+    // Expired entries — past date, not completed — faded at bottom
     if(expiredUpcoming.length){
       html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
         <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">📁 ${expiredUpcoming.length} expired</div>
@@ -4608,6 +4789,21 @@ function toggleShowShelved(secKey){
   else ui.showShelved.add(secKey);
   render();
 }
+function toggleMobileSearch(){
+  const bar=document.getElementById('mobile-search-bar');
+  const btn=document.getElementById('mobile-search-btn');
+  if(!bar) return;
+  const isOpen=bar.classList.toggle('open');
+  if(btn) btn.classList.toggle('active', isOpen);
+  if(isOpen){
+    setTimeout(()=>document.getElementById('search-input-mobile')?.focus(), 80);
+  } else {
+    // clear search when closing
+    const inp=document.getElementById('search-input-mobile');
+    if(inp){ inp.value=''; onSearch(''); }
+  }
+}
+
 function toggleRecurringFields(){
   const cb=document.getElementById('tf-recurring');
   const wrap=document.getElementById('tf-recur-fields');
@@ -4616,7 +4812,9 @@ function toggleRecurringFields(){
 function toggleCustomDays(){
   const freq=document.getElementById('tf-recur-freq')?.value;
   const wrap=document.getElementById('tf-custom-days-wrap');
+  const dowWrap=document.getElementById('tf-dow-wrap');
   if(wrap) wrap.style.display=freq==='custom'?'block':'none';
+  if(dowWrap) dowWrap.style.display=freq==='weekly'?'flex':'none';
 }
 
 function setCombinedSubTab(val){
@@ -4863,7 +5061,8 @@ function setTaskStatus(id, status, postponeTo){
         isRecurring: true,
         recurFreq:   task2.recurFreq,
         recurDays:   task2.recurDays||0,
-        recurLabel:  task2.recurLabel||'',
+        recurLabel:       task2.recurLabel||'',
+        recurDaysOfWeek:  task2.recurDaysOfWeek||[],
       };
       addTask(newTask);
       toast('✓ Done — next occurrence created for '+nextDate);
@@ -4881,6 +5080,12 @@ function toggleTaskOpen(id){
 function submitTaskForm(){
   const g=id=>(document.getElementById(id)||{}).value||'';
   const isRecurring=document.getElementById('tf-recurring')?.checked||false;
+  const recurDaysOfWeek=[];
+  if(isRecurring){
+    ['mon','tue','wed','thu','fri','sat','sun'].forEach(d=>{
+      if(document.getElementById('tf-dow-'+d)?.checked) recurDaysOfWeek.push(d);
+    });
+  }
   const data={
     title:        g('tf-title').trim(),
     notes:        g('tf-notes').trim(),
@@ -4890,6 +5095,7 @@ function submitTaskForm(){
     recurFreq:    isRecurring?g('tf-recur-freq'):'',
     recurDays:    isRecurring&&g('tf-recur-freq')==='custom'?parseInt(g('tf-recur-days'))||1:0,
     recurLabel:   isRecurring?g('tf-recur-label').trim():'',
+    recurDaysOfWeek: isRecurring?recurDaysOfWeek:[],
   };
   if(!data.title){ toast('Please enter a task title'); return; }
   if(ui_editTaskId){
@@ -4921,6 +5127,12 @@ function editTask(id){
       set('tf-recur-days', task.recurDays||7);
       set('tf-recur-label',task.recurLabel||'');
       toggleCustomDays();
+      if(task.recurDaysOfWeek?.length){
+        task.recurDaysOfWeek.forEach(d=>{
+          const cb=document.getElementById('tf-dow-'+d);
+          if(cb) cb.checked=true;
+        });
+      }
     }
     document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'});
   },80);
@@ -5158,10 +5370,21 @@ function renderTasksSection(){
               <label class="flabel">Repeat every</label>
               <select class="fselect" id="tf-recur-freq" onchange="toggleCustomDays()">
                 <option value="daily">Day</option>
-                <option value="weekly">Week</option>
+                <option value="weekly">Selected days of week</option>
                 <option value="monthly">Month</option>
                 <option value="custom">Custom (X days)</option>
               </select>
+            </div>
+            <div id="tf-dow-wrap" style="display:none;grid-column:1/-1;margin-top:4px">
+              <div class="flabel" style="margin-bottom:6px">Repeats on</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>{
+                  const key=d.toLowerCase().slice(0,3);
+                  return`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">
+                    <input type="checkbox" id="tf-dow-${key}" value="${key}" style="width:12px;height:12px"> ${d}
+                  </label>`;
+                }).join('')}
+              </div>
             </div>
             <div class="fgroup" id="tf-custom-days-wrap" style="display:none">
               <label class="flabel">Every how many days?</label>
@@ -5212,8 +5435,10 @@ function renderTasksSection(){
 }
 
 function renderTaskCard(t, today){
+  const TASK_DAY_NAMES={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
   const isOpen=ui_openTasks.has(t.id);
-  const isOverdue=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred';
+  // Recurring tasks never show as overdue — they recur on their own schedule
+  const isOverdue=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred'&&!t.isRecurring;
   const isCarried=t.carriedForward&&t.taskStatus!=='done';
   const createdDate=new Date(t.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 
@@ -5235,12 +5460,30 @@ function renderTaskCard(t, today){
   else if(isCarried){ sbCls+='tsb-carried'; sbTxt='🔁 Carried'; }
   else { sbCls+='tsb-pending'; sbTxt='⏳ Pending'; }
 
-  // Deadline info
+  // Build recurring schedule label
+  let recurSchedule='';
+  if(t.isRecurring){
+    const TASK_DAY_NAMES2={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
+    if(t.recurFreq==='weekly'&&(t.recurDaysOfWeek||[]).length){
+      recurSchedule='every '+t.recurDaysOfWeek.map(d=>TASK_DAY_NAMES2[d]||d).join(' / ');
+    } else if(t.recurFreq==='daily'){
+      recurSchedule='every day';
+    } else if(t.recurFreq==='monthly'){
+      recurSchedule='every month';
+    } else if(t.recurFreq==='custom'&&t.recurDays){
+      recurSchedule='every '+t.recurDays+'d';
+    } else {
+      recurSchedule=t.recurLabel||t.recurFreq||'recurring';
+    }
+  }
+
+  // Deadline info — recurring tasks show schedule instead of overdue
   let deadlineChip='';
   if(t.deadline_date){
     const diff=new Date(t.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
     const days=Math.round(diff/86400000);
-    if(t.taskStatus==='done') deadlineChip=`<span class="task-chip">Deadline was ${t.deadline_date}</span>`;
+    if(t.taskStatus==='done') deadlineChip=`<span class="task-chip">Done ${t.deadline_date}</span>`;
+    else if(t.isRecurring) deadlineChip=''; // recurring: schedule shown in recurBadge instead
     else if(days<0) deadlineChip=`<span class="task-chip overdue-chip">⚠ Overdue by ${Math.abs(days)}d</span>`;
     else if(days===0) deadlineChip=`<span class="task-chip overdue-chip">⚠ Due today</span>`;
     else deadlineChip=`<span class="task-chip">📅 Due in ${days}d (${t.deadline_date})</span>`;
@@ -5249,7 +5492,7 @@ function renderTaskCard(t, today){
   const carriedChip=isCarried?`<span class="task-chip" style="color:var(--carry)">🔁 Carried ${t.carriedDays||1}d from ${t.carriedFromDate}</span>`:'';
   const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>`:'';
 
-  const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${t.recurLabel||t.recurFreq||'recurring'}</span>`:'';
+  const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${recurSchedule}</span>`:'';
   return`<div class="${cardCls}" data-id="${t.id}">
   <div class="task-top" onclick="toggleTaskOpen('${t.id}')">
     <div style="flex:1;min-width:0">
@@ -5374,11 +5617,13 @@ function editNote(id){
   ui_noteForm=true;
   render();
   setTimeout(()=>{
+    const h=document.getElementById('nf-headline');
     const t=document.getElementById('nf-text');
     const d=document.getElementById('nf-deadline');
+    if(h) h.value=note.headline||'';
     if(t) t.value=note.text||'';
     if(d) d.value=note.deadline_date||'';
-    t?.focus();
+    h?.focus();
   },60);
 }
 
@@ -5472,14 +5717,15 @@ function toggleNotesResolved(){
 }
 function submitNoteForm(){
   const g=id=>(document.getElementById(id)||{}).value||'';
+  const headline=g('nf-headline').trim();
   const text=g('nf-text').trim();
-  if(!text){ toast('Enter a note'); return; }
+  if(!headline){ toast('Enter a headline'); return; }
   if(ui_editNoteId){
-    updateNote(ui_editNoteId, { text, deadline_date:g('nf-deadline') });
+    updateNote(ui_editNoteId, { headline, text, deadline_date:g('nf-deadline') });
     toast('Note updated ✓');
     ui_editNoteId=null;
   } else {
-    addNote({ text, deadline_date:g('nf-deadline') });
+    addNote({ headline, text, deadline_date:g('nf-deadline') });
     toast('Note added ✓');
   }
   ui_noteForm=false;
@@ -5727,6 +5973,19 @@ function renderMeetingCard(m){
   const isOpen=ui_openMeetings.has(m.id);
   const timeStr=m.time?m.time:'—';
   const dateStr2=m.date?new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';
+  // For recurring meetings, build a "every Monday/Tue/Wed" label
+  const DAY_NAMES={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
+  const recurDayLabel=m.isRecurring&&m.recurFreq==='weekly'&&(m.recurDaysOfWeek||[]).length
+    ? 'every '+m.recurDaysOfWeek.map(d=>DAY_NAMES[d]||d).join(' / ')
+    : m.isRecurring&&m.recurFreq==='daily'?'every day'
+    : m.isRecurring&&m.recurFreq==='custom'&&m.recurDays?'every '+m.recurDays+'d':'';
+  // Build IST time for display
+  const timeIST=m.time?ukToIST(m.time):'';
+  const timeUKLabel=m.time?(m.time+' '+ukLabel()):'';
+  const timeISTLabel=timeIST?(timeIST+' IST'):'';
+  const recurTimeStr=m.isRecurring&&recurDayLabel
+    ? [timeUKLabel,timeISTLabel].filter(Boolean).join(' / ')+' '+recurDayLabel
+    : '';
   const stCls=m.status==='done'?'mc-done':m.status==='cancelled'?'mc-cancelled':'';
   const stBadge=m.status==='done'?'msb-done':m.status==='cancelled'?'msb-cancelled':'msb-scheduled';
   const stLabel=m.status==='done'?'✅ Done':m.status==='cancelled'?'🚫 Cancelled':'📅 Scheduled';
@@ -5737,33 +5996,27 @@ function renderMeetingCard(m){
   const editingRemarkId=ui_editMeetingRemarkId[m.id];
 
   return`<div class="meeting-card ${stCls}" data-id="${m.id}">
-  <div class="meeting-top" onclick="ui_openMeetings.has('${m.id}')?ui_openMeetings.delete('${m.id}'):ui_openMeetings.add('${m.id}');render()">
+  <div class="meeting-top" onclick="toggleMeetingOpen('${m.id}')">
     <div class="meeting-time-block">
-      <div class="meeting-time-hr">${esc(timeStr)}</div>
-      <div class="meeting-time-date">${dateStr2}</div>
+      <div class="meeting-time-hr">${m.isRecurring&&recurDayLabel?(m.time?esc(m.time):'🔁'):esc(timeStr)}</div>
+      <div class="meeting-time-date">${m.isRecurring&&recurDayLabel?'recurring':dateStr2}</div>
     </div>
     <div class="meeting-title-wrap">
-      <div class="meeting-name">${esc(m.name||'Untitled')}</div>
-      <div class="meeting-meta">${pCount?pCount+' participant'+(pCount>1?'s':''):''}${pCount&&m.venue?' · ':''}${m.venue?esc(m.venue.replace(/^https?:\/\//,'').slice(0,40)):''}</div>
+      <div class="meeting-name">${esc(m.name||'Untitled')}${m.isRecurring?` <span class="recurring-badge" style="font-size:9px;vertical-align:middle">🔁</span>`:''}</div>
+      <div class="meeting-meta">${m.isRecurring&&recurDayLabel?esc(recurTimeStr):(pCount?pCount+' participant'+(pCount>1?'s':''):'')+(pCount&&m.venue?' · ':'')+( m.venue?esc(m.venue.replace(/^https?:\/\//,'').slice(0,40)):'')}</div>
     </div>
     <button class="btn btn-ghost btn-xs btn-danger" style="flex-shrink:0;padding:3px 7px" onclick="event.stopPropagation();if(confirm('Delete this meeting?'))deleteMeeting('${m.id}')" title="Delete">🗑</button>
     <span class="meeting-status-badge ${stBadge}">${stLabel}</span>
-    <span class="chevron${isOpen?' open':''}" style="margin-left:4px">▾</span>
+    <span class="chevron${isOpen?' open':''}" id="mc-chev-${m.id}" style="margin-left:4px">▾</span>
   </div>
-  <div class="meeting-body${isOpen?' open':''}">
+  <div class="meeting-body${isOpen?' open':''}" id="mb-${m.id}">
     <div class="card-fields" style="margin-top:8px">
       ${m.date?`<div><div class="cfield-label">Date</div><div class="cfield-value">${new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`:''}
       ${m.time?`<div><div class="cfield-label">Time</div><div class="cfield-value">${esc(m.time)}</div></div>`:''}
       ${m.agenda?`<div style="grid-column:1/-1"><div class="cfield-label">Agenda</div><div class="cfield-value" style="white-space:pre-wrap">${esc(m.agenda)}</div></div>`:''}
       ${m.venue?`<div><div class="cfield-label">Venue</div><div class="cfield-value">${venueIsLink?`<a href="${esc(m.venue)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent)">🔗 Open link</a>`:venueMapLink?`${esc(m.venue)} <a href="${venueMapLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);margin-left:6px;font-size:11px">📍 Map</a>`:esc(m.venue)}</div></div>`:''}
       ${m.reminder&&m.reminder!=='off'?`<div><div class="cfield-label">Reminder</div><div class="cfield-value">⏰ ${esc(m.reminder)}${m.reminderNote?' — '+esc(m.reminderNote):''}</div></div>`:''}
-      ${m.isRecurring?`<div><div class="cfield-label">Recurrence</div><div class="cfield-value">🔁 ${
-        m.recurFreq==='weekly'&&m.recurDaysOfWeek?.length
-          ? 'Weekly on '+m.recurDaysOfWeek.map(d=>d.charAt(0).toUpperCase()+d.slice(1)).join(', ')
-          : m.recurFreq==='custom'
-          ? 'Every '+m.recurDays+'d'
-          : 'Daily'
-      }</div></div>`:''}
+      ${m.isRecurring?`<div><div class="cfield-label">Recurrence</div><div class="cfield-value">🔁 ${recurTimeStr||recurDayLabel||'Recurring'}</div></div>`:''}
     </div>
     ${(m.participants||[]).length?`<div style="margin-top:10px">
       <div class="cfield-label" style="margin-bottom:5px">Participants</div>
@@ -5822,7 +6075,9 @@ function renderMeetingsSection(){
   const activeCount=meetings.filter(m=>m.status!=='done'&&m.status!=='cancelled').length;
 
   let body=`<div id="meetings-section">`;
-  body+=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+  body+=`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+    <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
+    <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
     <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add Meeting</button>
   </div>`;
   if(ui_meetingForm) body+=renderMeetingForm();
@@ -5860,7 +6115,11 @@ function renderRemarksAccordion(){
     body+=`<div class="note-add-form">
       <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
       <div class="fgroup" style="margin-bottom:8px">
-        <label class="flabel">Note *</label>
+        <label class="flabel">Headline *</label>
+        <input class="finput" id="nf-headline" placeholder="Short headline for this note…" autocomplete="off">
+      </div>
+      <div class="fgroup" style="margin-bottom:8px">
+        <label class="flabel">Note body</label>
         <textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea>
       </div>
       <div class="fgroup" style="margin-bottom:10px">
@@ -5890,6 +6149,7 @@ function renderRemarksAccordion(){
       }
       const carriedChip=n.carriedForward?`<span style="color:var(--carry);font-family:var(--mono);font-size:10px">🔁 Carried ${n.carriedDays||1}d</span>`:'';
       body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
+        ${n.headline?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px;font-family:var(--serif)">${esc(n.headline)}</div>`:''}
         <div class="note-text">${esc(n.text)}</div>
         <div class="note-meta">
           <span>🗓 ${created}</span>
@@ -5938,7 +6198,9 @@ function renderRemarksAccordion(){
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-remarks">
       <div class="sec-head">
-        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add Note</button>
+        <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
+        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add Note</button>
       </div>
       ${body}
     </div>
@@ -6043,6 +6305,13 @@ function editLeave(id){
     if(sec){const r=sec.getBoundingClientRect();if(r.top<0||r.top>window.innerHeight) sec.scrollIntoView({behavior:'smooth',block:'start'});}
   },80);
 }
+function toggleMeetingOpen(id){
+  if(ui_openMeetings.has(id)) ui_openMeetings.delete(id); else ui_openMeetings.add(id);
+  const body=document.getElementById('mb-'+id);
+  const chev=document.getElementById('mc-chev-'+id);
+  if(body) body.classList.toggle('open', ui_openMeetings.has(id));
+  if(chev) chev.classList.toggle('open', ui_openMeetings.has(id));
+}
 function toggleLeaveOpen(id){
   if(ui_openLeaves.has(id))ui_openLeaves.delete(id);else ui_openLeaves.add(id);
   const b=document.getElementById('lb-'+id),c=document.getElementById('lc-'+id);
@@ -6137,6 +6406,8 @@ function renderLeavesSection(){
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
   <div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
+    <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="ui_showLeaveSettings=!ui_showLeaveSettings;render()">⚙ Employees</button>
     <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add Leave</button>
   </div>`;
@@ -6248,17 +6519,18 @@ function renderLeaveCard(l,today,isPast){
   };
   const pFrom=fmtDateParts(l.dateFrom);
   const pTo=fmtDateParts(l.dateTo);
-  const colStyle='display:grid;grid-template-columns:2.2ch 3.2ch 4.2ch 1fr;gap:0 7px;font-family:var(--mono);font-size:11.5px;color:var(--text2);flex:1;row-gap:4px;min-width:0;';
-  const dateGrid=`<div style="${colStyle}">
-    <span style="text-align:right">${pFrom.day}</span><span>${pFrom.month}</span><span>${pFrom.year}</span><span class="hide-mobile">${pFrom.weekday}</span>
-    <span style="text-align:right">${pTo.day}</span><span>${pTo.month}</span><span>${pTo.year}</span><span class="hide-mobile">${pTo.weekday}</span>
+  // Single grid: day | month | year | weekday(desktop only)
+  // Each row is one date; columns align vertically across both rows
+  const dateGrid=`<div class="leave-date-grid" style="display:grid;grid-template-columns:2.2ch 3.2ch 4.2ch auto;gap:0 8px;font-family:var(--mono);font-size:11.5px;color:var(--text2);flex:1;row-gap:5px;min-width:0;align-items:baseline">
+    <span style="text-align:right;font-weight:600">${pFrom.day}</span><span>${pFrom.month}</span><span>${pFrom.year}</span><span class="leave-weekday-col" style="color:var(--text3)">${pFrom.weekday}</span>
+    <span style="text-align:right;font-weight:600">${pTo.day}</span><span>${pTo.month}</span><span>${pTo.year}</span><span class="leave-weekday-col" style="color:var(--text3)">${pTo.weekday}</span>
   </div>`;
   const cardCls='leave-card'+(l.status==='approved'?' lc-approved':l.status==='pending'?' lc-pending':'')+(isPast?' lc-past':'')+(isOnLeave?' lc-today':'');
   return`<div class="${cardCls}" data-id="${l.id}">
   <div class="leave-top" onclick="toggleLeaveOpen('${l.id}')" style="flex-wrap:wrap;row-gap:5px">
     <span class="leave-employee" style="min-width:100px;max-width:130px;overflow:hidden;text-overflow:ellipsis;flex-shrink:0">${esc(l.employeeName||'Unknown')}</span>
     ${dateGrid}
-    <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;flex-shrink:0;width:100%;padding-left:0" class="leave-badges-row">
+    <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;flex-shrink:0;padding-left:0" class="leave-badges-row">
       <span class="leave-type-badge ${typeInfo.cls}">${typeInfo.label}</span>
       <span class="leave-status-badge ${l.status==='approved'?'lsb-approved':'lsb-pending'}">${l.status==='approved'?'✓ Approved':'⏳ Pending'}</span>
       <span class="leave-duration">${durationLabel}</span>
@@ -6310,16 +6582,20 @@ function renderUpcomingRow(sec,s,archKey){
   const sbL=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In Progress':s.status==='completed'?'Completed':s.status==='on-hold'?'On Hold':s.status==='passed'||s.status==='not-done'?'Passed':s.status==='postponed'?'Postponed':s.status==='shelved'?'Shelved':'';
   const sbC=s.status==='urgent'?'sb-urgent':s.status==='in-progress'?'sb-in-progress':s.status==='completed'?'sb-completed':s.status==='on-hold'?'sb-on-hold':s.status==='passed'||s.status==='not-done'?'sb-not-done':s.status==='postponed'?'sb-postponed':s.status==='shelved'?'sb-shelved':'sb-not-started';
 
-  // Due chip
+  // Due chip — prefer deadline_date for overdue calculation; fall back to expected_date
   let dueChip='';
-  if(s.expected_date && !isExpired){
-    const diff=new Date(s.expected_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
+  const deadlineRef=s.deadline_date||s.expected_date;
+  const expectedRef=s.expected_date;
+  if(expectedRef && !isExpired){
+    const diff=new Date(expectedRef+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
     const days=Math.round(diff/86400000);
     if(days===0)      dueChip=`<span class="uc-chip uc-chip-due">📅 Today</span>`;
     else if(days>0)   dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
-  } else if(isExpired && s.expected_date){
-    const diff=Math.round((new Date(today+'T00:00:00').getTime()-new Date(s.expected_date+'T00:00:00').getTime())/86400000);
-    dueChip=`<span class="uc-chip uc-chip-overdue">📁 ${diff}d ago</span>`;
+  } else if(isExpired && deadlineRef){
+    // Count overdue from deadline_date if set, else expected_date
+    const overRef=s.deadline_date||s.expected_date;
+    const diff=Math.round((new Date(today+'T00:00:00').getTime()-new Date(overRef+'T00:00:00').getTime())/86400000);
+    dueChip=`<span class="uc-chip uc-chip-overdue">⚠ ${diff}d overdue</span>`;
   }
 
   // Border class
@@ -6340,15 +6616,15 @@ function renderUpcomingRow(sec,s,archKey){
   <div class="uc-top" onclick="toggleCard('${s.id}')">
     <span class="uc-expand-icon${isOpen?' open':''}">▶</span>
     <div style="flex:1;min-width:0">
-      <div class="uc-title${isExpired?' uc-title-past':''}">${esc(s.title||'Untitled')}</div>
-      ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font)">${esc((s.detail||s.correspondent||'').split('\n')[0].slice(0,80))}</div>`:''}
+      <div class="uc-title${(isExpired||isCompleted)?' uc-title-past':''}" style="${isCompleted?'text-decoration:line-through;opacity:.6;':''}}">${esc(s.title||'Untitled')}</div>
+      ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font);line-height:1.4">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
     </div>
     <div class="uc-meta-line">
       ${s.expected_date?`<span class="uc-chip">${esc(s.expected_date)}${typeLabel}</span>`:''}
       ${dueChip}
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
+      ${isCompleted&&s.completedOn?`<span class="uc-chip" style="color:var(--done);font-size:10px">✅ ${new Date(s.completedOn).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>`:''}
     </div>
-    <button class="btn btn-ghost btn-xs btn-danger" style="flex-shrink:0;padding:3px 7px" onclick="event.stopPropagation();confirmDelete('${sec}','${s.id}',${archKeyJS})" title="Delete">🗑</button>
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}" style="display:none"></span>
   </div>
   <div class="uc-body${isOpen?' open':''}" id="cb-${s.id}">
