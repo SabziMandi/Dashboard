@@ -135,9 +135,9 @@ body {
   padding: 10px 22px; flex-wrap: wrap;
 }
 .wordmark {
-  font-family: var(--serif); font-size: 19px; font-weight: 700;
+  font-family: var(--serif); font-size: 26px; font-weight: 700;
   color: var(--text); white-space: nowrap; flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px; letter-spacing: -.3px;
+  display: flex; align-items: center; gap: 8px; letter-spacing: -.4px;
 }
 .wordmark-dot {
   width: 9px; height: 9px; border-radius: 50%;
@@ -287,10 +287,10 @@ body {
 .date-full {
   font-family: var(--serif); font-weight: 700;
   color: var(--text); letter-spacing: -.3px; line-height: 1.1;
-  font-size: 24px;
+  font-size: 20px;
 }
-.date-full.sz-today  { font-size: 24px; }
-.date-full.sz-normal { font-size: 24px; }
+.date-full.sz-today  { font-size: 20px; }
+.date-full.sz-normal { font-size: 20px; }
 .date-full.mode-archive  { color: var(--text); }
 .date-full.mode-tomorrow { color: var(--text); }
 .date-context {
@@ -374,7 +374,7 @@ body {
 /* ══════════════════════════════════
    CONTENT
 ══════════════════════════════════ */
-.content { padding: 20px 22px; max-width: 1080px; margin: 0 auto; }
+.content { padding: 20px 22px; max-width: 1100px; margin: 0 auto; }
 
 /* ══════════════════════════════════
    CARRY / INFO BANNERS
@@ -1179,48 +1179,80 @@ button.tasks-tab-btn {
 
 <header class="app-header">
   <div class="header-row1">
-    <!-- Desktop layout: wordmark + search + actions all in one row -->
-    <div class="wordmark hide-mobile" onclick="goHome()" style="cursor:pointer" title="Go to Today"><span class="wordmark-dot"></span>BBC Dashboard</div>
-    <input class="header-search desktop-search hide-mobile" id="search-input" type="search" placeholder="Search title, correspondent, producer, shoot-edit, location, remarks…" oninput="onSearch(this.value)">
-    <div class="header-actions hide-mobile">
-      <div class="sync-chip" id="sync-chip" onclick="openSyncModal()">
-        <span class="sync-dot dot-local" id="sync-dot"></span>
-        <span id="sync-label">Local only</span>
+    <!-- Desktop layout: 3 rows -->
+    <!-- Row 1: BBC Dashboard centred alone -->
+    <div class="hide-mobile" style="display:flex;align-items:center;justify-content:center;width:100%;padding:13px 22px 11px;box-sizing:border-box;border-bottom:1px solid var(--border);">
+      <div class="wordmark" onclick="goHome()" style="cursor:pointer" title="Go to Today"><span class="wordmark-dot"></span>BBC Dashboard</div>
+    </div>
+    <!-- Row 2: + · weekday+date (centred) · search icon -->
+    <div class="hide-mobile" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 22px 10px;box-sizing:border-box;background:linear-gradient(135deg,#FDFAF6,#F8F3EC);">
+      <button class="btn btn-ghost btn-sm" onclick="openDesktopMore()" title="Actions" style="padding:4px 10px;font-size:18px;line-height:1;flex-shrink:0;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">+</button>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div class="date-context" id="hdr-context" style="font-family:var(--serif);font-size:12px;font-weight:400;color:var(--text3);letter-spacing:.1px;">Wednesday</div>
+        <div class="date-full sz-today" id="hdr-date" style="font-family:var(--serif);font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.3px;line-height:1.1;">16 April 2026</div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTxt()">⬇ Export .txt</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportJSON()" title="Save all your data as a backup file you can re-import">⬇ Export data</button>
-      <button class="btn btn-ghost btn-sm" onclick="openImportDialog()" title="Restore data from a previously exported file">⬆ Import data</button>
-      <button class="btn btn-ghost btn-sm" onclick="openStaffSettings()" title="Edit correspondent, producer and shoot-edit names">👥 Staff</button>
-      <button class="btn btn-ghost btn-sm" onclick="doEmailAll()">✉ Email All</button>
-      <button class="btn btn-ghost btn-sm" onclick="openBackupsPanel()" title="View and download backups">💾 Backups</button>
+      <button class="btn btn-ghost btn-sm" id="desktop-search-btn" onclick="toggleDesktopSearch()" title="Search" style="padding:4px 10px;font-size:15px;line-height:1;flex-shrink:0;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">🔍</button>
+    </div>
+    <!-- Row 3: ‹ Yesterday · Jump to date · Tomorrow › -->
+    <div class="hide-mobile" id="hdr-nav-row" style="display:flex;align-items:center;justify-content:center;padding:7px 0 8px;background:linear-gradient(135deg,#FDFAF6,#F8F3EC);border-top:1px solid var(--border);"><div style="display:flex;align-items:center;gap:6px;margin:0 auto;">
+      <span style="font-size:26px;font-weight:700;color:var(--text);padding:0 4px;cursor:pointer;line-height:1;font-family:var(--font)" onclick="desktopNavDate(-1)" title="Previous day">&#8249;</span>
+      <button class="btn btn-ghost btn-sm" onclick="setView('archive',yesterdayStr())" style="font-size:11.5px;padding:3px 14px;border-radius:20px;">Yesterday</button>
+      <div style="position:relative;display:flex;align-items:center;">
+        <div style="font-size:11.5px;padding:3px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;" onclick="document.getElementById('date-jump-picker').showPicker?document.getElementById('date-jump-picker').showPicker():document.getElementById('date-jump-picker').click()">📅 Jump to date</div>
+        <input type="date" id="date-jump-picker" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;" title="Jump to any date" onchange="jumpToDate(this.value)">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="setView('archive',tomorrowStr())" style="font-size:11.5px;padding:3px 14px;border-radius:20px;">Tomorrow</button>
+      <span style="font-size:26px;font-weight:700;color:var(--text);padding:0 4px;cursor:pointer;line-height:1;font-family:var(--font)" onclick="desktopNavDate(1)" title="Next day">&#8250;</span>
+    </div></div>
+    <!-- Desktop search bar (hidden by default, opens as row 4) -->
+    <div class="hide-mobile" id="desktop-search-bar" style="display:none;border-top:1px solid var(--border);background:var(--surface2);padding:8px 22px 0;">
+      <input class="header-search" id="search-input" type="search" placeholder="Search title, correspondent, producer, shoot-edit, location, remarks…" oninput="onSearch(this.value)" autocomplete="off" style="width:100%">
+      <div style="display:flex;gap:6px;padding:6px 0 8px;flex-wrap:wrap;align-items:center;">
+        <span class="filter-label">Filter:</span>
+        <button class="fpill fa" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('urgent',this)">🔴 Urgent</button>
+        <button class="fpill" onclick="setFilter('in-progress',this)">🟡 In Progress</button>
+        <button class="fpill" onclick="setFilter('completed',this)">🟢 Done</button>
+        <button class="fpill" onclick="setFilter('on-hold',this)">🟣 On Hold</button>
+        <button class="fpill" onclick="setFilter('not-done',this)">⚫ Not Done</button>
+        <button class="fpill" onclick="setFilter('postponed',this)">🔵 Postponed</button>
+        <button class="fpill" onclick="setFilter('working',this)">▶ Working</button>
+        <button class="fpill" onclick="setFilter('watching',this)">👁 Watching</button>
+        <span class="live-clock" id="live-clock"></span>
+      </div>
     </div>
     <!-- Mobile layout -->
-    <div class="mobile-title-bar">
-      <!-- + button (More options) -->
-      <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" aria-label="More options">+</button>
-      <!-- Centred wordmark -->
+    <!-- Row 1: BBC Dashboard centred, alone -->
+    <div class="mobile-title-bar" style="justify-content:center;border-bottom:0.5px solid var(--border);">
       <div class="mobile-wordmark" onclick="goHome()" title="Go to Today">
         <span class="wordmark-dot"></span>BBC Dashboard
       </div>
-      <!-- Search icon -->
-      <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" aria-label="Search">🔍</button>
     </div>
-    <!-- Collapsible block: date nav + leave row -->
+    <!-- Collapsible block: row2 (+ date search) + leave row -->
     <div class="mobile-collapsible" id="mobile-collapsible">
-      <div class="mobile-date-nav">
-        <button class="m-nav-arrow" onclick="mobileNavDate(-1)" aria-label="Previous day">&#8249;</button>
-        <span class="m-date-label" id="mobile-date-label" onclick="openMobileDatePicker()">Wednesday, 16 Apr</span>
-        <button class="m-nav-arrow" onclick="mobileNavDate(1)" aria-label="Next day">&#8250;</button>
+      <!-- Row 2: + | ‹ date › | search -->
+      <div class="mobile-date-nav" style="padding:6px 12px;display:flex;align-items:center;gap:0;">
+        <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" style="flex-shrink:0;margin-right:4px;">+</button>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:0;">
+          <span class="m-arrow" onclick="mobileNavDate(-1)" style="font-size:20px;color:var(--text3);padding:0 10px;cursor:pointer;line-height:1;">‹</span>
+          <span class="m-date-label" id="mobile-date-label" onclick="openMobileDatePicker()">Wednesday, 16 Apr</span>
+          <span class="m-arrow" onclick="mobileNavDate(1)" style="font-size:20px;color:var(--text3);padding:0 10px;cursor:pointer;line-height:1;">›</span>
+        </div>
+        <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" style="flex-shrink:0;margin-left:4px;font-size:15px;">🔍</button>
       </div>
       <div class="mobile-leave-row" id="mobile-leave-row" style="display:none"></div>
     </div>
     <!-- Collapsed date bar (shown when scrolled) -->
     <div class="mobile-collapsed-bar" id="mobile-collapsed-bar">
-      <button class="m-nav-arrow" onclick="mobileNavDate(-1)" aria-label="Previous day">&#8249;</button>
-      <span class="m-collapsed-date" id="mobile-collapsed-date-label" onclick="openMobileDatePicker()">Wed, 16 Apr</span>
-      <button class="m-nav-arrow" onclick="mobileNavDate(1)" aria-label="Next day">&#8250;</button>
+      <button class="mobile-icon-btn" onclick="openMobileMore()" style="flex-shrink:0;font-size:16px;">+</button>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:0;">
+        <span style="font-size:18px;color:var(--text3);padding:0 8px;cursor:pointer;" onclick="mobileNavDate(-1)">‹</span>
+        <span class="m-collapsed-date" id="mobile-collapsed-date-label" onclick="openMobileDatePicker()">Wed, 16 Apr</span>
+        <span style="font-size:18px;color:var(--text3);padding:0 8px;cursor:pointer;" onclick="mobileNavDate(1)">›</span>
+      </div>
+      <button class="mobile-icon-btn" id="mobile-search-btn-collapsed" onclick="toggleMobileSearch()" style="flex-shrink:0;font-size:15px;">🔍</button>
     </div>
-    <!-- Search section (shown when 🔍 tapped) -->
+    <!-- Search section (shown when 🔍 tapped) — always below collapsible -->
     <div class="mobile-search-section" id="mobile-search-section">
       <input class="header-search" id="search-input-mobile" type="search" placeholder="Search stories, people, remarks…" oninput="onSearch(this.value)" autocomplete="off">
       <div class="mobile-filter-pills" id="mobile-filter-pills">
@@ -1235,54 +1267,14 @@ button.tasks-tab-btn {
         <button class="fpill" id="mfpill-watching" onclick="mobileSetFilter('watching',this)">👁 Watching</button>
       </div>
     </div>
-    <!-- Hidden date picker for tap-on-date -->
+    <!-- Hidden date picker -->
     <input type="date" id="mobile-date-picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0" onchange="jumpToDate(this.value)">
   </div>
-  <div class="header-collapsible" id="header-collapsible">
-    <div class="date-nav-row">
-      <div class="date-display">
-        <div class="date-main">
-          <div class="date-weekday" id="hdr-weekday">MONDAY</div>
-          <div class="date-full sz-today" id="hdr-date">16 March 2026</div>
-          <div class="date-context"  id="hdr-context">Today's working board</div>
-        </div>
-        <div class="date-nav-btns" style="flex-direction:column;align-items:flex-end;gap:6px">
-          <div style="display:flex;gap:7px">
-            <button class="btn btn-ghost btn-sm" onclick="snapshotToday()">📸 Snapshot</button>
-            <button class="btn btn-ghost btn-sm" onclick="setView('migrate',null)">⇄ Migrate</button>
-          </div>
-          <div id="onleave-pill-wrap" style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"></div>
-        </div>
-      </div>
-      <div class="date-strip-outer">
-        <div class="date-strip" id="date-strip"></div>
-        <div style="flex-shrink:0;margin-left:10px;display:flex;align-items:center;gap:6px">
-          <input type="date" id="date-jump-picker"
-            style="font-family:var(--mono);font-size:11.5px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text2);cursor:pointer;outline:none"
-            title="Jump to any date"
-            onchange="jumpToDate(this.value)">
-        </div>
-      </div>
-    </div>
-    <div class="filter-bar">
-      <span class="filter-label">Filter:</span>
-      <button class="fpill fa"  onclick="setFilter('all',this)">All</button>
-      <button class="fpill"     onclick="setFilter('urgent',this)">🔴 Urgent</button>
-      <button class="fpill"     onclick="setFilter('in-progress',this)">🟡 In Progress</button>
-      <button class="fpill"     onclick="setFilter('completed',this)">🟢 Done</button>
-      <button class="fpill"     onclick="setFilter('on-hold',this)">🟣 On Hold</button>
-      <button class="fpill"     onclick="setFilter('not-done',this)">⚫ Not Done</button>
-      <button class="fpill"     onclick="setFilter('postponed',this)">🔵 Postponed</button>
-      <button class="fpill"     onclick="setFilter('working',this)">▶ Working</button>
-      <button class="fpill"     onclick="setFilter('watching',this)">👁 Watching</button>
-      <span class="live-clock" id="live-clock"></span>
-    </div>
-  </div>
-  <!-- Slim bar shown when header is collapsed — tap to expand -->
-  <div class="header-slim-bar" id="header-slim-bar" onclick="expandHeader()">
-    <span id="slim-bar-date" style="font-weight:600;color:var(--text2);font-size:12px"></span>
-    <span style="font-size:10px;color:var(--text3)">tap to expand header</span>
-  </div>
+  <!-- date-strip (desktop only, hidden visually, kept for renderDateStrip logic) -->
+  <div id="date-strip" style="display:none"></div>
+  <!-- on-leave pill (desktop) -->
+  <div id="onleave-pill-wrap" class="hide-mobile" style="display:flex;gap:5px;flex-wrap:wrap;padding:4px 22px 6px;max-width:1144px;margin:0 auto;box-sizing:border-box"></div>
+
 </header>
 
 <main id="main-content"></main>
@@ -2868,7 +2860,7 @@ function storyToText(s){
     let l=s.location||''; if(s.field_location) l=(l?l+' — ':'')+s.field_location;
     ln.push('  Location      : '+l);
   }
-  if(s.live_type) ln.push('  Live Type     : '+(s.live_type==='nonibu'?'Non-IBU':'IBU'));
+  if(s.story_type) ln.push('  Story Type    : '+s.story_type.toUpperCase());
   if(s.broadcast_times&&s.broadcast_times.length){
     s.broadcast_times.forEach((t,i)=>{
       const plat=t.plat||t.lbl||('Live '+(i+1));
@@ -3216,6 +3208,35 @@ function meetingToText(m){
   if((m.remarks||[]).length){ ln.push('  Remarks:'); m.remarks.forEach(r=>ln.push('    - '+r.text)); }
   return ln.join('\n');
 }
+
+function taskToText(t){
+  const ln=[];
+  ln.push((t.title||'Untitled').toUpperCase());
+  if(t.deadline_date) ln.push('  Deadline : '+t.deadline_date+(t.deadline_time?' '+t.deadline_time:''));
+  ln.push('  Status   : '+t.taskStatus);
+  if(t.notes) ln.push('  Notes    : '+t.notes);
+  if(t.isRecurring) ln.push('  Recurs   : '+(t.recurDaysOfWeek?.length?'every '+t.recurDaysOfWeek.join('/'):(t.recurFreq||'recurring')));
+  return ln.join('\n');
+}
+function doEmailTasks(){
+  const tasks=state.tasks||[];
+  if(!tasks.length){ toast('No tasks to email'); return; }
+  const lines=['TASKS','─'.repeat(44),''];
+  tasks.forEach(t=>{lines.push(taskToText(t));lines.push('');});
+  sendMailto('[BBC Dashboard] Tasks — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+}
+function doExportTasksTxt(){
+  const tasks=state.tasks||[];
+  if(!tasks.length){ toast('No tasks to export'); return; }
+  const lines=['TASKS','─'.repeat(48),''];
+  tasks.forEach(t=>{lines.push(taskToText(t));lines.push('');});
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='tasks-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('Tasks exported ✓');
+}
+
 function doEmailMeetings(){
   const meetings=state.meetings||[];
   if(!meetings.length){ toast('No meetings to email'); return; }
@@ -3300,6 +3321,18 @@ function doExportLeavesTxt(){
   toast('Leaves exported ✓');
 }
 
+function doExportSectionTxt(sec,archKey){
+  const name=secName(sec);
+  const stories=archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[];
+  const hr='─'.repeat(48);
+  const lines=[name.toUpperCase(),hr,''];
+  stories.forEach(s=>{lines.push(storyToText(s));lines.push('');});
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=sec+'-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast(name+' exported ✓');
+}
 function doEmailSection(sec,archKey){
   const meta=SECTIONS.find(s=>s.key===sec);
   const name=secName(sec);
@@ -3506,49 +3539,40 @@ function setView(view,archiveKey){
 }
 function updateDateHeader(){
   const now=new Date();
-  const wdEl=document.getElementById('hdr-weekday');
   const hdEl=document.getElementById('hdr-date');
   const ctEl=document.getElementById('hdr-context');
-  if(!wdEl) return;
+  if(!hdEl) return;
   if(ui.view==='today'){
-    wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
     hdEl.textContent=now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
     hdEl.className='date-full sz-today';
-    ctEl.textContent="Today's working board";
+    ctEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'});
   } else if(ui.view==='archive'&&ui.archiveKey){
     const key=ui.archiveKey;
     const isYest=key===yesterdayStr(), isTomm=key===tomorrowStr();
-    wdEl.textContent=isYest?'YESTERDAY':isTomm?'TOMORROW':key.startsWith('week-')?'WEEK ARCHIVE':key.startsWith('month-')?'MONTH ARCHIVE':'ARCHIVE';
     hdEl.textContent=archiveLabel(key);
     hdEl.className='date-full sz-normal'+(isTomm?' mode-tomorrow':' mode-archive');
     const cnt=archiveStoryCount(key);
-    ctEl.textContent=(isYest?'Yesterday\'s board':isTomm?'Tomorrow — pre-planning':'Archive entry')+' · '+cnt+' stories';
+    const d2=new Date((key.startsWith('week-')?key.slice(5):key.startsWith('month-')?key.slice(6)+'-01':key)+'T00:00:00'); ctEl.textContent=d2.toLocaleDateString('en-GB',{weekday:'long'});
   } else if(ui.view==='migrate'){
-    wdEl.textContent='MIGRATE STORIES';
     hdEl.textContent='Move or Copy to Archive';
     hdEl.className='date-full sz-normal';
     ctEl.textContent='Select stories → pick destination';
   } else if(ui.view==='tasks'){
-    wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
     hdEl.textContent='Tasks';
     hdEl.className='date-full sz-normal';
     ctEl.textContent='Your task list';
   } else if(ui.view==='leaves'){
-    wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
     hdEl.textContent='Leaves';
     hdEl.className='date-full sz-normal';
     ctEl.textContent='Staff leave tracker';
   } else if(ui.view==='upcoming'){
-    wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
     hdEl.textContent='Upcoming Events';
     hdEl.className='date-full sz-normal';
     ctEl.textContent='Future stories & events';
   } else if(ui.view==='notes'){
-    wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
     hdEl.textContent='Note'; hdEl.className='date-full sz-normal';
     ctEl.textContent='Carry-forward notes';
   } else if(ui.view==='meetings'){
-    wdEl.textContent=now.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
     hdEl.textContent='Meetings'; hdEl.className='date-full sz-normal';
     ctEl.textContent='Editorial & production meetings';
   }
@@ -3661,8 +3685,8 @@ function submitForm(sec,archKey){
       const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value?.trim()||'';
       if(uk||ist||plat||prog) broadcast_times.push({uk,ist,plat,prog,lbl:plat,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc});
     });
-    const liveTypeEl=document.querySelector(`input[name="live-type${sfx}"]:checked`);
-    const live_type=liveTypeEl?liveTypeEl.value:'';
+    const storyTypeEl=document.querySelector(`input[name="story-type${sfx}"]:checked`);
+    const story_type=storyTypeEl?storyTypeEl.value:'';
     data={
       title:         g('f-title'+sfx).trim(),
       correspondent: g('f-correspondent'+sfx).trim(),
@@ -3670,7 +3694,7 @@ function submitForm(sec,archKey){
       shoot_edit:    g('f-shoot-edit'+sfx).trim(),
       location:      g('f-location'+sfx),
       field_location:g('f-field-location'+sfx).trim(),
-      live_type,
+      story_type,
       time_uk:       broadcast_times[0]?.uk||'',
       time_ist:      broadcast_times[0]?.ist||'',
       broadcast_times,
@@ -4368,11 +4392,13 @@ function renderTodayHTML(){
   // Tasks/Meetings/Leaves/Notes are behind bottom nav tabs on mobile
   SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).forEach(sec=>{ html+=renderAccordion(sec,null); });
   html+=renderAccordion(SECTIONS.find(s=>s.isUpcoming),null);
-  html+=`<div class="hide-on-mobile-view">`;
+  // On desktop: tasks/meetings/notes/leaves in a hidden-on-mobile div
+  // On mobile: show them all inline (below upcoming) without the hide wrapper
   html+=renderTasksSection();
-  html+=renderMeetingsSection();
   html+=renderRemarksAccordion();
   html+=renderLeavesSection();
+  html+=`<div class="hide-on-mobile-view">`;
+  html+=renderMeetingsSection();
   html+=`</div>`;
   return html;
 }
@@ -4402,6 +4428,7 @@ function renderUpcomingView(){
 
     html+=`<div class="sec-head" style="margin-bottom:10px">
       <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">⬇ Export</button>
       <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
     </div>`;
 
@@ -4823,6 +4850,7 @@ function renderAccordion(sec,archKey){
       ${wwTabs}
       <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('${sec.key}',${archKeyJS});event.stopPropagation()">✉ Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('${sec.key}',${archKeyJS});event.stopPropagation()">⬇ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('${sec.key}',${archKeyJS});event.stopPropagation()">+ Add</button>
       </div>
     </div>`;
@@ -4894,6 +4922,53 @@ function toggleShowShelved(secKey){
 /* ════════════════════════════════════════
    MOBILE HEADER FUNCTIONS
 ════════════════════════════════════════ */
+
+/* ════════════════════════════════════════
+   DESKTOP HEADER FUNCTIONS
+════════════════════════════════════════ */
+function toggleDesktopSearch(){
+  const bar=document.getElementById('desktop-search-bar');
+  const btn=document.getElementById('desktop-search-btn');
+  if(!bar) return;
+  const opening=bar.style.display==='none';
+  bar.style.display=opening?'block':'none';
+  if(btn){ btn.style.background=opening?'var(--accent-bg)':''; btn.style.borderColor=opening?'var(--accent)':''; btn.style.color=opening?'var(--accent)':''; }
+  if(opening) setTimeout(()=>document.getElementById('search-input')?.focus(),60);
+  else { const si=document.getElementById('search-input'); if(si){si.value='';onSearch('');} }
+}
+function desktopNavDate(dir){
+  const cur=ui.view==='today'?todayStr():(ui.archiveKey||todayStr());
+  const nd=addDays(cur,dir);
+  if(nd===todayStr()){ setView('today',null); }
+  else {
+    if(!state.archive[nd]){ state.archive[nd]={type:'day',label:archiveLabel(nd),sections:{},notes:'',created:Date.now()}; SECTIONS.forEach(s=>{state.archive[nd].sections[s.key]=[];}); saveLocal(); }
+    setView('archive',nd);
+  }
+}
+function openDesktopMore(){
+  if(document.getElementById('desktop-more-modal')) return;
+  const m=document.createElement('div'); m.className='modal-bg'; m.id='desktop-more-modal';
+  m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:340px;padding:18px">
+    <h2 style="margin-bottom:14px">Actions</h2>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('desktop-more-modal').remove()">☁️ Sync setup</button>
+      <button class="btn btn-ghost" onclick="snapshotToday();document.getElementById('desktop-more-modal').remove()">📸 Snapshot today</button>
+      <button class="btn btn-ghost" onclick="setView('migrate',null);document.getElementById('desktop-more-modal').remove()">⇄ Migrate stories</button>
+      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('desktop-more-modal').remove()">👥 Staff names</button>
+      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('desktop-more-modal').remove()">✉ Email all</button>
+      <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('desktop-more-modal').remove()">⬇ Export data</button>
+      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('desktop-more-modal').remove()">⬆ Import data</button>
+      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('desktop-more-modal').remove()">💾 Backups</button>
+      <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('desktop-more-modal').remove()">⬇ Export .txt</button>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="document.getElementById('desktop-more-modal').remove()">Close</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
+  document.body.appendChild(m);
+}
+
 function toggleMobileSearch(){
   const sec=document.getElementById('mobile-search-section');
   const btn=document.getElementById('mobile-search-btn');
@@ -5264,6 +5339,22 @@ function toggleTaskOpen(id){
   if(body) body.classList.toggle('open',ui_openTasks.has(id));
   if(chev) chev.classList.toggle('open',ui_openTasks.has(id));
 }
+
+function onTaskDeadlineTimeChange(){
+  const v=(document.getElementById('tf-deadline-time')||{}).value;
+  if(!v) return;
+  const ist=ukToIST(v);
+  const el=document.getElementById('tf-deadline-time-ist');
+  if(el&&ist) el.value=ist;
+}
+function onTaskDeadlineISTChange(){
+  const v=(document.getElementById('tf-deadline-time-ist')||{}).value;
+  if(!v) return;
+  const uk=istToUK(v);
+  const el=document.getElementById('tf-deadline-time');
+  if(el&&uk) el.value=uk;
+}
+
 function submitTaskForm(){
   const g=id=>(document.getElementById(id)||{}).value||'';
   const isRecurring=document.getElementById('tf-recurring')?.checked||false;
@@ -5277,6 +5368,7 @@ function submitTaskForm(){
     title:        g('tf-title').trim(),
     notes:        g('tf-notes').trim(),
     deadline_date:g('tf-deadline-date'),
+    deadline_time:g('tf-deadline-time'),
     reminder:     g('tf-reminder'),
     isRecurring,
     recurFreq:    isRecurring?g('tf-recur-freq'):'',
@@ -5306,6 +5398,8 @@ function editTask(id){
     set('tf-title',task.title);
     set('tf-notes',task.notes);
     set('tf-deadline-date',task.deadline_date);
+    set('tf-deadline-time',task.deadline_time||'');
+    set('tf-deadline-time-ist',task.deadline_time?ukToIST(task.deadline_time):'');
     set('tf-reminder',task.reminder);
     const cb=document.getElementById('tf-recurring');
     if(cb){ cb.checked=!!task.isRecurring; toggleRecurringFields(); }
@@ -5448,7 +5542,12 @@ function renderTasksSection(){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-tasks">▾</span>
     </div>
-    <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">`;
+    <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">
+    ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
+    </div></div>`:''}`;
 
   // ── Archive date view (both standalone and embedded) ──────────────────────
   let html=`<div id="tasks-section" style="scroll-margin-top:180px">`;
@@ -5478,7 +5577,11 @@ function renderTasksSection(){
     });
     html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
+        <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
+      </div>
     </div>`;
     if(ui_taskForm){
       html+=`<div class="task-form" id="task-form-wrap">
@@ -5487,6 +5590,8 @@ function renderTasksSection(){
           <div class="fgroup full"><label class="flabel">Task *</label><input class="finput" id="tf-title" placeholder="What needs to be done…" autocomplete="off"></div>
           <div class="fgroup full"><label class="flabel">Notes / Detail</label><textarea class="ftextarea" id="tf-notes" placeholder="Any context or extra detail…" style="min-height:56px"></textarea></div>
           <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="tf-deadline-date"></div>
+          <div class="fgroup"><label class="flabel">Deadline Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" type="time" id="tf-deadline-time" oninput="onTaskDeadlineTimeChange()" onblur="onTaskDeadlineTimeChange()"></div>
+          <div class="fgroup"><label class="flabel">Deadline Time IST</label><input class="finput" type="time" id="tf-deadline-time-ist" oninput="onTaskDeadlineISTChange()" onblur="onTaskDeadlineISTChange()"></div>
           <div class="fgroup"><label class="flabel">Reminder</label>
             <select class="fselect" id="tf-reminder">
               <option value="off">Off</option><option value="1hr">1 hour before</option><option value="4hr">4 hours before</option><option value="1day">1 day before</option><option value="1week">1 week before</option>
@@ -5528,9 +5633,7 @@ function renderTasksSection(){
   // ── Today's tasks ─────────────────────────────────────────────────────────
   const tasks=state.tasks;
 
-  html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-    <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
-  </div>`;
+
 
   if(ui_taskForm){
     html+=`<div class="task-form" id="task-form-wrap">
@@ -5673,7 +5776,7 @@ function renderTaskCard(t, today){
     else if(t.isRecurring) deadlineChip=''; // recurring: schedule shown in recurBadge instead
     else if(days<0) deadlineChip=`<span class="task-chip overdue-chip">⚠ Overdue by ${Math.abs(days)}d</span>`;
     else if(days===0) deadlineChip=`<span class="task-chip overdue-chip">⚠ Due today</span>`;
-    else deadlineChip=`<span class="task-chip">📅 Due in ${days}d (${t.deadline_date})</span>`;
+    else { const timeStr=t.deadline_time?(' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?'/'+ukToIST(t.deadline_time)+' IST':'')):''; deadlineChip=`<span class="task-chip">📅 Due in ${days}d (${t.deadline_date}${timeStr})</span>`; }
   }
   const postponeChip=t.taskStatus==='postponed-to'&&t.postponeTo?`<span class="task-chip">⏸ Postponed to ${t.postponeTo}</span>`:'';
   const carriedChip=isCarried?`<span class="task-chip" style="color:var(--carry)">🔁 Carried ${t.carriedDays||1}d from ${t.carriedFromDate}</span>`:'';
@@ -5767,11 +5870,10 @@ function renderCombinedAccordion(archKey){
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
-      <div class="sec-head" style="flex-wrap:wrap;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Live</button>
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('other',${archKeyJS});event.stopPropagation()">✉ Other</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Live</button>
-        <button class="btn btn-ghost btn-sm" style="border-color:rgba(13,148,136,.4);color:var(--working)" onclick="toggleForm('other',${archKeyJS});event.stopPropagation()">+ Other</button>
+      <div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()">⬇ Export</button>
+        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Add Story</button>
       </div>
       ${isIBUFormOpen?renderForm('ibu',archKey):''}
       ${isOtherFormOpen?renderForm('other',archKey):''}
@@ -6028,7 +6130,7 @@ function editMeeting(id){
   render();
   setTimeout(()=>{
     const set=(eid,val)=>{ const el=document.getElementById(eid); if(el) el.value=val||''; };
-    set('mf-date', m.date); set('mf-name', m.name); set('mf-time', m.time);
+    set('mf-date', m.date); set('mf-name', m.name); set('mf-time', m.time); set('mf-time-ist', m.time?ukToIST(m.time):'');
     set('mf-status', m.status||'scheduled'); set('mf-agenda', m.agenda||'');
     set('mf-venue', m.venue||''); set('mf-reminder', m.reminder||'off');
     set('mf-reminder-note', m.reminderNote||'');
@@ -6068,6 +6170,22 @@ function addParticipantRow(name='', isExternal=false){
     <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="this.parentElement.remove()" style="flex-shrink:0">✕</button>`;
   wrap.appendChild(div);
 }
+
+function onMeetingTimeChange(){
+  const v=(document.getElementById('mf-time')||{}).value;
+  if(!v) return;
+  const ist=ukToIST(v);
+  const istEl=document.getElementById('mf-time-ist');
+  if(istEl&&ist) istEl.value=ist;
+}
+function onMeetingTimeISTChange(){
+  const v=(document.getElementById('mf-time-ist')||{}).value;
+  if(!v) return;
+  const uk=istToUK(v);
+  const ukEl=document.getElementById('mf-time');
+  if(ukEl&&uk) ukEl.value=uk;
+}
+
 function toggleMeetingRecurring(){
   const cb=document.getElementById('mf-recurring');
   const fields=document.getElementById('mf-recur-fields');
@@ -6089,7 +6207,8 @@ function renderMeetingForm(){
     <div class="form-grid">
       <div class="fgroup"><label class="flabel">Meeting Name *</label><input class="finput" id="mf-name" placeholder="Morning call, Editorial standup…" autocomplete="off"></div>
       <div class="fgroup"><label class="flabel">Date *</label><input class="finput" type="date" id="mf-date" value="${today}"></div>
-      <div class="fgroup"><label class="flabel">Time</label><input class="finput" type="time" id="mf-time"></div>
+      <div class="fgroup"><label class="flabel">Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" type="time" id="mf-time" oninput="onMeetingTimeChange()" onblur="onMeetingTimeChange()"></div>
+      <div class="fgroup"><label class="flabel">Time IST</label><input class="finput" type="time" id="mf-time-ist" oninput="onMeetingTimeISTChange()" onblur="onMeetingTimeISTChange()"></div>
       <div class="fgroup"><label class="flabel">Status</label>
         <select class="fselect" id="mf-status">
           <option value="scheduled">📅 Scheduled</option>
@@ -6158,24 +6277,47 @@ function renderMeetingForm(){
 
 function renderMeetingCard(m){
   const isOpen=ui_openMeetings.has(m.id);
-  const timeStr=m.time?m.time:'—';
-  const dateStr2=m.date?new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';
-  // For recurring meetings, build a "every Monday/Tue/Wed" label
   const DAY_NAMES={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
   const recurDayLabel=m.isRecurring&&m.recurFreq==='weekly'&&(m.recurDaysOfWeek||[]).length
     ? 'every '+m.recurDaysOfWeek.map(d=>DAY_NAMES[d]||d).join(' / ')
     : m.isRecurring&&m.recurFreq==='daily'?'every day'
     : m.isRecurring&&m.recurFreq==='custom'&&m.recurDays?'every '+m.recurDays+'d':'';
-  // Build IST time for display
-  const timeIST=m.time?ukToIST(m.time):'';
-  const timeUKLabel=m.time?(m.time+' '+ukLabel()):'';
-  const timeISTLabel=timeIST?(timeIST+' IST'):'';
+  // Detect device local timezone offset vs IST
+  const devOffMin=-(new Date().getTimezoneOffset()); // device offset in mins from UTC
+  const isDevIST=devOffMin===330;
+  // Build display time in device local tz
+  function buildLocalTimeStr(ukTime){
+    if(!ukTime) return '';
+    const ukMin=ukTime.split(':').reduce((h,m,i)=>i===0?+h*60:h+(+m),0);
+    const utcMin=((ukMin-ukOffMin())+1440)%1440;
+    const localMin=(utcMin+devOffMin+1440)%1440;
+    return p2(Math.floor(localMin/60))+':'+p2(localMin%60);
+  }
+  const localTime=m.time?buildLocalTimeStr(m.time):'';
+  const localTZ=isDevIST?'IST':(ukLabel());
+  const istTime=m.time?ukToIST(m.time):'';
+  const ukDisplayTime=m.time?(m.time+' '+ukLabel()):'';
+  const istDisplayTime=istTime?(istTime+' IST'):'';
   const recurTimeStr=m.isRecurring&&recurDayLabel
-    ? [timeUKLabel,timeISTLabel].filter(Boolean).join(' / ')+' '+recurDayLabel
-    : '';
+    ? [ukDisplayTime,istDisplayTime].filter(Boolean).join(' / ')+' '+recurDayLabel
+    : [ukDisplayTime,istDisplayTime].filter(Boolean).join(' / ');
+  const dateStr2=m.date?new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';
   const stCls=m.status==='done'?'mc-done':m.status==='cancelled'?'mc-cancelled':'';
-  const stBadge=m.status==='done'?'msb-done':m.status==='cancelled'?'msb-cancelled':'msb-scheduled';
-  const stLabel=m.status==='done'?'✅ Done':m.status==='cancelled'?'🚫 Cancelled':'📅 Scheduled';
+  // Countdown chip for scheduled meetings
+  let countdownChip='';
+  if(m.status!=='done'&&m.status!=='cancelled'&&m.date){
+    const now=new Date();
+    let meetDt=new Date(m.date+'T'+(m.time||'00:00')+':00');
+    // m.time is in BST/GMT — convert to UTC
+    if(m.time){ const ukMin=m.time.split(':').reduce((h,v,i)=>i===0?+h*60:h+(+v),0); const utcMin=((ukMin-ukOffMin())+1440)%1440; const utcH=Math.floor(utcMin/60),utcM=utcMin%60; meetDt=new Date(m.date+'T'+p2(utcH)+':'+p2(utcM)+':00Z'); }
+    const diff=meetDt-now;
+    const absMins=Math.round(Math.abs(diff)/60000);
+    if(diff<0){ countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(22,163,74,.09);color:var(--done);border:1px solid rgba(22,163,74,.2)">ended</span>`; }
+    else if(absMins<60){ countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(13,148,136,.09);color:var(--working);border:1px solid rgba(13,148,136,.25)">in ${absMins}m</span>`; }
+    else if(absMins<1440){ countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(13,148,136,.09);color:var(--working);border:1px solid rgba(13,148,136,.25)">in ${Math.round(absMins/60)}h</span>`; }
+    else { const days=Math.round(absMins/1440); countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(79,70,229,.07);color:var(--week);border:1px solid rgba(79,70,229,.2)">in ${days}d</span>`; }
+  }
+  const statusChip=m.status==='done'?`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--done-bg);color:var(--done);border:1px solid rgba(22,163,74,.2)">✅ Done</span>`:m.status==='cancelled'?`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(148,163,184,.1);color:#64748b;border:1px solid rgba(148,163,184,.3)">🚫 Cancelled</span>`:'';
   const pCount=(m.participants||[]).length;
   const venueIsLink=m.venue&&m.venue.startsWith('http');
   const venueMapLink=m.venue&&!venueIsLink?`https://maps.google.com/?q=${encodeURIComponent(m.venue)}`:'';
@@ -6185,21 +6327,20 @@ function renderMeetingCard(m){
   return`<div class="meeting-card ${stCls}" data-id="${m.id}">
   <div class="meeting-top" onclick="toggleMeetingOpen('${m.id}')">
     <div class="meeting-time-block">
-      <div class="meeting-time-hr">${m.isRecurring&&recurDayLabel?(m.time?esc(m.time):'🔁'):esc(timeStr)}</div>
-      <div class="meeting-time-date">${m.isRecurring&&recurDayLabel?'recurring':dateStr2}</div>
+      <div class="meeting-time-hr">${localTime||'—'}</div>
+      <div class="meeting-time-date">${localTZ}${m.isRecurring&&recurDayLabel?'':'&nbsp;'+dateStr2}</div>
     </div>
     <div class="meeting-title-wrap">
-      <div class="meeting-name">${esc(m.name||'Untitled')}${m.isRecurring?` <span class="recurring-badge" style="font-size:9px;vertical-align:middle">🔁</span>`:''}</div>
+      <div class="meeting-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.name||'Untitled')}${m.isRecurring?` <span class="recurring-badge" style="font-size:9px;vertical-align:middle">🔁</span>`:''}</div>
       <div class="meeting-meta">${m.isRecurring&&recurDayLabel?esc(recurTimeStr):(pCount?pCount+' participant'+(pCount>1?'s':''):'')+(pCount&&m.venue?' · ':'')+( m.venue?esc(m.venue.replace(/^https?:\/\//,'').slice(0,40)):'')}</div>
     </div>
-    <button class="btn btn-ghost btn-xs btn-danger" style="flex-shrink:0;padding:3px 7px" onclick="event.stopPropagation();if(confirm('Delete this meeting?'))deleteMeeting('${m.id}')" title="Delete">🗑</button>
-    <span class="meeting-status-badge ${stBadge}">${stLabel}</span>
+    ${statusChip||countdownChip}
     <span class="chevron${isOpen?' open':''}" id="mc-chev-${m.id}" style="margin-left:4px">▾</span>
   </div>
   <div class="meeting-body${isOpen?' open':''}" id="mb-${m.id}">
     <div class="card-fields" style="margin-top:8px">
       ${m.date?`<div><div class="cfield-label">Date</div><div class="cfield-value">${new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>`:''}
-      ${m.time?`<div><div class="cfield-label">Time</div><div class="cfield-value">${esc(m.time)}</div></div>`:''}
+      ${m.time?`<div><div class="cfield-label">Time</div><div class="cfield-value">${esc(ukDisplayTime)}${istDisplayTime?' / '+esc(istDisplayTime):''}</div></div>`:''}
       ${m.agenda?`<div style="grid-column:1/-1"><div class="cfield-label">Agenda</div><div class="cfield-value" style="white-space:pre-wrap">${esc(m.agenda)}</div></div>`:''}
       ${m.venue?`<div><div class="cfield-label">Venue</div><div class="cfield-value">${venueIsLink?`<a href="${esc(m.venue)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent)">🔗 Open link</a>`:venueMapLink?`${esc(m.venue)} <a href="${venueMapLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);margin-left:6px;font-size:11px">📍 Map</a>`:esc(m.venue)}</div></div>`:''}
       ${m.reminder&&m.reminder!=='off'?`<div><div class="cfield-label">Reminder</div><div class="cfield-value">⏰ ${esc(m.reminder)}${m.reminderNote?' — '+esc(m.reminderNote):''}</div></div>`:''}
@@ -6240,11 +6381,12 @@ function renderMeetingCard(m){
         </div>
       </div>`:`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="ui_meetingRemarkForms['${m.id}']=true;render()">+ Add Remark</button>`}
     </div>
-    <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap">
+    <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-ghost btn-sm" onclick="editMeeting('${m.id}')">✏ Edit</button>
       ${m.status!=='done'?`<button class="btn btn-done-active btn-sm" onclick="updateMeeting('${m.id}',{status:'done'});render()">✅ Mark Done</button>`:''}
       ${m.status==='done'?`<button class="btn btn-ghost btn-sm" onclick="updateMeeting('${m.id}',{status:'scheduled'});render()">↩ Reopen</button>`:''}
       ${m.status!=='cancelled'?`<button class="btn btn-ghost btn-sm" onclick="updateMeeting('${m.id}',{status:'cancelled'});render()">🚫 Cancel</button>`:`<button class="btn btn-ghost btn-sm" onclick="updateMeeting('${m.id}',{status:'scheduled'});render()">↩ Reschedule</button>`}
+      <button class="btn btn-ghost btn-sm btn-danger" style="margin-left:auto" onclick="if(confirm('Delete this meeting?'))deleteMeeting('${m.id}')">🗑 Delete</button>
     </div>
   </div>
 </div>`;
@@ -6865,7 +7007,7 @@ function renderStoryCard(sec,s,archKey){
   const wwLabel=mode==='working'?'▶ Working':mode==='watching'?'👁 Watching':'● Set mode';
   const subsecBadge=(sec==='ibu'||sec==='other')
     ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'}" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch" style="cursor:pointer">${
-        sec==='ibu'?(s.live_type==='nonibu'?'Non-Live':'Live'):'Other'
+        s.story_type?s.story_type.toUpperCase():(sec==='ibu'?'Live':'Other')
       } ⇄</span>`
     : '';
   const isIBU=sec==='ibu'&&!archKey;
@@ -6990,17 +7132,14 @@ function renderForm(sec,archKey){
   <div class="form-title">${isEdit?(sec==='ibu'?'✏ Edit Live Story':'✏ Edit Story'):(sec==='ibu'?'+ New Live Story':'+ New Story')}</div>
   <div class="form-grid">
     <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off" value="${esc(editStoryObj?.title||'')}"></div>
-    ${isIBU?`<div class="fgroup full">
-      <label class="flabel">Live Type</label>
-      <div style="display:flex;gap:8px;margin-top:4px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
-          <input type="radio" name="live-type${sfx}" id="f-live-ibu${sfx}" value="ibu" ${(editStoryObj?.live_type||'ibu')==='ibu'?'checked':''} style="accent-color:var(--accent)"> <span>Live (IBU)</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
-          <input type="radio" name="live-type${sfx}" id="f-live-nonibu${sfx}" value="nonibu" ${editStoryObj?.live_type==='nonibu'?'checked':''} style="accent-color:var(--working)"> <span>Non-Live</span>
-        </label>
+    <div class="fgroup full">
+      <label class="flabel">Story Type</label>
+      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+        ${['TV','Radio','Social','Text'].map(t=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
+          <input type="radio" name="story-type${sfx}" id="f-stype-${t.toLowerCase()}${sfx}" value="${t.toLowerCase()}" ${(editStoryObj?.story_type||'')=== t.toLowerCase()?'checked':''} style="accent-color:var(--accent)"> <span>${t}</span>
+        </label>`).join('')}
       </div>
-    </div>`:''}
+    </div>
     <div class="form-divider">People</div>
     <div class="fgroup"><label class="flabel">Correspondent</label>
       <div style="display:flex;gap:5px;align-items:center">
