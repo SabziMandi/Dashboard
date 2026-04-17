@@ -4113,7 +4113,7 @@ function deadlineBadge(s){
   if(mins<60)    txt=(diff<0?'Overdue ':' Due ')+mins+'m';
   else if(mins<1440) txt=(diff<0?'Overdue ':' Due ')+Math.round(mins/60)+'h';
   else           txt=(diff<0?'Overdue ':' Due ')+Math.round(mins/1440)+'d';
-  return `<span class="deadline-badge${diff<0?' overdue':''}">⏱${txt}</span>`;
+  return `<span class="deadline-badge${diff<0?' overdue':''}"><span class="badge-dot" style="background:${diff<0?'#B91C1C':'#B45309'}"></span>${txt}</span>`;
 }
 function upcomingDueBadge(s){
   if(!s.expected_date) return '';
@@ -7166,18 +7166,16 @@ function renderStoryCard(sec,s,archKey){
         ${reqTime?`<span class="cs-chip">🗓 ${reqTime}</span>`:''}
       </div>
       <div class="card-tags">
-        ${s.carriedForward&&s.status!=='completed'?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
         ${secObj.hasWW&&!archKey?`<span class="ww-badge ww-${mode}" id="wwbadge-${s.id}" onclick="toggleWWMode('${sec}','${s.id}',${archKeyJS});event.stopPropagation()" title="Click to cycle: None → Working → Watching">${wwLabel}</span>`:''}
         ${s.migratedAt?`<span class="migrated-tag">⇄ Migrated</span>`:''}
-        ${s.carriedForward&&!s.autoArchivedOn?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
         ${s.autoMigratedOn?`<span class="migrated-tag">🗓 Auto-migrated ${s.autoMigratedOn}</span>`:''}
       </div>
     </div>
     <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px;">
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${deadlineBadge(s)}
-      ${s.story_type?s.story_type.split(',').map(t=>`<span class="sbadge" style="background:rgba(79,70,229,.09);color:#4338CA;border:1px solid rgba(79,70,229,.25);font-size:11px;">${t.trim().charAt(0).toUpperCase()+t.trim().slice(1)}</span>`).join(''):''}
-      ${s.carriedForward&&s.status!=='completed'?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
+      ${s.story_type?s.story_type.split(',').map(t=>`<span class="sbadge" style="background:rgba(79,70,229,.09);color:#4338CA;border:0.5px solid rgba(79,70,229,.3);font-size:11px;">${t.trim().charAt(0).toUpperCase()+t.trim().slice(1)}</span>`).join(''):''}
+      ${(s.carriedForward&&s.status!=='completed'&&!s.deadline_date)?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
     </div>
 
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}">▾</span>
