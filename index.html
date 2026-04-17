@@ -131,8 +131,8 @@ body {
 
 /* Row 1 */
 .header-row1 {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 22px; flex-wrap: wrap;
+  display: flex; flex-direction: column; align-items: stretch;
+  padding: 0;
 }
 .wordmark {
   font-family: var(--serif); font-size: 26px; font-weight: 700;
@@ -160,8 +160,8 @@ body {
 
   /* Row 1 — title bar: + · BBC Dashboard · 🔍 */
   .mobile-title-bar {
-    display: flex; align-items: center; justify-content: space-between;
-    width: 100%; padding: 9px 14px 8px; box-sizing: border-box;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100%; padding: 0; box-sizing: border-box;
   }
   .mobile-icon-btn {
     width: 30px; height: 30px; border-radius: 8px;
@@ -431,14 +431,14 @@ body {
 }
 .acc-header:hover { background: var(--surface2); }
 .acc-icon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
-.acc-name { font-size: 13.5px; font-weight: 600; color: var(--text); flex: 1; }
+.acc-name { font-size: 13.5px; font-weight: 600; color: var(--text); flex: 1; font-family: var(--font); }
 .acc-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .acc-count {
-  font-size: 10.5px; font-family: var(--mono); color: var(--text3);
+  font-size: 10.5px; font-family: var(--font); color: var(--text3);
   background: var(--surface3); border: 1px solid var(--border);
   padding: 2px 7px; border-radius: 4px;
 }
-.acc-summary { font-size: 11px; color: var(--text3); font-family: var(--mono); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-summary { font-size: 11px; color: var(--text3); font-family: var(--font); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acc-chevron { color: var(--text3); font-size: 14px; transition: transform .22s; flex-shrink: 0; }
 .acc-chevron.open { transform: rotate(180deg); }
 .acc-body { display: none; border-top: 1px solid var(--border); padding: 16px 17px; background: var(--surface); }
@@ -570,14 +570,14 @@ body {
   padding: 11px 13px; cursor: pointer; user-select: none;
 }
 .card-title-wrap { flex: 1; min-width: 0; }
-.card-title { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.card-title { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.4; font-family: var(--font); }
 .card-subtitle { display: flex; gap: 7px; margin-top: 4px; flex-wrap: wrap; }
-.cs-chip { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.cs-chip { font-size: 11px; color: var(--text3); font-family: var(--font); }
 .card-tags { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
 .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 
 /* Status badges */
-.sbadge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.sbadge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; font-family: var(--font); }
 .sb-urgent      { background: var(--urgent-bg);   color: var(--urgent);   border: 1px solid rgba(220,38,38,.2); }
 .sb-in-progress { background: var(--progress-bg); color: var(--progress); border: 1px solid rgba(217,119,6,.2); }
 .sb-completed   { background: var(--done-bg);     color: var(--done);     border: 1px solid rgba(22,163,74,.2); }
@@ -677,7 +677,7 @@ body {
 .fgroup.full { grid-column: 1 / -1; }
 .fgroup.span2 { grid-column: span 2; }
 .flabel { font-size: 11px; color: var(--text2); font-weight: 500; }
-.flabel-hint { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-left: 4px; }
+.flabel-hint { font-size: 10px; color: var(--text3); font-family: var(--font); margin-left: 4px; }
 .finput, .fselect, .ftextarea {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 7px; padding: 7px 10px; color: var(--text);
@@ -688,7 +688,7 @@ body {
 .finput::placeholder, .ftextarea::placeholder { color: var(--text3); }
 .fselect { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239A8C7E' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
 .fselect option { background: #fff; color: var(--text); }
-.ftextarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+.ftextarea { resize: vertical; min-height: 72px; line-height: 1.6; box-sizing: border-box; overflow: auto; }
 .form-footer { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
 .form-divider {
   grid-column: 1 / -1; font-size: 10px; color: var(--text3);
@@ -837,7 +837,7 @@ body {
 .uc-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .uc-title.uc-title-past { text-decoration: line-through; color: var(--text3); }
 .uc-meta-line { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; margin-top: 2px; }
-.uc-chip { font-size: 10.5px; color: var(--text3); font-family: var(--mono); white-space: nowrap; }
+.uc-chip { font-size: 10.5px; color: var(--text3); font-family: var(--font); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
 .uc-chip.uc-chip-overdue { color: var(--urgent); font-weight: 600; }
 .uc-body { display: none; padding: 4px 13px 13px; border-top: 1px solid var(--border); }
@@ -902,7 +902,7 @@ body {
 .task-title { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; font-family: var(--font); }
 .task-title.done-title { text-decoration: line-through; color: var(--text3); }
 .task-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
-.task-chip { font-size: 10.5px; color: var(--text3); font-family: var(--mono); }
+.task-chip { font-size: 10.5px; color: var(--text3); font-family: var(--font); }
 .task-chip.overdue-chip { color: var(--urgent); font-weight: 600; }
 .task-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .task-status-badge {
@@ -1068,7 +1068,7 @@ button.tasks-tab-btn {
   .acc-summary { display: none; }
   .date-full.sz-today { font-size: 20px; }
   .content { padding: 14px 16px 80px; }
-  .header-row1 { padding: 9px 16px; }
+  .header-row1 { padding: 0; }
   .hide-mobile { display: none !important; }
 
   /* iOS auto-zoom fix: Safari zooms in when inputs < 16px */
@@ -1157,7 +1157,7 @@ button.tasks-tab-btn {
 .meeting-title-wrap { flex:1; min-width:0; }
 .meeting-name { font-size:13.5px; font-weight:600; color:var(--text); font-family:var(--font); }
 .meeting-meta { font-size:11px; color:var(--text3); font-family:var(--mono); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.meeting-status-badge { font-size:10px; font-weight:600; font-family:var(--mono); padding:2px 8px; border-radius:10px; flex-shrink:0; }
+.meeting-status-badge { font-size:10px; font-weight:600; font-family:var(--font); padding:2px 8px; border-radius:10px; flex-shrink:0; }
 .msb-scheduled { background:rgba(99,102,241,.1); color:#6366f1; }
 .msb-done { background:var(--done-bg); color:var(--done); }
 .msb-cancelled { background:rgba(148,163,184,.1); color:#64748b; }
@@ -1200,13 +1200,13 @@ button.tasks-tab-btn {
       <div style="width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;">
         <button class="btn btn-ghost btn-sm" onclick="openDesktopMore()" title="Actions" style="width:34px;height:34px;padding:0;font-size:19px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:8px;">+</button>
         <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:26px;font-weight:700;color:var(--text);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="desktopNavDate(-1)">&#8249;</span>
-          <div style="position:relative;display:flex;align-items:baseline;gap:8px;cursor:pointer;" onclick="document.getElementById('date-jump-picker').showPicker?document.getElementById('date-jump-picker').showPicker():document.getElementById('date-jump-picker').click()">
-            <span id="hdr-context" style="font-family:var(--serif);font-size:14px;font-weight:400;color:var(--text3);">Wednesday</span>
-            <span id="hdr-date" class="date-full sz-today" style="font-family:var(--serif);font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.3px;white-space:nowrap;">17 April</span>
-            <input type="date" id="date-jump-picker" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer;" title="Jump to any date" onchange="jumpToDate(this.value)">
+          <span style="font-size:26px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="desktopNavDate(-1)">&#8249;</span>
+          <div style="position:relative;display:flex;align-items:baseline;gap:8px;cursor:pointer;" onclick="openDesktopDatePicker()">
+            <span id="hdr-context" style="font-family:var(--serif);font-size:18px;font-weight:500;color:var(--text);letter-spacing:-.2px;">Wednesday</span>
+            <span id="hdr-date" class="date-full sz-today" style="font-family:var(--serif);font-size:18px;font-weight:500;color:var(--text);letter-spacing:-.2px;white-space:nowrap;">17 April</span>
+            <input type="date" id="date-jump-picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" title="Jump to any date" onchange="jumpToDate(this.value)">
           </div>
-          <span style="font-size:26px;font-weight:700;color:var(--text);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="desktopNavDate(1)">&#8250;</span>
+          <span style="font-size:26px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="desktopNavDate(1)">&#8250;</span>
         </div>
         <button class="btn btn-ghost btn-sm" id="desktop-search-btn" onclick="toggleDesktopSearch()" title="Search" style="width:34px;height:34px;padding:0;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:8px;">🔍</button>
       </div>
@@ -1245,14 +1245,14 @@ button.tasks-tab-btn {
     <!-- Collapsible block: row2 (+ date search) + leave row -->
     <div class="mobile-collapsible" id="mobile-collapsible">
       <!-- Row 2: + | ‹ date › | search -->
-      <div class="mobile-date-nav" style="padding:6px 12px;display:flex;align-items:center;gap:0;">
-        <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" style="flex-shrink:0;margin-right:4px;">+</button>
+      <div class="mobile-date-nav" style="padding:6px 10px;display:flex;align-items:center;gap:0;">
+        <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" style="flex-shrink:0;">+</button>
         <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:0;">
-          <span class="m-arrow" onclick="mobileNavDate(-1)" style="font-size:20px;color:var(--text3);padding:0 10px;cursor:pointer;line-height:1;">‹</span>
+          <span class="m-arrow" onclick="mobileNavDate(-1)" style="font-size:22px;font-weight:700;color:var(--text2);padding:0 14px;cursor:pointer;line-height:1;user-select:none;">‹</span>
           <span class="m-date-label" id="mobile-date-label" onclick="openMobileDatePicker()" style="cursor:pointer;">Wednesday, 16 Apr</span>
-          <span class="m-arrow" onclick="mobileNavDate(1)" style="font-size:20px;color:var(--text3);padding:0 10px;cursor:pointer;line-height:1;">›</span>
+          <span class="m-arrow" onclick="mobileNavDate(1)" style="font-size:22px;font-weight:700;color:var(--text2);padding:0 14px;cursor:pointer;line-height:1;user-select:none;">›</span>
         </div>
-        <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" style="flex-shrink:0;margin-left:4px;font-size:15px;">🔍</button>
+        <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" style="flex-shrink:0;font-size:15px;">🔍</button>
       </div>
       <div class="mobile-leave-row" id="mobile-leave-row" style="display:none"></div>
     </div>
@@ -2460,11 +2460,8 @@ function markNotDone(sec,id,archKey){
   render();
 }
 function markStoryNotDone(sec,id,archKey){
-  // Combined sections (ibu/other) stay visible until the daily rollover.
-  // All other sections (requests, etc.) archive immediately — "not done" is terminal.
-  const isCombined=(sec==='ibu'||sec==='other');
   updateStory(sec,id,{status:'not-done',carriedForward:false,notDoneOn:Date.now()},archKey);
-  if(!archKey && !isCombined){
+  if(!archKey){
     _archiveAndRemoveFromBoard(sec,id);
     toast('⚫ Marked Not Done — archived');
   } else {
@@ -2521,11 +2518,12 @@ function cleanupCompletedStories(){
     // Remove completed from active board
     state.sections[secKey]=arr.filter(s=>s.status!=='completed');
   });
-  saveLocal();
+  saveAndPush();
 }
 function cleanupStuckNotDone(){
   let cleaned=0;
-  SECTIONS.filter(s=>!s.isUpcoming&&s.key!=='ibu'&&s.key!=='other').forEach(sec=>{
+  // Include ALL sections (ibu, other, requests, etc.)
+  SECTIONS.filter(s=>!s.isUpcoming).forEach(sec=>{
     const stuck=(state.sections[sec.key]||[]).filter(s=>s.status==='not-done');
     if(!stuck.length) return;
     stuck.forEach(story=>{
@@ -2533,7 +2531,7 @@ function cleanupStuckNotDone(){
       cleaned++;
     });
   });
-  if(cleaned>0){ saveAndPush(); }  // push to Firebase so both devices stay clean
+  if(cleaned>0){ saveAndPush(); }
   return cleaned;
 }
 function shelveStory(sec,id,archKey){
@@ -4223,14 +4221,14 @@ function renderTabDateNav(uiKey, labelToday){
     if(d===tomorrowStr()) return 'Tomorrow';
     return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   };
-  return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:8px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-    <button class="btn btn-ghost btn-sm" style="padding:5px 9px" onclick="ui['${uiKey}']='${prev}';render()">◀</button>
+  return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;padding:7px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+    <span style="font-size:22px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${prev}';render()">&#8249;</span>
     <div style="flex:1;text-align:center">
-      <div style="font-size:13px;font-weight:600;color:var(--text)">${fmt(cur)}</div>
-      ${!isToday?`<button class="btn btn-ghost btn-xs" style="margin-top:3px;font-size:10px" onclick="ui['${uiKey}']=null;render()">↩ Back to Today</button>`:''}
+      <div style="font-size:13px;font-weight:600;color:var(--text);font-family:var(--serif)">${fmt(cur)}</div>
+      ${!isToday?`<button class="btn btn-ghost btn-xs" style="margin-top:3px;font-size:10px" onclick="ui['${uiKey}']=null;render()">↩ Today</button>`:''}
     </div>
-    <button class="btn btn-ghost btn-sm" style="padding:5px 9px" onclick="ui['${uiKey}']='${next}';render()">▶</button>
-    <input type="date" value="${cur}" style="font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text2);cursor:pointer"
+    <span style="font-size:22px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${next}';render()">&#8250;</span>
+    <input type="date" value="${cur}" class="finput" style="max-width:130px;font-size:12px;padding:4px 8px;cursor:pointer"
       onchange="ui['${uiKey}']=this.value;render()">
   </div>`;
 }
@@ -4437,8 +4435,7 @@ function renderTodayHTML(){
     </div>`;
   }
   html+=`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:12px;flex-wrap:wrap">
-    <button class="btn btn-ghost btn-sm hide-mobile" onclick="doEmailAll()">✉ Email All</button>
-    <button class="btn btn-ghost btn-sm hide-mobile" onclick="doExportTxt()">⬇ Export</button>
+
   </div>`;
 
   // On desktop and mobile: all main sections + Upcoming show on Today page
@@ -4793,7 +4790,7 @@ function buildMigrateSourceHTML(){
         const sel=ui.selectedStories.has(k);
         const sk2=k.replace(/[^a-z0-9]/gi,'-');
         const sbL=s.status==='urgent'?'🔴':s.status==='in-progress'?'🟡':s.status==='completed'?'🟢':s.status==='on-hold'?'🟣':s.status==='not-done'?'⚫':s.status==='postponed'?'🔵':s.status==='shelved'?'🗄':'⚪';
-        const carry=s.carriedForward?` 🔁+${s.carriedDays||1}d`:'';
+        const carry='';
         const subsecChip=s._subsec?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;${s._subsec==='ibu'?'background:var(--accent-bg);color:var(--accent)':'background:rgba(13,148,136,.08);color:var(--working)'}">${s._subsec==='ibu'?'IBU':'Other'}</span> `:'';
         html+=`<div class="migrate-story-row${sel?' msr-selected':''}" id="msr-${sk2}" onclick="toggleMigrateStory('${k}')">
           <div class="migrate-cb"><span class="migrate-cb-check" style="display:${sel?'block':'none'}">✓</span></div>
@@ -4879,15 +4876,7 @@ function renderAccordion(sec,archKey){
       <span class="acc-name">${esc(displayName)}</span>
       ${secObj.renameable&&!archKey?`<button class="btn btn-ghost btn-xs" style="flex-shrink:0;padding:2px 7px;font-size:10px;color:var(--text3)" onclick="event.stopPropagation();startRename('${sec.key}')" title="Rename section">✏ Rename</button>`:''}
       <div class="acc-meta">
-        ${uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:''}
-        ${ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:''}
-        ${cc?`<span style="font-size:10px;color:var(--carry);background:var(--carry-bg);border:1px solid rgba(234,88,12,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">🔁 ${cc} carried</span>`:''}
-        ${notDoneCount?`<span class="sbadge sb-not-done">⚫ ${notDoneCount} not done</span>`:''}
-        ${postponedCount?`<span class="sbadge sb-postponed">⏸ ${postponedCount} postponed</span>`:''}
-        ${workCnt?`<span style="font-size:10px;color:var(--working);background:var(--working-bg);border:1px solid rgba(13,148,136,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">▶ ${workCnt}</span>`:''}
-        ${watchCnt?`<span style="font-size:10px;color:var(--watching);background:var(--watching-bg);border:1px solid rgba(180,83,9,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">👁 ${watchCnt}</span>`:''}
-        <span class="acc-count">${activeStories.length}</span>
-        <span class="acc-summary">${esc(summary)}</span>
+        ${activeStories.length?`<span class="sbadge sb-in-progress">${activeStories.length} pending</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-${sec.key}">▾</span>
     </div>
@@ -4979,6 +4968,13 @@ function toggleShowShelved(secKey){
 /* ════════════════════════════════════════
    DESKTOP HEADER FUNCTIONS
 ════════════════════════════════════════ */
+function openDesktopDatePicker(){
+  const p=document.getElementById('date-jump-picker');
+  if(!p) return;
+  const cur=ui.view==='today'?todayStr():(ui.archiveKey||todayStr());
+  p.value=cur;
+  try{ p.showPicker(); }catch(e){ p.style.opacity='0'; p.style.pointerEvents='auto'; p.style.position='fixed'; p.style.top='60px'; p.style.left='50%'; p.click(); setTimeout(()=>{p.style.position='absolute';p.style.pointerEvents='none';},500); }
+}
 function toggleDesktopSearch(){
   const bar=document.getElementById('desktop-search-bar');
   const btn=document.getElementById('desktop-search-btn');
@@ -5074,7 +5070,27 @@ function openMobileDatePicker(){
   if(!picker) return;
   const currentKey=ui.view==='today'?todayStr():(ui.archiveKey||todayStr());
   picker.value=currentKey;
-  try{ picker.showPicker(); }catch(e){ picker.click(); }
+  try{
+    picker.showPicker();
+  }catch(e){
+    // Fallback: briefly make picker interactive and visible at tap position
+    picker.style.opacity='0';
+    picker.style.pointerEvents='auto';
+    picker.style.position='fixed';
+    picker.style.top='80px';
+    picker.style.left='50%';
+    picker.style.transform='translateX(-50%)';
+    picker.style.width='140px';
+    picker.style.height='36px';
+    picker.click();
+    setTimeout(()=>{
+      picker.style.position='absolute';
+      picker.style.pointerEvents='none';
+      picker.style.width='0';
+      picker.style.height='0';
+      picker.style.transform='';
+    }, 600);
+  }
 }
 function updateMobileDateLabel(){
   const currentKey=ui.view==='today'?todayStr():(ui.archiveKey||todayStr());
@@ -5593,7 +5609,6 @@ function renderTasksSection(){
       <span class="acc-icon">☑</span><span class="acc-name">Tasks</span>
       <div class="acc-meta">
         ${pendingCount?`<span class="sbadge sb-in-progress">${pendingCount} pending</span>`:''}
-        ${doneCount?`<span class="sbadge sb-done">${doneCount} done</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-tasks">▾</span>
     </div>
@@ -5630,14 +5645,6 @@ function renderTasksSection(){
       const db=Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-todayMs2);
       return da-db;
     });
-    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
-      </div>
-    </div>`;
     if(ui_taskForm){
       html+=`<div class="task-form" id="task-form-wrap">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--upcoming)">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
@@ -5687,6 +5694,17 @@ function renderTasksSection(){
 
   // ── Today's tasks ─────────────────────────────────────────────────────────
   const tasks=state.tasks;
+  // Standalone (bottom nav) toolbar — only when accessed via bottom nav
+  if(isStandalone){
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
+    </div>
+  </div>`;
+  }
 
 
 
@@ -5802,7 +5820,7 @@ function renderTaskCard(t, today){
   else if(t.taskStatus==='not-done'){ sbCls+='tsb-postponed'; sbTxt='⚫ Not Done'; }
   else if(t.taskStatus==='transferred'){ sbCls+='tsb-postponed'; sbTxt='→ Transferred'; }
   else if(t.taskStatus==='postponed-to'){ sbCls+='tsb-postponed'; sbTxt='⏸ Postponed'; }
-  else if(isCarried){ sbCls+='tsb-carried'; sbTxt='🔁 Carried'; }
+  else if(isCarried){ sbCls+='tsb-carried'; sbTxt='↻ +'+( t.carriedDays||1)+'d'; }
   else { sbCls+='tsb-pending'; sbTxt='⏳ Pending'; }
 
   // Build recurring schedule label
@@ -5834,7 +5852,7 @@ function renderTaskCard(t, today){
     else { const timeStr=t.deadline_time?(' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?'/'+ukToIST(t.deadline_time)+' IST':'')):''; deadlineChip=`<span class="task-chip">📅 Due in ${days}d (${t.deadline_date}${timeStr})</span>`; }
   }
   const postponeChip=t.taskStatus==='postponed-to'&&t.postponeTo?`<span class="task-chip">⏸ Postponed to ${t.postponeTo}</span>`:'';
-  const carriedChip=isCarried?`<span class="task-chip" style="color:var(--carry)">🔁 Carried ${t.carriedDays||1}d from ${t.carriedFromDate}</span>`:'';
+  const carriedChip=isCarried?`<span class="carry-badge">↻ +${t.carriedDays||1}d</span>`:'';
   const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>`:'';
 
   const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${recurSchedule}</span>`:'';
@@ -5850,7 +5868,7 @@ function renderTaskCard(t, today){
     <div class="task-right">
       <span class="${sbCls}">${sbTxt}</span>
     </div>
-    <button class="btn btn-ghost btn-xs btn-danger" style="flex-shrink:0;padding:3px 7px;margin-right:4px" onclick="event.stopPropagation();if(confirm('Delete this task?'))deleteTask('${t.id}')" title="Delete">🗑</button>
+
     <span class="chevron${isOpen?' open':''}" id="task-chev-${t.id}" style="margin-top:1px">▾</span>
   </div>
   <div class="task-body${isOpen?' open':''}" id="task-body-${t.id}">
@@ -5918,8 +5936,9 @@ function renderCombinedAccordion(archKey){
       <div class="acc-meta">
         ${uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:''}
         ${ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:''}
-        ${cc?`<span style="font-size:10px;color:var(--carry);background:var(--carry-bg);border:1px solid rgba(234,88,12,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">🔁 ${cc}</span>`:''}
-        ${(ui.filter!=='all'||ui.search)?`<span class="acc-count">${combinedFiltered.length} shown of ${ibuActive.length+otherActive.length}</span>`:`<span class="acc-count">${ibuActive.length} Live · ${otherActive.length} Other</span>`}
+        ${(()=>{ const types=[...new Set((ibuActive.concat(otherActive)).flatMap(s=>(s.story_type||'').split(',').map(t=>t.trim().toUpperCase()).filter(Boolean)))]; return types.length?`<span class="sbadge" style="background:rgba(79,70,229,.08);color:#4338CA;border:0.5px solid rgba(79,70,229,.25);">${types.join(' · ')}</span>`:''; })()}
+        ${cc?`<span class="sbadge" style="background:rgba(234,88,12,.08);color:var(--carry);border:0.5px solid rgba(234,88,12,.25);">↻ ${cc} carried</span>`:''}
+
         ${ui.filter!=='all'?`<span style="font-size:10px;font-family:var(--mono);color:var(--accent);cursor:pointer" onclick="setFilter('all',null);event.stopPropagation()">✕ ${ui.filter}</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
@@ -6338,19 +6357,11 @@ function renderMeetingCard(m){
     : m.isRecurring&&m.recurFreq==='daily'?'every day'
     : m.isRecurring&&m.recurFreq==='custom'&&m.recurDays?'every '+m.recurDays+'d':'';
   // Detect device local timezone offset vs IST
-  const devOffMin=-(new Date().getTimezoneOffset()); // device offset in mins from UTC
-  const isDevIST=devOffMin===330;
-  // Build display time in device local tz
-  function buildLocalTimeStr(ukTime){
-    if(!ukTime) return '';
-    const parts=ukTime.split(':');
-    const ukMin=(+parts[0])*60+(+parts[1]||0);
-    const utcMin=((ukMin-ukOffMin())+1440)%1440;
-    const localMin=(utcMin+devOffMin+1440)%1440;
-    return p2(Math.floor(localMin/60))+':'+p2(localMin%60);
-  }
-  const localTime=m.time?buildLocalTimeStr(m.time):'';
-  const localTZ=isDevIST?'IST':(ukLabel());
+  const devOffMin=-(new Date().getTimezoneOffset());
+  const isDevIST=devOffMin>=325&&devOffMin<=335; // IST = UTC+5:30, allow small variance
+  // Always show IST in the icon block for consistency
+  const localTime=m.time?ukToIST(m.time):'';
+  const localTZ='IST';
   const istTime=m.time?ukToIST(m.time):'';
   const ukDisplayTime=m.time?(m.time+' '+ukLabel()):'';
   const istDisplayTime=istTime?(istTime+' IST'):'';
@@ -6586,7 +6597,7 @@ function renderRemarksAccordion(){
         else if(days===0)dlChip=`<span class="note-deadline-chip">⚠ Due today</span>`;
         else             dlChip=`<span class="note-deadline-chip ok">📅 Due in ${days}d (${n.deadline_date})</span>`;
       }
-      const carriedChip=n.carriedForward?`<span style="color:var(--carry);font-family:var(--mono);font-size:10px">🔁 Carried ${n.carriedDays||1}d</span>`:'';
+      const carriedChip=n.carriedForward?`<span class="carry-badge">↻ +${n.carriedDays||1}d</span>`:'';
       body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
         ${n.headline?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px;font-family:var(--serif)">${esc(n.headline)}</div>`:''}
         <div class="note-text">${esc(n.text)}</div>
@@ -6631,7 +6642,6 @@ function renderRemarksAccordion(){
       <span class="acc-name">Note</span>
       <div class="acc-meta">
         ${active.length?`<span class="sbadge sb-in-progress">${active.length} active</span>`:''}
-        ${state.notes.filter(n=>n.carriedForward&&n.status==='active').length?`<span style="font-size:10px;color:var(--carry);background:var(--carry-bg);border:1px solid rgba(234,88,12,.2);padding:2px 7px;border-radius:12px;font-family:var(--mono)">🔁 carried</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-remarks">▾</span>
     </div>
@@ -6850,7 +6860,7 @@ function renderLeavesSection(){
       <div class="acc-meta">
         ${activeLeaves.length?`<span class="sbadge sb-in-progress">${activeLeaves.length} active/upcoming</span>`:''}
       </div>
-      <span class="acc-chevron${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
+      <span class="acc-chevron hide-on-mobile-view${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
     </div>
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
@@ -6986,7 +6996,7 @@ function renderLeaveCard(l,today,isPast){
       <span class="leave-status-badge ${l.status==='approved'?'lsb-approved':'lsb-pending'}">${l.status==='approved'?'✓ Approved':'⏳ Pending'}</span>
       <span class="leave-duration" style="font-size:10px;color:var(--text3);font-family:var(--mono);">${durationLabel}</span>
     </div>
-    <span class="chevron${isOpen?' open':''}" id="lc-${l.id}" style="flex-shrink:0;margin-top:2px;">▾</span>
+    <span class="chevron${isOpen?' open':''} hide-on-mobile-view" id="lc-${l.id}" style="flex-shrink:0;margin-top:2px;">▾</span>
   </div>
   <div class="leave-body${isOpen?' open':''}" id="lb-${l.id}">
     <div class="card-fields" style="margin-top:8px">
@@ -7080,6 +7090,7 @@ function renderUpcomingRow(sec,s,archKey){
   </div>
   <div class="uc-body${isOpen?' open':''}" id="cb-${s.id}">
     <div class="card-fields">
+      ${s.description?`<div style="grid-column:1/-1"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
       ${field('Detail',s.detail)}
       ${field('Correspondent',s.correspondent)}
       ${field('Expected',s.expected_date?s.expected_date+typeLabel:'')}
@@ -7149,10 +7160,10 @@ function renderStoryCard(sec,s,archKey){
         ${reqTime?`<span class="cs-chip">🗓 ${reqTime}</span>`:''}
       </div>
       <div class="card-tags">
-        ${carried?`<span class="carry-badge">🔁 +${s.carriedDays||1}d from ${s.carriedFromDate}</span>`:''}
+        ${s.carriedForward&&s.status!=='completed'?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
         ${secObj.hasWW&&!archKey?`<span class="ww-badge ww-${mode}" id="wwbadge-${s.id}" onclick="toggleWWMode('${sec}','${s.id}',${archKeyJS});event.stopPropagation()" title="Click to cycle: None → Working → Watching">${wwLabel}</span>`:''}
         ${s.migratedAt?`<span class="migrated-tag">⇄ Migrated</span>`:''}
-        ${s.carriedForward&&!s.autoArchivedOn?`<span class="migrated-tag" style="color:var(--carry);border-color:rgba(234,88,12,.3);background:var(--carry-bg)">→ Continued</span>`:''}
+        ${s.carriedForward&&!s.autoArchivedOn?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
         ${s.autoMigratedOn?`<span class="migrated-tag">🗓 Auto-migrated ${s.autoMigratedOn}</span>`:''}
       </div>
     </div>
@@ -7160,13 +7171,14 @@ function renderStoryCard(sec,s,archKey){
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${deadlineBadge(s)}
       ${s.story_type?s.story_type.split(',').map(t=>`<span class="sbadge" style="background:rgba(79,70,229,.09);color:#4338CA;border:1px solid rgba(79,70,229,.25);font-size:9.5px;">${t.trim().toUpperCase()}</span>`).join(''):''}
-      ${carried?'':''}
+      ${s.carriedForward&&s.status!=='completed'?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
     </div>
-    <button class="btn btn-ghost btn-xs btn-danger" style="flex-shrink:0;padding:3px 7px" onclick="event.stopPropagation();confirmDelete('${sec}','${s.id}',${archKeyJS})" title="Delete">🗑</button>
+
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}">▾</span>
   </div>
   <div class="card-body${isOpen?' open':''}" id="cb-${s.id}">
     <div class="card-fields">
+      ${s.description?`<div style="grid-column:1/-1"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
       ${field('Producer',s.producer)}
         ${field('Shoot-Edit',s.shoot_edit)}
         ${field('Location',loc||'–')}
@@ -7254,7 +7266,7 @@ function renderForm(sec,archKey){
   <div class="form-title">${isEdit?(sec==='ibu'?'✏ Edit Live Story':'✏ Edit Story'):(sec==='ibu'?'+ New Live Story':'+ New Story')}</div>
   <div class="form-grid">
     <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off" value="${esc(editStoryObj?.title||'')}"></div>
-    <div class="fgroup full"><label class="flabel">Description <span class="flabel-hint">(optional — shown as subtitle on card)</span></label><textarea class="ftextarea" id="f-description${sfx}" placeholder="Brief description of the story…" style="min-height:60px;resize:vertical">${esc(editStoryObj?.description||'')}</textarea></div>
+    <div class="fgroup full"><label class="flabel">Description <span class="flabel-hint">(optional — shown as subtitle on card)</span></label><textarea class="ftextarea" id="f-description${sfx}" placeholder="Brief description of the story…" style="min-height:60px;resize:vertical;">${esc(editStoryObj?.description||'')}</textarea></div>
     <div class="fgroup full">
       <label class="flabel">Story Type <span class="flabel-hint">(select all that apply)</span></label>
       <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
