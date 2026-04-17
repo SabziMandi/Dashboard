@@ -1181,23 +1181,26 @@ button.tasks-tab-btn {
   <div class="header-row1">
     <!-- Desktop layout: 3 rows -->
     <!-- Desktop: 3-row header -->
-    <!-- Row 1: BBC Dashboard centred alone -->
-    <div class="hide-mobile" style="background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:center;padding:13px 28px 11px;">
+    <!-- Row 1: BBC Dashboard centred -->
+    <div class="hide-mobile" style="background:var(--surface);display:flex;justify-content:center;padding:14px 22px 6px;">
       <div style="width:100%;max-width:1200px;display:flex;justify-content:center;">
-        <div class="wordmark" onclick="goHome()" style="cursor:pointer;" title="Go to Today"><span class="wordmark-dot"></span>BBC Dashboard</div>
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <span class="wordmark-dot" style="position:absolute;left:-19px;"></span>
+          <span onclick="goHome()" style="font-family:var(--serif);font-size:26px;font-weight:700;color:var(--text);letter-spacing:-.4px;cursor:pointer;" title="Go to Today">BBC Dashboard</span>
+        </div>
       </div>
     </div>
-    <!-- Row 2: BST · IST times, centred, muted -->
-    <div class="hide-mobile" style="background:linear-gradient(135deg,#FDFAF6,#F8F3EC);border-bottom:1px solid var(--border);display:flex;justify-content:center;padding:5px 28px 6px;">
+    <!-- Row 2: times centred, no border above -->
+    <div class="hide-mobile" style="background:var(--surface);display:flex;justify-content:center;padding:4px 22px 10px;">
       <div style="width:100%;max-width:1200px;display:flex;justify-content:center;align-items:center;gap:10px;">
         <span id="desktop-time-bst" style="font-size:12px;color:var(--text3);font-family:var(--mono);">09:02 BST</span>
         <span style="font-size:10px;color:var(--border2);">·</span>
         <span id="desktop-time-ist" style="font-size:12px;color:var(--text3);font-family:var(--mono);">14:32 IST</span>
       </div>
     </div>
-    <!-- Row 3: + · ‹ · Wednesday 17 April (date picker) · › · search -->
-    <div class="hide-mobile" style="background:linear-gradient(135deg,#FDFAF6,#F8F3EC);display:flex;justify-content:center;padding:7px 28px 8px;">
-      <div style="width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;">
+    <!-- Row 3: warm tint — + far left · ‹ date › centred · search far right -->
+    <div class="hide-mobile" style="background:linear-gradient(135deg,#FDFAF6,#F8F3EC);border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;justify-content:center;padding:7px 0 8px;">
+      <div style="width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;">
         <button class="btn btn-ghost btn-sm" onclick="openDesktopMore()" title="Actions" style="width:34px;height:34px;padding:0;font-size:19px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:8px;">+</button>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:26px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="desktopNavDate(-1)">&#8249;</span>
@@ -1249,7 +1252,11 @@ button.tasks-tab-btn {
         <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" style="flex-shrink:0;">+</button>
         <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:0;">
           <span class="m-arrow" onclick="mobileNavDate(-1)" style="font-size:22px;font-weight:700;color:var(--text2);padding:0 14px;cursor:pointer;line-height:1;user-select:none;">‹</span>
-          <span class="m-date-label" id="mobile-date-label" onclick="openMobileDatePicker()" style="cursor:pointer;">Wednesday, 16 Apr</span>
+          <div style="position:relative;display:flex;align-items:center;cursor:pointer;">
+            <span class="m-date-label" id="mobile-date-label" style="pointer-events:none;">Wednesday, 16 Apr</span>
+            <input type="date" id="mobile-date-picker" onchange="jumpToDate(this.value)"
+              style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;">
+          </div>
           <span class="m-arrow" onclick="mobileNavDate(1)" style="font-size:22px;font-weight:700;color:var(--text2);padding:0 14px;cursor:pointer;line-height:1;user-select:none;">›</span>
         </div>
         <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" style="flex-shrink:0;font-size:15px;">🔍</button>
@@ -1261,7 +1268,11 @@ button.tasks-tab-btn {
       <button class="mobile-icon-btn" onclick="openMobileMore()" style="flex-shrink:0;font-size:16px;">+</button>
       <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:0;">
         <span style="font-size:18px;color:var(--text3);padding:0 8px;cursor:pointer;" onclick="mobileNavDate(-1)">‹</span>
-        <span class="m-collapsed-date" id="mobile-collapsed-date-label" onclick="openMobileDatePicker()">Wed, 16 Apr</span>
+        <div style="position:relative;display:flex;align-items:center;cursor:pointer;">
+            <span class="m-collapsed-date" id="mobile-collapsed-date-label" style="pointer-events:none;">Wed, 16 Apr</span>
+            <input type="date" onchange="jumpToDate(this.value)"
+              style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;">
+          </div>
         <span style="font-size:18px;color:var(--text3);padding:0 8px;cursor:pointer;" onclick="mobileNavDate(1)">›</span>
       </div>
       <button class="mobile-icon-btn" id="mobile-search-btn-collapsed" onclick="toggleMobileSearch()" style="flex-shrink:0;font-size:15px;">🔍</button>
@@ -1281,8 +1292,6 @@ button.tasks-tab-btn {
         <button class="fpill" id="mfpill-watching" onclick="mobileSetFilter('watching',this)">👁 Watching</button>
       </div>
     </div>
-    <!-- Hidden date picker -->
-    <input type="date" id="mobile-date-picker" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0" onchange="jumpToDate(this.value)">
   </div>
   <!-- date-strip (desktop only, hidden visually, kept for renderDateStrip logic) -->
   <div id="date-strip" style="display:none"></div>
@@ -1301,7 +1310,7 @@ button.tasks-tab-btn {
 const SECTIONS = [
   { key:'ibu',      name:'Stories',               icon:'📡', hasWW:true, renameable:false, isCombined:true },
   { key:'other',    name:'Other Stories',          icon:'🌍', hasWW:true, renameable:true,  hidden:true },
-  { key:'requests', name:'Requests for Future',    icon:'📨', hasWW:true },
+  { key:'requests', name:'Requests for Future',    icon:'📨', hasWW:false },
   { key:'upcoming', name:'Upcoming Events',        icon:'🗓', hasWW:false, isUpcoming:true },
 ];
 const REMINDER_DELAYS = {
@@ -4215,21 +4224,21 @@ function renderTabDateNav(uiKey, labelToday){
   const isToday=cur===today;
   const prev=addDays(cur,-1);
   const next=addDays(cur,1);
-  const fmt=d=>{
-    if(d===today) return 'Today';
-    if(d===yesterdayStr()) return 'Yesterday';
-    if(d===tomorrowStr()) return 'Tomorrow';
-    return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  };
-  return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;padding:7px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-    <span style="font-size:22px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${prev}';render()">&#8249;</span>
-    <div style="flex:1;text-align:center">
-      <div style="font-size:13px;font-weight:600;color:var(--text);font-family:var(--serif)">${fmt(cur)}</div>
-      ${!isToday?`<button class="btn btn-ghost btn-xs" style="margin-top:3px;font-size:10px" onclick="ui['${uiKey}']=null;render()">↩ Today</button>`:''}
+  const d=new Date(cur+'T00:00:00');
+  const weekday=isToday?'Today':d.toLocaleDateString('en-GB',{weekday:'long'});
+  const dateStr=isToday?d.toLocaleDateString('en-GB',{day:'numeric',month:'long'}):d.toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+  const navId='tabnav-picker-'+uiKey;
+  return`<div style="display:flex;flex-direction:column;align-items:stretch;margin-bottom:14px;background:linear-gradient(135deg,#FDFAF6,#F8F3EC);border-radius:8px;border:1px solid var(--border);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;">
+      <span style="font-size:24px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${prev}';render()">&#8249;</span>
+      <div style="display:flex;align-items:baseline;gap:8px;cursor:pointer;" onclick="(function(){const p=document.getElementById('${navId}');p.value='${cur}';try{p.showPicker();}catch(e){p.style.opacity='0';p.style.pointerEvents='auto';p.style.position='fixed';p.style.top='80px';p.style.left='50%';p.style.width='140px';p.style.height='36px';p.click();setTimeout(()=>{p.style.position='absolute';p.style.pointerEvents='none';p.style.width='0';p.style.height='0';},600);}})()">
+        <span style="font-family:var(--serif);font-size:14px;font-weight:500;color:var(--text);">${weekday}</span>
+        <span style="font-family:var(--serif);font-size:18px;font-weight:500;color:var(--text);letter-spacing:-.2px;">${dateStr}</span>
+        <input type="date" id="${navId}" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" onchange="ui['${uiKey}']=this.value;render()">
+      </div>
+      <span style="font-size:24px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${next}';render()">&#8250;</span>
     </div>
-    <span style="font-size:22px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${next}';render()">&#8250;</span>
-    <input type="date" value="${cur}" class="finput" style="max-width:130px;font-size:12px;padding:4px 8px;cursor:pointer"
-      onchange="ui['${uiKey}']=this.value;render()">
+    ${!isToday?`<div style="text-align:center;padding:0 0 7px;"><button class="btn btn-ghost btn-xs" style="font-size:10px" onclick="ui['${uiKey}']=null;render()">↩ Back to Today</button></div>`:''}
   </div>`;
 }
 
@@ -4446,10 +4455,8 @@ function renderTodayHTML(){
   // On mobile: show them all inline (below upcoming) without the hide wrapper
   html+=renderTasksSection();
   html+=renderRemarksAccordion();
-  html+=renderLeavesSection();
-  html+=`<div class="hide-on-mobile-view">`;
   html+=renderMeetingsSection();
-  html+=`</div>`;
+  html+=renderLeavesSection();
   return html;
 }
 
