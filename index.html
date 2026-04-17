@@ -261,6 +261,7 @@ body {
   .mobile-collapsed-bar { display: none !important; }
   .mobile-date-nav { display: none; }
   .mobile-leave-row { display: none; }
+  .leave-names-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; padding: 4px 16px 6px; border-top: 0.5px solid var(--border); background: var(--surface); }
   .mobile-search-section { display: none !important; }
   .mobile-filter-pills { display: none; }
   .mobile-actions-bar { display: none; }
@@ -1014,6 +1015,8 @@ button.tasks-tab-btn {
 }
 .leave-employee { font-size: 13px; font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 100px; }
 .leave-dates { font-size: 12px; font-family: var(--mono); color: var(--text2); flex: 1; }
+.leave-names-row { display: none; } /* hidden on desktop */
+.leave-name-chip { display:inline-flex;align-items:center;font-size:10px;font-weight:500;font-family:var(--font);background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:2px 8px;color:var(--text2); }
 .leave-type-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;white-space:nowrap; }
 .ltb-earned   { background: rgba(22,163,74,.1); color: var(--done); border: 1px solid rgba(22,163,74,.2); }
 .ltb-sick     { background: rgba(239,68,68,.1); color: var(--urgent); border: 1px solid rgba(239,68,68,.2); }
@@ -1220,12 +1223,12 @@ button.tasks-tab-btn {
       <div style="display:flex;gap:6px;padding:6px 0 8px;flex-wrap:wrap;align-items:center;">
         <span class="filter-label">Filter:</span>
         <button class="fpill fa" onclick="setFilter('all',this)">All</button>
-        <button class="fpill" onclick="setFilter('urgent',this)">🔴 Urgent</button>
-        <button class="fpill" onclick="setFilter('in-progress',this)">🟡 In Progress</button>
-        <button class="fpill" onclick="setFilter('completed',this)">🟢 Done</button>
-        <button class="fpill" onclick="setFilter('on-hold',this)">🟣 On Hold</button>
-        <button class="fpill" onclick="setFilter('not-done',this)">⚫ Not Done</button>
-        <button class="fpill" onclick="setFilter('postponed',this)">🔵 Postponed</button>
+        <button class="fpill fu" onclick="setFilter('urgent',this)"><span class="badge-dot" style="background:#B91C1C"></span>Urgent</button>
+        <button class="fpill fp" onclick="setFilter('in-progress',this)"><span class="badge-dot" style="background:#B45309"></span>In progress</button>
+        <button class="fpill fd" onclick="setFilter('completed',this)"><span class="badge-dot" style="background:#15803D"></span>Done</button>
+        <button class="fpill" style="background:rgba(124,58,237,.09);color:#7C3AED;border-color:rgba(124,58,237,.3)" onclick="setFilter('on-hold',this)"><span class="badge-dot" style="background:#7C3AED"></span>On hold</button>
+        <button class="fpill" style="background:rgba(100,116,139,.09);color:#475569;border-color:rgba(100,116,139,.3)" onclick="setFilter('not-done',this)"><span class="badge-dot" style="background:#475569"></span>Not done</button>
+        <button class="fpill" style="background:rgba(14,165,233,.09);color:#0369A1;border-color:rgba(14,165,233,.3)" onclick="setFilter('postponed',this)"><span class="badge-dot" style="background:#0369A1"></span>Postponed</button>
         <button class="fpill" onclick="setFilter('working',this)">▶ Working</button>
         <button class="fpill" onclick="setFilter('watching',this)">👁 Watching</button>
         <span class="live-clock" id="live-clock"></span>
@@ -1281,14 +1284,14 @@ button.tasks-tab-btn {
       <input class="header-search" id="search-input-mobile" type="search" placeholder="Search stories, people, remarks…" oninput="onSearch(this.value)" autocomplete="off">
       <div class="mobile-filter-pills" id="mobile-filter-pills">
         <button class="fpill fa" id="mfpill-all" onclick="mobileSetFilter('all',this)">All</button>
-        <button class="fpill" id="mfpill-urgent" onclick="mobileSetFilter('urgent',this)">🔴 Urgent</button>
-        <button class="fpill" id="mfpill-in-progress" onclick="mobileSetFilter('in-progress',this)">🟡 In progress</button>
-        <button class="fpill" id="mfpill-completed" onclick="mobileSetFilter('completed',this)">🟢 Done</button>
-        <button class="fpill" id="mfpill-not-done" onclick="mobileSetFilter('not-done',this)">⚫ Not done</button>
-        <button class="fpill" id="mfpill-on-hold" onclick="mobileSetFilter('on-hold',this)">🟣 On hold</button>
-        <button class="fpill" id="mfpill-postponed" onclick="mobileSetFilter('postponed',this)">🔵 Postponed</button>
-        <button class="fpill" id="mfpill-working" onclick="mobileSetFilter('working',this)">▶ Working</button>
-        <button class="fpill" id="mfpill-watching" onclick="mobileSetFilter('watching',this)">👁 Watching</button>
+        <button class="fpill fu" id="mfpill-urgent" onclick="mobileSetFilter('urgent',this)"><span class="badge-dot" style="background:#B91C1C"></span>Urgent</button>
+        <button class="fpill fp" id="mfpill-in-progress" onclick="mobileSetFilter('in-progress',this)"><span class="badge-dot" style="background:#B45309"></span>In progress</button>
+        <button class="fpill fd" id="mfpill-completed" onclick="mobileSetFilter('completed',this)"><span class="badge-dot" style="background:#15803D"></span>Done</button>
+        <button class="fpill" id="mfpill-not-done" style="background:rgba(100,116,139,.09);color:#475569;border-color:rgba(100,116,139,.3)" onclick="mobileSetFilter('not-done',this)"><span class="badge-dot" style="background:#475569"></span>Not done</button>
+        <button class="fpill" id="mfpill-on-hold" style="background:rgba(124,58,237,.09);color:#7C3AED;border-color:rgba(124,58,237,.3)" onclick="mobileSetFilter('on-hold',this)"><span class="badge-dot" style="background:#7C3AED"></span>On hold</button>
+        <button class="fpill" id="mfpill-postponed" style="background:rgba(14,165,233,.09);color:#0369A1;border-color:rgba(14,165,233,.3)" onclick="mobileSetFilter('postponed',this)"><span class="badge-dot" style="background:#0369A1"></span>Postponed</button>
+        <button class="fpill fw" id="mfpill-working" onclick="mobileSetFilter('working',this)">▶ Working</button>
+        <button class="fpill fwt" id="mfpill-watching" onclick="mobileSetFilter('watching',this)">👁 Watching</button>
       </div>
     </div>
   </div>
@@ -2037,7 +2040,7 @@ function openBackupsPanel(){
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:5px">
           <div style="flex:1;min-width:0">
             <div style="font-size:12.5px;font-weight:600;color:var(--text)">${snap.period||snap.date}</div>
-            <div style="font-size:11px;font-family:var(--mono);color:var(--text3);margin-top:2px">Saved ${dt} · ${storyCount} active stories · ${archCount} archive entries</div>
+            <div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-top:2px">Saved ${dt} · ${storyCount} active stories · ${archCount} archive entries</div>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="downloadStoredBackup('${type}',${i})">⬇ Download</button>
         </div>`;
@@ -2308,8 +2311,8 @@ function buildSlotRowHTML(idx,slot){
       <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
         <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
       </div>
-      <div class="fgroup" style="margin:0"><label class="flabel">GMT Time</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})" onblur="btUKBlur(${idx})"></div>
-      <div class="fgroup" style="margin:0"><label class="flabel">IST Time</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})" onblur="btISTBlur(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">UK time (GMT)</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})" onblur="btUKBlur(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">India time (IST)</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})" onblur="btISTBlur(${idx})"></div>
       <div style="display:flex;flex-direction:row;gap:4px;align-self:flex-end;padding-bottom:1px;flex-wrap:nowrap">
         <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
         <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
@@ -2320,8 +2323,8 @@ function buildSlotRowHTML(idx,slot){
       <div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">Per-slot details (optional)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Slot Deadline Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline GMT</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline (GMT)</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Deadline time (IST)</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Commissioner</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
@@ -2469,12 +2472,7 @@ function markNotDone(sec,id,archKey){
 }
 function markStoryNotDone(sec,id,archKey){
   updateStory(sec,id,{status:'not-done',carriedForward:false,notDoneOn:Date.now()},archKey);
-  if(!archKey){
-    _archiveAndRemoveFromBoard(sec,id);
-    toast('⚫ Marked Not Done — archived');
-  } else {
-    toast('⚫ Marked Not Done');
-  }
+  toast('⚫ Not Done');
   saveAndPush(); renderDateStrip(); render();
 }
 
@@ -2505,14 +2503,12 @@ function _archiveAndRemoveFromBoard(sec,id){
 // stuck before this fix (e.g. marked not-done days ago and never archived).
 // Also called after Firebase sync so remote state can't resurrect stuck entries.
 function cleanupCompletedStories(){
-  // Remove completed stories from active board and ensure they're in the correct archive date
+  // Archive completed/not-done for history but keep on board (shown struck-through)
+  // Removal from board happens at midnight carry-forward only
   const today=todayStr();
   ['ibu','other','requests','upcoming'].forEach(secKey=>{
     const arr=state.sections[secKey]||[];
-    const completed=arr.filter(s=>s.status==='completed');
-    if(!completed.length) return;
-    completed.forEach(s=>{
-      // Archive to completedOn date or today
+    arr.filter(s=>s.status==='completed'||s.status==='not-done').forEach(s=>{
       const archDate=s.completedOn?dateStr(new Date(s.completedOn)):today;
       if(!state.archive[archDate]){
         state.archive[archDate]={type:'day',label:archiveLabel(archDate),sections:{},notes:'',created:Date.now()};
@@ -2523,24 +2519,13 @@ function cleanupCompletedStories(){
         state.archive[archDate].sections[secKey].push({...s,autoArchivedOn:today});
       }
     });
-    // Remove completed from active board
-    state.sections[secKey]=arr.filter(s=>s.status!=='completed');
+    // Do NOT remove from board — user needs to see them
   });
   saveAndPush();
 }
 function cleanupStuckNotDone(){
-  let cleaned=0;
-  // Include ALL sections (ibu, other, requests, etc.)
-  SECTIONS.filter(s=>!s.isUpcoming).forEach(sec=>{
-    const stuck=(state.sections[sec.key]||[]).filter(s=>s.status==='not-done');
-    if(!stuck.length) return;
-    stuck.forEach(story=>{
-      _archiveAndRemoveFromBoard(sec.key, story.id);
-      cleaned++;
-    });
-  });
-  if(cleaned>0){ saveAndPush(); }
-  return cleaned;
+  // Not-done entries stay on board now — no cleanup needed
+  return 0;
 }
 function shelveStory(sec,id,archKey){
   updateStory(sec,id,{status:'shelved',carriedForward:false,shelvedAt:Date.now()},archKey);
@@ -3269,7 +3254,7 @@ function meetingToText(m){
 function taskToText(t){
   const ln=[];
   ln.push((t.title||'Untitled').toUpperCase());
-  if(t.deadline_date) ln.push('  Deadline : '+t.deadline_date+(t.deadline_time?' '+t.deadline_time:''));
+  if(t.deadline_date) ln.push('  Deadline : '+t.deadline_date+(t.deadline_time?' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?' / '+ukToIST(t.deadline_time)+' IST':''):''));
   ln.push('  Status   : '+t.taskStatus);
   if(t.notes) ln.push('  Notes    : '+t.notes);
   if(t.isRecurring) ln.push('  Recurs   : '+(t.recurDaysOfWeek?.length?'every '+t.recurDaysOfWeek.join('/'):(t.recurFreq||'recurring')));
@@ -3417,14 +3402,17 @@ function openMobileMore(){
   const m=document.createElement('div'); m.className='modal-bg'; m.id='mobile-more-modal';
   m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:320px;padding:16px">
     <h2 style="margin-bottom:14px">More</h2>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">${syncLabel}</button>
-      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Staff Names</button>
-      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('mobile-more-modal').remove()">✉ Email All</button>
-      <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('mobile-more-modal').remove()">⬇ Export Data</button>
-      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('mobile-more-modal').remove()">⬆ Import Data</button>
-      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:4px 0 3px;">Data</div>
+      <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('mobile-more-modal').remove()">⬇ Export data</button>
       <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('mobile-more-modal').remove()">⬇ Export .txt</button>
+      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('mobile-more-modal').remove()">⬆ Import data</button>
+      <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">Stories</div>
+      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('mobile-more-modal').remove()">✉ Email all</button>
+      <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">System</div>
+      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
+      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Staff names</button>
+      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">${syncLabel}</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
       <button class="btn btn-ghost" onclick="document.getElementById('mobile-more-modal').remove()">Close</button>
@@ -4380,7 +4368,7 @@ function renderSearchHTML(){
           onclick="clearTimeout(_searchTimer);ui.filter='all';setView(${r.archKey?`'archive','${r.archKey}'`:"'today',null"});setTimeout(()=>{ ui.openCards.add('${s.id}');ui.openSections.add('${r.sec==='other'?'ibu':r.sec}');render();setTimeout(()=>document.querySelector('[data-id=\\'${s.id}\\']')?.scrollIntoView({behavior:'smooth',block:'center'}),100); },150)">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.title||'Untitled')}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${secBadge}${s.correspondent?' · '+esc(s.correspondent):''}${sbL?' · '+sbL:''}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--font)">${secBadge}${s.correspondent?' · '+esc(s.correspondent):''}${sbL?' · '+sbL:''}</div>
           </div>
           <span style="font-size:11px;color:var(--text3);flex-shrink:0">›</span>
         </div>`;
@@ -4388,7 +4376,7 @@ function renderSearchHTML(){
         const n=r.note;
         html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--upcoming)">
           <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(n.text)}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--mono)">Note${n.status!=='active'?' · '+(n.status==='done'?'✅ Done':'↪ Passed'):''}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--font)">Note${n.status!=='active'?' · '+(n.status==='done'?'✅ Done':'↪ Passed'):''}</div>
         </div>`;
       } else if(r.type==='task'&&r.task){
         const t=r.task;
@@ -4397,14 +4385,14 @@ function renderSearchHTML(){
           <span style="font-size:15px">${st}</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.title||'Untitled')}</div>
-            <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">Task${t.deadline_date?' · '+t.deadline_date:''}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--font)">Task${t.deadline_date?' · '+t.deadline_date:''}</div>
           </div>
         </div>`;
       } else if(r.type==='leave'&&r.leave){
         const l=r.leave;
         html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid ${l.status==='approved'?'var(--done)':'var(--progress)'}">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.employeeName||'Unknown')}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${l.dateFrom} → ${l.dateTo} · ${l.status==='approved'?`<span class="badge-dot" style="background:#15803D"></span>Approved`:`<span class="badge-dot" style="background:#B45309"></span>Pending`}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--font)">${l.dateFrom} → ${l.dateTo} · ${l.status==='approved'?`<span class="badge-dot" style="background:#15803D"></span>Approved`:`<span class="badge-dot" style="background:#B45309"></span>Pending`}</div>
         </div>`;
       }
     });
@@ -4633,7 +4621,7 @@ function renderArchiveHTML(key){
       <div class="acc-header" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('.acc-chevron').classList.toggle('open')">
         <span class="acc-icon">📝</span>
         <span class="acc-name">Notes on this day</span>
-        <span style="font-size:10px;font-family:var(--mono);color:var(--text3);margin-left:8px">${notesLog.length} note${notesLog.length===1?'':'s'}</span>
+        <span style="font-size:10px;font-family:var(--font);color:var(--text3);margin-left:8px">${notesLog.length} note${notesLog.length===1?'':'s'}</span>
         <span class="acc-chevron">▾</span>
       </div>
       <div class="acc-body" style="display:flex;flex-direction:column;gap:6px">
@@ -4675,7 +4663,7 @@ function renderArchiveHTML(key){
             <span style="font-size:12px">${td._deleted?'🗑':td.taskStatus==='done'?'✅':td.taskStatus==='not-done'?'⚫':'⏳'}</span>
             <div style="flex:1">
               <div style="font-size:12.5px;font-weight:600;color:var(--text);${strike}">${esc(td.title||'Untitled')}</div>
-              <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">Task · ${st2}${td.deadline_date?' · '+td.deadline_date:''}</div>
+              <div style="font-size:10.5px;color:var(--text3);font-family:var(--font)">Task · ${st2}${td.deadline_date?' · '+td.deadline_date:''}</div>
             </div>
           </div>`;
         }).join('')}
@@ -4707,7 +4695,7 @@ function renderMigrateHTML(){
             value="${ui.migrateSourceKey&&!['${yest}','${tomm}'].includes(ui.migrateSourceKey)?ui.migrateSourceKey:''}"
             placeholder="Other date…"
             onchange="setMigrateSource(this.value||null)">
-          ${ui.migrateSourceKey?`<span style="font-size:11px;font-family:var(--mono);color:var(--upcoming)">📅 ${sourceLabel}</span>`:''}
+          ${ui.migrateSourceKey?`<span style="font-size:11px;font-family:var(--font);color:var(--upcoming)">📅 ${sourceLabel}</span>`:''}
         </div>
         <div id="migrate-source-wrap">${buildMigrateSourceHTML()}</div>
       </div>
@@ -4728,7 +4716,7 @@ function renderMigrateHTML(){
           <button class="ttype-btn${ui.migrateTargetType==='month'?' tt-active':''}" data-type="month" onclick="setMigrateTargetType('month')">📆 Month</button>
         </div>
         <div class="fgroup" style="margin-bottom:8px"><input class="finput" id="migrate-target-value" type="date"></div>
-        <div id="migrate-dest-label" style="font-size:11.5px;color:var(--week);font-family:var(--mono);min-height:18px;margin-bottom:8px"></div>
+        <div id="migrate-dest-label" style="font-size:11.5px;color:var(--week);font-family:var(--font);min-height:18px;margin-bottom:8px"></div>
         <div style="font-size:11px;color:var(--text3);font-family:var(--font);margin-bottom:6px">Action</div>
         <div class="migrate-action-row">
           <button class="action-btn${ui.migrateAction==='move'?' act-active':''}" data-action="move" onclick="setMigrateAction('move')">🔀 Move<br><span style="font-size:10px;color:var(--text3)">removes original</span></button>
@@ -4780,7 +4768,7 @@ function buildMigrateSourceHTML(){
     const isOpen=ui.migrateOpenSecs.has(sectionKey);
     html+=`<div style="margin-bottom:10px">
       <div class="migrate-section-header" onclick="toggleMigrateSec('${sectionKey}')">
-        <span class="migrate-sec-name">${sec.icon} ${sec.name} <span style="color:var(--text3);font-size:11px;font-family:var(--mono)">(${stories.length})</span></span>
+        <span class="migrate-sec-name">${sec.icon} ${sec.name} <span style="color:var(--text3);font-size:11px;font-family:var(--font)">(${stories.length})</span></span>
         <div style="display:flex;gap:7px;align-items:center">
           ${stories.length?`<button class="btn btn-xs btn-ghost" onclick="selectAllSec('${sectionKey}');event.stopPropagation()">${selCnt===stories.length&&stories.length?'Deselect all':'Select all'}</button>`:''}
           <span id="msec-chev-${sectionKey}" style="color:var(--text3);font-size:13px;transition:transform .2s;${isOpen?'transform:rotate(180deg)':''}">▾</span>
@@ -4881,6 +4869,7 @@ function renderAccordion(sec,archKey){
       <span class="acc-icon">${sec.icon}</span>
       <span class="acc-name">${esc(displayName)}</span>
       ${secObj.renameable&&!archKey?`<button class="btn btn-ghost btn-xs" style="flex-shrink:0;padding:2px 7px;font-size:10px;color:var(--text3)" onclick="event.stopPropagation();startRename('${sec.key}')" title="Rename section">✏ Rename</button>`:''}
+      <span class="acc-summary">${activeStories.length?(esc(activeStories.slice().sort((a,b)=>{if(!a.deadline_date&&!b.deadline_date)return 0;if(!a.deadline_date)return 1;if(!b.deadline_date)return -1;return a.deadline_date<b.deadline_date?-1:1;})[0].title||'')):''}</span>
       <div class="acc-meta">
         ${activeStories.length?`<span class="sbadge sb-in-progress">${activeStories.length} pending</span>`:''}
       </div>
@@ -4947,7 +4936,16 @@ function renderAccordion(sec,archKey){
     }
   } else {
     if(!stories.length&&!isFormOpen) html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet — click <strong>+ Add</strong></div></div>`;
-    else stories.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+    else {
+      const _live=stories.filter(s=>!['completed','not-done'].includes(s.status));
+      const _done=stories.filter(s=>['completed','not-done'].includes(s.status));
+      if(_live.length){ _live.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
+      else html+='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No active entries</div></div>';
+      if(_done.length){
+        html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_done.length} completed</div>`;
+        _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+      }
+    }
 
     // Shelved ribbon — always visible, displayed below active stories
     if(shelvedCount>0){
@@ -5005,16 +5003,19 @@ function openDesktopMore(){
   const m=document.createElement('div'); m.className='modal-bg'; m.id='desktop-more-modal';
   m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:340px;padding:18px">
     <h2 style="margin-bottom:14px">Actions</h2>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('desktop-more-modal').remove()">☁️ Sync setup</button>
-      <button class="btn btn-ghost" onclick="snapshotToday();document.getElementById('desktop-more-modal').remove()">📸 Snapshot today</button>
-      <button class="btn btn-ghost" onclick="setView('migrate',null);document.getElementById('desktop-more-modal').remove()">⇄ Migrate stories</button>
-      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('desktop-more-modal').remove()">👥 Staff names</button>
-      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('desktop-more-modal').remove()">✉ Email all</button>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;">Data</div>
       <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('desktop-more-modal').remove()">⬇ Export data</button>
-      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('desktop-more-modal').remove()">⬆ Import data</button>
-      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('desktop-more-modal').remove()">💾 Backups</button>
       <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('desktop-more-modal').remove()">⬇ Export .txt</button>
+      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('desktop-more-modal').remove()">⬆ Import data</button>
+      <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">Stories</div>
+      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('desktop-more-modal').remove()">✉ Email all</button>
+      <button class="btn btn-ghost" onclick="setView('migrate',null);document.getElementById('desktop-more-modal').remove()">⇄ Migrate stories</button>
+      <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">System</div>
+      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('desktop-more-modal').remove()">💾 Backups</button>
+      <button class="btn btn-ghost" onclick="snapshotToday();document.getElementById('desktop-more-modal').remove()">📸 Snapshot today</button>
+      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('desktop-more-modal').remove()">👥 Staff names</button>
+      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('desktop-more-modal').remove()">☁️ Sync setup</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
       <button class="btn btn-ghost" onclick="document.getElementById('desktop-more-modal').remove()">Close</button>
@@ -5613,6 +5614,7 @@ function renderTasksSection(){
   const accHeader=`<div class="accordion${isOpen?' acc-open':''}" id="acc-tasks">
     <div class="acc-header" onclick="toggleAccordion('tasks')">
       <span class="acc-icon">☑</span><span class="acc-name">Tasks</span>
+      <span class="acc-summary">${(()=>{ const pending=(state.tasks||[]).filter(t=>t.taskStatus==='pending'||t.taskStatus==='postponed-to'); if(!pending.length)return ''; const sorted=pending.slice().sort((a,b)=>{if(!a.deadline_date&&!b.deadline_date)return 0;if(!a.deadline_date)return 1;if(!b.deadline_date)return -1;return a.deadline_date<b.deadline_date?-1:1;}); return esc(sorted[0].title||''); })()}</span>
       <div class="acc-meta">
         ${pendingCount?`<span class="sbadge sb-in-progress">${pendingCount} pending</span>`:''}
       </div>
@@ -5657,8 +5659,8 @@ function renderTasksSection(){
           <div class="fgroup full"><label class="flabel">Task *</label><input class="finput" id="tf-title" placeholder="What needs to be done…" autocomplete="off"></div>
           <div class="fgroup full"><label class="flabel">Notes / Detail</label><textarea class="ftextarea" id="tf-notes" placeholder="Any context or extra detail…" style="min-height:56px"></textarea></div>
           <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="tf-deadline-date"></div>
-          <div class="fgroup"><label class="flabel">Deadline Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" type="time" id="tf-deadline-time" oninput="onTaskDeadlineTimeChange()" onblur="onTaskDeadlineTimeChange()"></div>
-          <div class="fgroup"><label class="flabel">Deadline Time IST</label><input class="finput" type="time" id="tf-deadline-time-ist" oninput="onTaskDeadlineISTChange()" onblur="onTaskDeadlineISTChange()"></div>
+          <div class="fgroup"><label class="flabel">Deadline time (${ukLabel()})</label><input class="finput" type="time" id="tf-deadline-time" oninput="onTaskDeadlineTimeChange()" onblur="onTaskDeadlineTimeChange()"></div>
+          <div class="fgroup"><label class="flabel">Deadline time (IST)</label><input class="finput" type="time" id="tf-deadline-time-ist" oninput="onTaskDeadlineISTChange()" onblur="onTaskDeadlineISTChange()"></div>
           <div class="fgroup"><label class="flabel">Reminder</label>
             <select class="fselect" id="tf-reminder">
               <option value="off">Off</option><option value="1hr">1 hour before</option><option value="4hr">4 hours before</option><option value="1day">1 day before</option><option value="1week">1 week before</option>
@@ -5678,15 +5680,22 @@ function renderTasksSection(){
         if((state.tasks||[]).find(x=>x.id===t.id)){
           html+=renderTaskCard(t,today);
         } else {
-          const st=t.taskStatus==='done'||t._deleted?'✅':t.taskStatus==='not-done'?'⚫':t.taskStatus==='transferred'?'⇄':'⏳';
-          const label=t._deleted?'Deleted':t.taskStatus==='done'?'Done':t.taskStatus==='not-done'?'Not Done':t.taskStatus==='transferred'?'Transferred':'Pending';
+          const isOvd=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred';
+          const ovdDays=isOvd?Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(t.deadline_date+'T00:00:00').getTime())/86400000)):0;
+          const dot=col=>`<span class="badge-dot" style="background:${col}"></span>`;
+          let aCls='tsb-pending', aTxt=dot('#B45309')+'Pending';
+          if(t._deleted)                     { aCls='tsb-notdone'; aTxt=dot('#475569')+'Deleted'; }
+          else if(t.taskStatus==='done')      { aCls='tsb-done';    aTxt=dot('#15803D')+'Done'; }
+          else if(t.taskStatus==='not-done')  { aCls='tsb-notdone'; aTxt=dot('#475569')+'Not done'; }
+          else if(t.taskStatus==='transferred'){ aCls='tsb-postponed'; aTxt=dot('#7C3AED')+'Transferred'; }
+          else if(isOvd)                      { aCls='tsb-notdone'; aTxt=dot('#B91C1C')+'Overdue '+ovdDays+'d'; }
           html+=`<div class="task-card ts-pending" style="margin-bottom:6px;opacity:${t._deleted?.6:1}">
             <div class="task-top" style="cursor:default">
               <div style="flex:1">
                 <div class="task-title" style="text-decoration:${t._deleted?'line-through':''}">${esc(t.title||'Untitled')}</div>
-                ${t.deadline_date?`<div class="task-chips"><span class="task-chip">📅 ${t.deadline_date}</span></div>`:''}
+                ${t.deadline_date?`<div class="task-chips"><span class="task-chip mono">📅 ${t.deadline_date}</span></div>`:''}
               </div>
-              <span class="task-status-badge tsb-${t.taskStatus==='done'?'done':t.taskStatus==='not-done'?'postponed':'pending'}">${st} ${label}</span>
+              <span class="task-status-badge ${aCls}">${aTxt}</span>
             </div>
           </div>`;
         }
@@ -5729,7 +5738,7 @@ function renderTasksSection(){
           <label class="flabel" style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="tf-recurring" onchange="toggleRecurringFields()" style="width:14px;height:14px;cursor:pointer">
             <span>Recurring task</span>
-            <span style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">— meeting, daily reminder, etc.</span>
+            <span style="font-size:10.5px;color:var(--text3);font-family:var(--font)">— meeting, daily reminder, etc.</span>
           </label>
         </div>
         <div id="tf-recur-fields" style="display:none;grid-column:1/-1">
@@ -5819,13 +5828,14 @@ function renderTaskCard(t, today){
   else if(isCarried) cardCls+='ts-carried';
   else cardCls+='ts-pending';
 
-  // Status badge
+  // Status badge — single source of truth on the right
   let sbCls='task-status-badge ', sbTxt='';
   const dot=color=>`<span class="badge-dot" style="background:${color}"></span>`;
-  if(t.taskStatus==='done'){ sbCls+='tsb-done'; sbTxt=dot('#15803D')+'Done'; }
-  else if(t.taskStatus==='not-done'){ sbCls+='tsb-notdone'; sbTxt=dot('#475569')+'Not done'; }
+  if(t.taskStatus==='done'){       sbCls+='tsb-done';      sbTxt=dot('#15803D')+'Done'; }
+  else if(t.taskStatus==='not-done'){  sbCls+='tsb-notdone'; sbTxt=dot('#475569')+'Not done'; }
   else if(t.taskStatus==='transferred'){ sbCls+='tsb-postponed'; sbTxt=dot('#7C3AED')+'Transferred'; }
   else if(t.taskStatus==='postponed-to'){ sbCls+='tsb-postponed'; sbTxt=dot('#0369A1')+'Postponed'; }
+  else if(isOverdue&&!t.isRecurring){ sbCls+='tsb-notdone'; const od=Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(t.deadline_date+'T00:00:00').getTime())/86400000)); sbTxt=dot('#B91C1C')+'Overdue '+od+'d'; }
   else if(isCarried){ sbCls+='tsb-carried'; sbTxt='↻ +'+(t.carriedDays||1)+'d'; }
   else { sbCls+='tsb-pending'; sbTxt=dot('#B45309')+'Pending'; }
 
@@ -5851,14 +5861,14 @@ function renderTaskCard(t, today){
   if(t.deadline_date){
     const diff=new Date(t.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
     const days=Math.round(diff/86400000);
-    if(t.taskStatus==='done') deadlineChip=`<span class="task-chip">Done ${t.deadline_date}</span>`;
-    else if(t.isRecurring) deadlineChip=''; // recurring: schedule shown in recurBadge instead
-    else if(days<0) deadlineChip=`<span class="task-chip overdue-chip">⚠ Overdue by ${Math.abs(days)}d</span>`;
-    else if(days===0) deadlineChip=`<span class="task-chip overdue-chip">⚠ Due today</span>`;
-    else { const timeStr=t.deadline_time?(' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?'/'+ukToIST(t.deadline_time)+' IST':'')):''; deadlineChip=`<span class="task-chip">📅 Due in ${days}d (${t.deadline_date}${timeStr})</span>`; }
+    if(t.taskStatus==='done') deadlineChip=`<span class="task-chip mono">📅 ${t.deadline_date}</span>`;
+    else if(t.isRecurring) deadlineChip='';
+    else if(days<0) deadlineChip=`<span class="task-chip mono">📅 ${t.deadline_date}</span>`;
+    else if(days===0) deadlineChip=`<span class="task-chip mono">📅 Today</span>`;
+    else { const timeStr=t.deadline_time?(' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?' / '+ukToIST(t.deadline_time)+' IST':'')):''; deadlineChip=`<span class="task-chip mono">📅 ${t.deadline_date}${timeStr}</span>`; }
   }
   const postponeChip=t.taskStatus==='postponed-to'&&t.postponeTo?`<span class="task-chip">⏸ Postponed to ${t.postponeTo}</span>`:'';
-  const carriedChip=isCarried?`<span class="carry-badge">↻ +${t.carriedDays||1}d</span>`:'';
+  const carriedChip='';
   const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>`:'';
 
   const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${recurSchedule}</span>`:'';
@@ -5883,11 +5893,11 @@ function renderTaskCard(t, today){
       ${t.taskStatus==='done'
         ? `<button class="btn btn-not-done btn-sm" onclick="setTaskStatus('${t.id}','pending');event.stopPropagation()">↩ Reopen</button>`
         : t.taskStatus==='not-done'
-        ? `<span style="font-size:11px;color:var(--text3);font-family:var(--mono);padding:2px 0">⚫ Marked not done — won't carry forward</span>
+        ? `<span style="font-size:11px;color:var(--text3);font-family:var(--font);padding:2px 0">⚫ Marked not done — won't carry forward</span>
            <button class="btn btn-postpone btn-sm" onclick="openTaskTransferDialog('${t.id}');event.stopPropagation()">📅 Transfer / Copy to date…</button>
            <button class="btn btn-ghost btn-sm" onclick="setTaskStatus('${t.id}','pending');event.stopPropagation()">↩ Reopen</button>`
         : t.taskStatus==='transferred'
-        ? `<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">→ Transferred to ${esc(t.transferredTo||'')}</span>
+        ? `<span style="font-size:11px;color:var(--text3);font-family:var(--font)">→ Transferred to ${esc(t.transferredTo||'')}</span>
            <button class="btn btn-ghost btn-sm" onclick="setTaskStatus('${t.id}','pending');event.stopPropagation()">↩ Reopen here</button>`
         : `<button class="btn btn-done-active btn-sm" onclick="setTaskStatus('${t.id}','done');event.stopPropagation()">✅ Mark Done</button>
            <button class="btn btn-not-done btn-sm" onclick="setTaskStatus('${t.id}','not-done');event.stopPropagation()">⚫ Not Done</button>`
@@ -5913,8 +5923,13 @@ function renderCombinedAccordion(archKey){
   const isIBUFormOpen=ui.openForms.has(fKeyIbu);
   const isOtherFormOpen=ui.openForms.has(fKeyOther);
 
-  const ibuActive=ibuAll.filter(s=>s.status!=='shelved');
-  const otherActive=otherAll.filter(s=>s.status!=='shelved');
+  const TERMINAL_S=['completed','not-done'];
+  const ibuLive=ibuAll.filter(s=>!TERMINAL_S.includes(s.status)&&s.status!=='shelved');
+  const otherLive=otherAll.filter(s=>!TERMINAL_S.includes(s.status)&&s.status!=='shelved');
+  const ibuDone=ibuAll.filter(s=>TERMINAL_S.includes(s.status));
+  const otherDone=otherAll.filter(s=>TERMINAL_S.includes(s.status));
+  const ibuActive=ibuLive;
+  const otherActive=otherLive;
   const allActive=[...ibuActive,...otherActive];
   const shelvedAll=[...ibuAll,...otherAll].filter(s=>s.status==='shelved');
   const uc=allActive.filter(s=>s.status==='urgent').length;
@@ -5935,18 +5950,21 @@ function renderCombinedAccordion(archKey){
     ...applyFilter(otherActive).map(s=>({...s,_subsec:'other'})),
   ];
 
+  // Pre-compute bits that would cause template literal nesting issues
+  const _types=[...new Set((ibuActive.concat(otherActive)).flatMap(s=>(s.story_type||'').split(',').map(t=>t.trim().toUpperCase()).filter(Boolean)))];
+  const _typeBadge=_types.length?`<span class="sbadge" style="background:rgba(79,70,229,.08);color:#4338CA;border:0.5px solid rgba(79,70,229,.25);">${_types.join(' · ')}</span>`:'';
+  const _urgentBadge=uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:'';
+  const _progressBadge=ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:'';
+  const _carryBadge=cc?`<span class="sbadge" style="background:rgba(234,88,12,.08);color:var(--carry);border:0.5px solid rgba(234,88,12,.25);">↻ ${cc} carried</span>`:'';
+  const _filterChip=ui.filter!=='all'?`<span style="font-size:10px;font-family:var(--font);color:var(--accent);cursor:pointer" onclick="setFilter('all',null);event.stopPropagation()">✕ ${ui.filter}</span>`:'';
+  const _ibuForm=isIBUFormOpen?renderForm('ibu',archKey):'';
+  const _otherForm=isOtherFormOpen?renderForm('other',archKey):'';
+
   let html=`<div class="accordion${isOpen?' acc-open':''}" id="acc-ibu">
     <div class="acc-header" onclick="toggleAccordion('ibu')">
       <span class="acc-icon">📡</span>
       <span class="acc-name">Stories</span>
-      <div class="acc-meta">
-        ${uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:''}
-        ${ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:''}
-        ${(()=>{ const types=[...new Set((ibuActive.concat(otherActive)).flatMap(s=>(s.story_type||'').split(',').map(t=>t.trim().toUpperCase()).filter(Boolean)))]; return types.length?`<span class="sbadge" style="background:rgba(79,70,229,.08);color:#4338CA;border:0.5px solid rgba(79,70,229,.25);">${types.join(' · ')}</span>`:''; })()}
-        ${cc?`<span class="sbadge" style="background:rgba(234,88,12,.08);color:var(--carry);border:0.5px solid rgba(234,88,12,.25);">↻ ${cc} carried</span>`:''}
-
-        ${ui.filter!=='all'?`<span style="font-size:10px;font-family:var(--mono);color:var(--accent);cursor:pointer" onclick="setFilter('all',null);event.stopPropagation()">✕ ${ui.filter}</span>`:''}
-      </div>
+      <div class="acc-meta">${_urgentBadge}${_progressBadge}${_typeBadge}${_carryBadge}${_filterChip}</div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
@@ -5955,21 +5973,30 @@ function renderCombinedAccordion(archKey){
         <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()">⬇ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Add Story</button>
       </div>
-      ${isIBUFormOpen?renderForm('ibu',archKey):''}
-      ${isOtherFormOpen?renderForm('other',archKey):''}
-      ${(ui.filter!=='all'||ui.search)?`<div style="font-size:11.5px;font-family:var(--mono);color:var(--accent);background:rgba(207,102,64,.07);border:1px solid rgba(207,102,64,.2);border-radius:7px;padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-        <span>🔍 Filter active: ${ui.filter!=='all'?ui.filter:'search'} — showing ${combinedFiltered.length} of ${ibuActive.length+otherActive.length}</span>
-        <button class="btn btn-ghost btn-xs" onclick="setFilter('all',null);ui.search='';const si=document.getElementById('search-input');if(si)si.value='';render();event.stopPropagation()">Clear ✕</button>
-      </div>`:''}
-      <div id="stories-wrap-ibu">
-        ${combinedFiltered.length
-          ? combinedFiltered.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')
-          : `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet</div></div>`
-        }
-      </div>
-      ${shelvedAll.length?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">🗄 Shelved (${shelvedAll.length})</div>${[...ibuAll.filter(s=>s.status==='shelved').map(s=>renderCard('ibu',s,archKey)),...otherAll.filter(s=>s.status==='shelved').map(s=>renderCard('other',s,archKey))].join('')}</div>`:''}
-    </div>
-  </div>`;
+      ${_ibuForm}${_otherForm}`;
+
+  if(ui.filter!=='all'||ui.search){
+    html+=`<div style="font-size:11.5px;color:var(--accent);background:rgba(207,102,64,.07);border:1px solid rgba(207,102,64,.2);border-radius:7px;padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span>🔍 Showing ${combinedFiltered.length} of ${ibuActive.length+otherActive.length}</span><button class="btn btn-ghost btn-xs" onclick="setFilter('all',null);ui.search='';const si=document.getElementById('search-input');if(si)si.value='';render();event.stopPropagation()">Clear ✕</button></div>`;
+  }
+
+  html+='<div id="stories-wrap-ibu">';
+  if(combinedFiltered.length){
+    html+=combinedFiltered.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('');
+  } else {
+    html+='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet</div></div>';
+  }
+  const _termAll=[...ibuDone.map(s=>({...s,_subsec:'ibu'})),...otherDone.map(s=>({...s,_subsec:'other'}))];
+  if(_termAll.length){
+    html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_termAll.length} completed</div>`;
+    _termAll.forEach(s=>{ html+=renderCard(s._subsec,s,archKey); });
+  }
+  html+='</div>';
+  if(shelvedAll.length){
+    html+='<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">🗄 Shelved ('+shelvedAll.length+')</div>';
+    html+=[...ibuAll.filter(s=>s.status==='shelved').map(s=>renderCard('ibu',s,archKey)),...otherAll.filter(s=>s.status==='shelved').map(s=>renderCard('other',s,archKey))].join('');
+    html+='</div>';
+  }
+  html+='</div></div>';
   return html;
 }
 
@@ -6287,8 +6314,8 @@ function renderMeetingForm(){
     <div class="form-grid">
       <div class="fgroup"><label class="flabel">Meeting Name *</label><input class="finput" id="mf-name" placeholder="Morning call, Editorial standup…" autocomplete="off"></div>
       <div class="fgroup"><label class="flabel">Date *</label><input class="finput" type="date" id="mf-date" value="${today}"></div>
-      <div class="fgroup"><label class="flabel">Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" type="time" id="mf-time" oninput="onMeetingTimeChange()" onblur="onMeetingTimeChange()"></div>
-      <div class="fgroup"><label class="flabel">Time IST</label><input class="finput" type="time" id="mf-time-ist" oninput="onMeetingTimeISTChange()" onblur="onMeetingTimeISTChange()"></div>
+      <div class="fgroup"><label class="flabel">UK time (${ukLabel()})</label><input class="finput" type="time" id="mf-time" oninput="onMeetingTimeChange()" onblur="onMeetingTimeChange()"></div>
+      <div class="fgroup"><label class="flabel">India time (IST)</label><input class="finput" type="time" id="mf-time-ist" oninput="onMeetingTimeISTChange()" onblur="onMeetingTimeISTChange()"></div>
       <div class="fgroup"><label class="flabel">Status</label>
         <select class="fselect" id="mf-status">
           <option value="scheduled">📅 Scheduled</option>
@@ -6300,7 +6327,7 @@ function renderMeetingForm(){
         <label class="flabel" style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="mf-recurring" onchange="toggleMeetingRecurring()" style="width:14px;height:14px">
           <span>Recurring meeting</span>
-          <span style="font-size:10.5px;color:var(--text3);font-family:var(--mono)">— repeats on a schedule</span>
+          <span style="font-size:10.5px;color:var(--text3);font-family:var(--font)">— repeats on a schedule</span>
         </label>
         <div id="mf-recur-fields" style="display:none;margin-top:10px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
           <div class="form-grid">
@@ -6548,6 +6575,7 @@ function renderMeetingsSection(){
     <div class="acc-header" onclick="toggleAccordion('meetings')">
       <span class="acc-icon">📅</span>
       <span class="acc-name">Meetings</span>
+      <span class="acc-summary">${(()=>{ const upcoming=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'); if(!upcoming.length)return ''; upcoming.sort((a,b)=>{ const da=a.date||''; const db=b.date||''; if(da<db)return -1; if(da>db)return 1; return (a.time||'').localeCompare(b.time||''); }); return esc(upcoming[0].name||''); })()}</span>
       <div class="acc-meta">
         ${activeCount?`<span class="sbadge sb-in-progress">${activeCount} scheduled</span>`:''}
       </div>
@@ -6605,7 +6633,7 @@ function renderRemarksAccordion(){
       }
       const carriedChip=n.carriedForward?`<span class="carry-badge">↻ +${n.carriedDays||1}d</span>`:'';
       body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
-        ${n.headline?`<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px;font-family:var(--serif)">${esc(n.headline)}</div>`:''}
+        ${n.headline?`<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;font-family:var(--font)">${esc(n.headline)}</div>`:''}
         <div class="note-text">${esc(n.text)}</div>
         <div class="note-meta">
           <span>🗓 ${created}</span>
@@ -6646,6 +6674,7 @@ function renderRemarksAccordion(){
     <div class="acc-header" onclick="toggleAccordion('remarks')">
       <span class="acc-icon">📝</span>
       <span class="acc-name">Note</span>
+      <span class="acc-summary">${active.length?esc((active[0].headline||active[0].text||'').slice(0,60)):''}</span>
       <div class="acc-meta">
         ${active.length?`<span class="sbadge sb-in-progress">${active.length} active</span>`:''}
       </div>
@@ -6863,10 +6892,14 @@ function renderLeavesSection(){
   const accHeaderL=`<div class="accordion${isOpenL?' acc-open':''}" id="acc-leaves">
     <div class="acc-header" onclick="toggleAccordion('leaves')">
       <span class="acc-icon">🌴</span><span class="acc-name">Leaves</span>
+      <span class="acc-summary">${(()=>{const ol=getOnLeaveToday();return ol.slice(0,4).map(l=>(l.employeeName||'').split(' ')[0]).filter(Boolean).join(' · ');})()}</span>
       <div class="acc-meta">
         ${activeLeaves.length?`<span class="sbadge sb-in-progress">${activeLeaves.length} active/upcoming</span>`:''}
       </div>
-      <span class="acc-chevron hide-on-mobile-view${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
+      <span class="acc-chevron${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
+    </div>
+    <div class="leave-names-row" id="leave-names-row">
+      ${getOnLeaveToday().slice(0,6).map(l=>`<span class="leave-name-chip">${esc((l.employeeName||'?').split(' ')[0])}</span>`).join('')}
     </div>
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
@@ -7267,7 +7300,7 @@ function renderForm(sec,archKey){
   const existingSlots=editStoryObj?.broadcast_times||[];
 
   return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}">
-  <div class="form-title">${isEdit?(sec==='ibu'?'✏ Edit Live Story':'✏ Edit Story'):(sec==='ibu'?'+ New Live Story':'+ New Story')}</div>
+  <div class="form-title">${isEdit?'✏ Edit Story':'+ New Story'}</div>
   <div class="form-grid">
     <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off" value="${esc(editStoryObj?.title||'')}"></div>
     <div class="fgroup full"><label class="flabel">Description <span class="flabel-hint">(optional — shown as subtitle on card)</span></label><textarea class="ftextarea" id="f-description${sfx}" placeholder="Brief description of the story…" style="min-height:60px;resize:vertical;">${esc(editStoryObj?.description||'')}</textarea></div>
@@ -7317,15 +7350,15 @@ function renderForm(sec,archKey){
     </div>
     <div class="form-divider">Broadcast Times</div>
     <div class="fgroup full" style="margin-bottom:4px">
-      <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Select platform and enter GMT time — IST auto-fills. Add a slot for each scheduled broadcast.</div>
+      <div style="font-size:10.5px;color:var(--text3);font-family:var(--font);margin-bottom:8px">Select platform and enter GMT time — IST auto-fills. Add a slot for each scheduled broadcast.</div>
       <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
     </div>
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK Time <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline IST Time</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline time (${ukLabel()})</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline time (IST)</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">Request Details</div>
     <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
@@ -7353,7 +7386,7 @@ function renderForm(sec,archKey){
       <label class="flabel">Remarks</label>
       ${isEdit&&editStoryObj
         ? renderFormRemarksList(sec,editStoryObj,archKey)
-        : `<div style="font-size:11.5px;color:var(--text3);padding:6px 0;font-family:var(--mono)">Save the story first, then reopen to add remarks.</div>`}
+        : `<div style="font-size:11.5px;color:var(--text3);padding:6px 0;font-family:var(--font)">Save the story first, then reopen to add remarks.</div>`}
     </div>
     <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
   </div>
@@ -7386,8 +7419,8 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline UK <span class="flabel-hint">${ukLabel()}</span></label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline time (${ukLabel()})</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">Deadline time (IST)</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
     </div>
     <div class="form-divider">People &amp; Status</div>
     <div class="fgroup"><label class="flabel">Correspondent Deployed</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
