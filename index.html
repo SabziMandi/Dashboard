@@ -561,7 +561,8 @@ body {
 .card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: var(--shadow); }
 .card.c-urgent      { border-left-color: var(--urgent); }
 .card.c-in-progress { border-left-color: var(--progress); }
-.card.c-completed   { border-left-color: var(--done); }
+.card.c-completed   { border-left-color: var(--done); opacity: .55; }
+.card.c-completed .card-title { text-decoration: line-through; }
 .card.c-on-hold     { border-left-color: var(--onhold); }
 .card.c-carried     { border-left-color: var(--carry); }
 .card.c-working     { border-left-color: var(--working); }
@@ -591,7 +592,8 @@ body {
 .sb-not-started { background:rgba(148,163,184,.09);color:#64748B; border:0.5px solid rgba(148,163,184,.3); }
 .badge-dot { width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block; }
 
-.card.c-not-done  { border-left-color: #64748b; opacity: .75; }
+.card.c-not-done  { border-left-color: #64748b; opacity: .55; }
+.card.c-not-done .card-title { text-decoration: line-through; }
 .card.c-postponed { border-left-color: #0EA5E9; }
 .card.c-shelved   { border-left-color: #94a3b8; opacity: .6; }
 
@@ -1195,9 +1197,9 @@ button.tasks-tab-btn {
     <!-- Row 2: times centred, no border above -->
     <div class="hide-mobile" style="background:var(--surface);display:flex;justify-content:center;padding:4px 22px 10px;">
       <div style="width:100%;max-width:1200px;display:flex;justify-content:center;align-items:center;gap:10px;">
-        <span id="desktop-time-bst" style="font-size:12px;color:var(--text3);font-family:var(--mono);">09:02 BST</span>
+        <span id="desktop-time-bst" style="font-size:13.5px;color:var(--text3);font-family:var(--mono);">09:02 BST</span>
         <span style="font-size:10px;color:var(--border2);">·</span>
-        <span id="desktop-time-ist" style="font-size:12px;color:var(--text3);font-family:var(--mono);">14:32 IST</span>
+        <span id="desktop-time-ist" style="font-size:13.5px;color:var(--text3);font-family:var(--mono);">14:32 IST</span>
       </div>
     </div>
     <!-- Row 3: warm tint — + far left · ‹ date › centred · search far right -->
@@ -1778,11 +1780,17 @@ function checkDateChange(){
     // Remove all archived stories from working board
     const archivedIBU=toAutoArchive.filter(x=>x.sec==='ibu').map(x=>x.story.id);
     const archivedOther=toAutoArchive.filter(x=>x.sec==='other').map(x=>x.story.id);
-    if(archivedIBU.length) state.sections.ibu=[];  // IBU always clears fully
-    if(archivedOther.length) state.sections.other=state.sections.other.filter(s=>!archivedOther.includes(s.id));
-    // Other sections that had watching stories archived
+    // IBU always clears fully at midnight
+    state.sections.ibu=[];
+    // Other/requests: remove terminal stories (completed, not-done, shelved) — they had their day
+    const TERM_MIDNIGHT=['completed','not-done','shelved'];
+    state.sections.other=(state.sections.other||[]).filter(s=>!TERM_MIDNIGHT.includes(s.status));
+    SECTIONS.filter(s=>!s.isUpcoming&&s.key!=='ibu'&&s.key!=='other').forEach(({key})=>{
+      state.sections[key]=(state.sections[key]||[]).filter(s=>!TERM_MIDNIGHT.includes(s.status));
+    });
+    // Also remove any remaining toAutoArchive items not caught above
     toAutoArchive.filter(x=>x.sec!=='ibu'&&x.sec!=='other').forEach(({story,sec})=>{
-      state.sections[sec]=state.sections[sec].filter(s=>s.id!==story.id);
+      state.sections[sec]=(state.sections[sec]||[]).filter(s=>s.id!==story.id);
     });
     if(toAutoArchive.length){
       const ibuCnt=archivedIBU.length;
@@ -2524,8 +2532,27 @@ function cleanupCompletedStories(){
   saveAndPush();
 }
 function cleanupStuckNotDone(){
-  // Not-done entries stay on board now — no cleanup needed
-  return 0;
+  // Sweep terminal stories from board if they were resolved on a PREVIOUS date
+  // (i.e. marked done/not-done yesterday and app opened today — they shouldn't carry over)
+  const today=todayStr();
+  const TERM=['completed','not-done','shelved'];
+  let swept=0;
+  SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).forEach(sec=>{
+    const arr=state.sections[sec.key]||[];
+    const keep=arr.filter(s=>{
+      if(!TERM.includes(s.status)) return true; // active — keep
+      // Check resolution date
+      const resDate=s.completedOn?dateStr(new Date(s.completedOn))
+        :s.notDoneOn?dateStr(new Date(s.notDoneOn))
+        :s.shelvedAt?dateStr(new Date(s.shelvedAt))
+        :null;
+      if(resDate && resDate<today){ swept++; return false; } // resolved yesterday or earlier — remove
+      return true; // resolved today — keep visible
+    });
+    if(keep.length!==arr.length) state.sections[sec.key]=keep;
+  });
+  if(swept>0) saveAndPush();
+  return swept;
 }
 function shelveStory(sec,id,archKey){
   updateStory(sec,id,{status:'shelved',carriedForward:false,shelvedAt:Date.now()},archKey);
@@ -4470,10 +4497,13 @@ function renderUpcomingView(){
     const fKey='upcoming';
     const isFormOpen=ui.openForms.has(fKey);
 
-    html+=`<div class="sec-head" style="margin-bottom:10px">
-      <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">⬇ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">🗓 Upcoming Events</span>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">⬇ Export</button>
+        <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
+      </div>
     </div>`;
 
     if(isFormOpen) html+=renderForm('upcoming',null);
@@ -4942,7 +4972,7 @@ function renderAccordion(sec,archKey){
       if(_live.length){ _live.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
       else html+='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No active entries</div></div>';
       if(_done.length){
-        html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_done.length} completed</div>`;
+        html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_done.length} done / not done</div>`;
         _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
       }
     }
@@ -5987,7 +6017,7 @@ function renderCombinedAccordion(archKey){
   }
   const _termAll=[...ibuDone.map(s=>({...s,_subsec:'ibu'})),...otherDone.map(s=>({...s,_subsec:'other'}))];
   if(_termAll.length){
-    html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_termAll.length} completed</div>`;
+    html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_termAll.length} done / not done</div>`;
     _termAll.forEach(s=>{ html+=renderCard(s._subsec,s,archKey); });
   }
   html+='</div>';
