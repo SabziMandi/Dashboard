@@ -4497,14 +4497,19 @@ function renderUpcomingView(){
     const fKey='upcoming';
     const isFormOpen=ui.openForms.has(fKey);
 
-    html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">🗓 Upcoming Events</span>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
+    html+=`<div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
+      <span class="acc-icon">🗓</span>
+      <span class="acc-name">Upcoming Events</span>
+      <div class="acc-meta">
+        <span class="sbadge sb-in-progress">${stories.filter(s=>s.status!=='completed'&&(!s.expected_date||s.expected_date>=today)).length} pending</span>
+      </div>
+    </div>
+    <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
         <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">⬇ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
-      </div>
-    </div>`;
+      </div>`;
 
     if(isFormOpen) html+=renderForm('upcoming',null);
 
@@ -4533,6 +4538,7 @@ function renderUpcomingView(){
       </div>`;
     }
   }
+  if(html.includes('border-top:0;border-radius:0 0')) html+='</div>'; // close content wrapper
   return`<div style="padding-bottom:80px">${html}</div>`;
 }
 
@@ -5740,14 +5746,19 @@ function renderTasksSection(){
   const tasks=state.tasks;
   // Standalone (bottom nav) toolbar — only when accessed via bottom nav
   if(isStandalone){
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-    <span style="font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text)">☑ Tasks</span>
-    <div style="display:flex;gap:7px;flex-wrap:wrap">
+  html+=`<div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);margin-bottom:0;border-bottom:0">
+    <span class="acc-icon">☑</span>
+    <span class="acc-name">Tasks</span>
+    <div class="acc-meta">
+      ${pendingCount?`<span class="sbadge sb-in-progress">${pendingCount} pending</span>`:''}
+    </div>
+  </div>
+  <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
+    <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
       <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
       <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
-    </div>
-  </div>`;
+    </div>`;
   }
 
 
@@ -5837,7 +5848,11 @@ function renderTasksSection(){
 
   html+=`</div>`;
   // Standalone (mobile Tasks tab): render directly — no accordion wrapper
-  if(isStandalone) return`<div style="padding-bottom:80px">${html}</div>`;
+  if(isStandalone){
+    // Close the inner content wrapper div we opened in the header
+    html+='</div>';
+    return`<div style="padding-bottom:80px">${html}</div>`;
+  }
   return accHeader+html+'</div></div>';
 }
 
