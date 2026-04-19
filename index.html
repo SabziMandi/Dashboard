@@ -226,7 +226,7 @@ body {
     padding: 5px 14px; background: linear-gradient(135deg,#FDFAF6,#F8F3EC);
     border-top: 1px solid var(--border);
   }
-  .mobile-collapsed-bar.m-visible { display: flex; }
+  .mobile-collapsed-bar.m-visible { display: none !important; }
   .m-collapsed-date {
     font-family: var(--font); font-size: 12px; font-weight: 600;
     color: var(--text2); letter-spacing: -.1px;
@@ -261,7 +261,8 @@ body {
   .mobile-collapsed-bar { display: none !important; }
   .mobile-date-nav { display: none; }
   .mobile-leave-row { display: none; }
-  .leave-names-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; padding: 4px 16px 6px; border-top: 0.5px solid var(--border); background: var(--surface); }
+  .leave-names-row { display: none; }
+.leave-info-strip, .meeting-info-strip { display: none; border-top: 0.5px solid rgba(99,102,241,.2); background: rgba(99,102,241,.04); padding: 5px 15px 6px; justify-content: space-between; align-items: center; }
   .mobile-search-section { display: none !important; }
   .mobile-filter-pills { display: none; }
   .mobile-actions-bar { display: none; }
@@ -1067,6 +1068,7 @@ button.tasks-tab-btn {
 }
 
 @media(max-width:720px){
+  .leave-info-strip, .meeting-info-strip { display: flex; }
   .migrate-layout { grid-template-columns: 1fr; }
   .migrate-dest { position: static; }
   .acc-summary { display: none; }
@@ -1265,7 +1267,7 @@ button.tasks-tab-btn {
         </div>
         <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" style="flex-shrink:0;font-size:15px;">🔍</button>
       </div>
-      <div class="mobile-leave-row" id="mobile-leave-row" style="display:none"></div>
+      <!-- leave names shown on collapsed accordion instead -->
     </div>
     <!-- Collapsed date bar (shown when scrolled) -->
     <div class="mobile-collapsed-bar" id="mobile-collapsed-bar">
@@ -1299,8 +1301,8 @@ button.tasks-tab-btn {
   </div>
   <!-- date-strip (desktop only, hidden visually, kept for renderDateStrip logic) -->
   <div id="date-strip" style="display:none"></div>
-  <!-- on-leave pill (desktop) -->
-  <div id="onleave-pill-wrap" class="hide-mobile" style="display:flex;gap:5px;flex-wrap:wrap;padding:4px 22px 6px;max-width:1144px;margin:0 auto;box-sizing:border-box"></div>
+  <!-- on-leave pill removed — info visible in collapsed accordions -->
+  <div id="onleave-pill-wrap" style="display:none"></div>
 
 </header>
 
@@ -1330,6 +1332,8 @@ let state = {
   archive:{},
   lastActiveDate:null,
   carryForwardDismissed:null,
+  eodSettings:{ enabled:true, hour:18, workDaysOnly:true },
+  eodDismissed:null,
   sectionNames:{ ibu:'India Business Update (IBU)', other:'Other Lives/Stories' },
   tasks:[],
   meetings:[],
@@ -1382,6 +1386,14 @@ let fireDb=null, firestoreUnsub=null, reminderTimers={};
 function p2(n){ return String(n).padStart(2,'0'); }
 function dateStr(d){ return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()); }
 function todayStr()    { return dateStr(new Date()); }
+function fmtDate(d){
+  const dt=typeof d==='string'?new Date(d+'T00:00:00'):d;
+  return dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function fmtDateTime(ts){
+  const dt=typeof ts==='number'?new Date(ts):ts;
+  return dt.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
 function yesterdayStr(){ const d=new Date(); d.setDate(d.getDate()-1); return dateStr(d); }
 function tomorrowStr() { const d=new Date(); d.setDate(d.getDate()+1); return dateStr(d); }
 function addDays(s,n)  { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dateStr(d); }
@@ -1398,6 +1410,51 @@ function _londonOffsetMin(){
 function ukLabel(){ return _londonOffsetMin()===60?'BST':'GMT'; }
 function ukOffMin(){ return _londonOffsetMin(); }
 const IST_OFF=330;  // IST is always UTC+5:30
+function isWorkingDay(){
+  const d=new Date().getDay();
+  return d>=1&&d<=5;
+}
+function shouldShowEOD(){
+  const s=state.eodSettings||{};
+  if(!s.enabled) return false;
+  if(s.workDaysOnly&&!isWorkingDay()) return false;
+  const now=new Date();
+  const istMin=((now.getUTCHours()*60+now.getUTCMinutes())+IST_OFF)%1440;
+  const istHour=Math.floor(istMin/60);
+  if(istHour<(s.hour||18)) return false;
+  if(state.eodDismissed===todayStr()) return false;
+  const hasActive=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).some(sec=>
+    (state.sections[sec.key]||[]).some(st=>!['completed','not-done','shelved'].includes(st.status))
+  );
+  return hasActive;
+}
+function dismissEOD(){ state.eodDismissed=todayStr(); saveLocal(); render(); }
+function openSettingsModal(){
+  const s=state.eodSettings||{enabled:true,hour:18,workDaysOnly:true};
+  const m=document.createElement('div'); m.className='modal-bg'; m.id='settings-modal';
+  m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:340px;padding:20px">
+    <h2 style="margin-bottom:16px">⚙️ Settings</h2>
+    <div class="fgroup" style="margin-bottom:14px">
+      <label class="flabel">End-of-day reminder time (IST)</label>
+      <select class="fselect" id="eod-hour-sel">${[15,16,17,18,19,20,21].map(h=>`<option value="${h}"${h===s.hour?' selected':''}>${h}:00 IST</option>`).join('')}</select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <input type="checkbox" id="eod-enabled" ${s.enabled?'checked':''} style="width:16px;height:16px;cursor:pointer">
+      <label for="eod-enabled" style="font-size:13px;color:var(--text);cursor:pointer">Enable end-of-day reminder</label>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <input type="checkbox" id="eod-workdays" ${s.workDaysOnly?'checked':''} style="width:16px;height:16px;cursor:pointer">
+      <label for="eod-workdays" style="font-size:13px;color:var(--text);cursor:pointer">Working days only (Mon–Fri)</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-accent btn-sm" onclick="state.eodSettings={enabled:document.getElementById('eod-enabled').checked,hour:parseInt(document.getElementById('eod-hour-sel').value),workDaysOnly:document.getElementById('eod-workdays').checked};saveLocal();document.getElementById('settings-modal').remove();toast('Settings saved');">Save</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('settings-modal').remove()">Cancel</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
+  document.body.appendChild(m);
+}
+
 
 /* ── Time normalisation ──────────────────────────────────────────
    Accepts: "1430" "14.30" "14:30" "230" "2.30" "2:30" "900" "9"
@@ -1469,7 +1526,7 @@ function archiveShortLabel(key){
     return new Date(+y,+mo-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
   }
   const d=new Date(key+'T00:00:00');
-  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 }
 function archiveStoryCount(key){
   const e=state.archive[key]; if(!e||!e.sections) return 0;
@@ -2042,7 +2099,7 @@ function openBackupsPanel(){
       html+=`<div style="font-size:12.5px;color:var(--text3);padding:10px 0">No ${type} backups yet. They'll appear here once saved.</div>`;
     } else {
       snaps.forEach((snap,i)=>{
-        const dt=new Date(snap.timestamp).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        const dt=new Date(snap.timestamp).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
         const storyCount=SECTIONS.reduce((s,sec)=>s+(snap.sections?.[sec.key]?.length||0),0);
         const archCount=Object.keys(snap.archive||{}).length;
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:5px">
@@ -2511,48 +2568,13 @@ function _archiveAndRemoveFromBoard(sec,id){
 // stuck before this fix (e.g. marked not-done days ago and never archived).
 // Also called after Firebase sync so remote state can't resurrect stuck entries.
 function cleanupCompletedStories(){
-  // Archive completed/not-done for history but keep on board (shown struck-through)
-  // Removal from board happens at midnight carry-forward only
-  const today=todayStr();
-  ['ibu','other','requests','upcoming'].forEach(secKey=>{
-    const arr=state.sections[secKey]||[];
-    arr.filter(s=>s.status==='completed'||s.status==='not-done').forEach(s=>{
-      const archDate=s.completedOn?dateStr(new Date(s.completedOn)):today;
-      if(!state.archive[archDate]){
-        state.archive[archDate]={type:'day',label:archiveLabel(archDate),sections:{},notes:'',created:Date.now()};
-        ['ibu','other','requests','upcoming'].forEach(k=>{state.archive[archDate].sections[k]=[];});
-      }
-      if(!state.archive[archDate].sections[secKey]) state.archive[archDate].sections[secKey]=[];
-      if(!state.archive[archDate].sections[secKey].some(x=>x.id===s.id)){
-        state.archive[archDate].sections[secKey].push({...s,autoArchivedOn:today});
-      }
-    });
-    // Do NOT remove from board — user needs to see them
-  });
-  saveAndPush();
+  // No-op: stories stay on board until midnight.
+  // checkDateChange() handles archiving + removal at day rollover.
 }
 function cleanupStuckNotDone(){
-  // Sweep terminal stories from board if they were resolved on a PREVIOUS date
-  // (i.e. marked done/not-done yesterday and app opened today — they shouldn't carry over)
-  const today=todayStr();
-  const TERM=['completed','not-done','shelved'];
-  let swept=0;
-  SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).forEach(sec=>{
-    const arr=state.sections[sec.key]||[];
-    const keep=arr.filter(s=>{
-      if(!TERM.includes(s.status)) return true; // active — keep
-      // Check resolution date
-      const resDate=s.completedOn?dateStr(new Date(s.completedOn))
-        :s.notDoneOn?dateStr(new Date(s.notDoneOn))
-        :s.shelvedAt?dateStr(new Date(s.shelvedAt))
-        :null;
-      if(resDate && resDate<today){ swept++; return false; } // resolved yesterday or earlier — remove
-      return true; // resolved today — keep visible
-    });
-    if(keep.length!==arr.length) state.sections[sec.key]=keep;
-  });
-  if(swept>0) saveAndPush();
-  return swept;
+  // No-op: midnight checkDateChange() is the only removal mechanism.
+  // Terminal stories stay visible on board until day rolls over.
+  return 0;
 }
 function shelveStory(sec,id,archKey){
   updateStory(sec,id,{status:'shelved',carriedForward:false,shelvedAt:Date.now()},archKey);
@@ -2949,7 +2971,7 @@ function storyToText(s){
   if(s.expected_date) ln.push('  Expected      : '+s.expected_date+(s.expected_type?' ('+s.expected_type+')':''));
   if(s.detail)        ln.push('  Detail        : '+s.detail);
   if(s.req_name||s.req_team) ln.push('  Requested by  : '+[s.req_name,s.req_team,s.req_location].filter(Boolean).join(', '));
-  if(s.created)  ln.push('  Logged at     : '+new Date(s.created).toLocaleString('en-GB'));
+  if(s.created)  ln.push('  Logged at     : '+new Date(s.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}));
   if(s.remarks){
     const rLines=s.remarks.split('\n');
     if(rLines.length===1) ln.push('  Remarks       : '+s.remarks);
@@ -2957,7 +2979,7 @@ function storyToText(s){
   }
   if(s.remarksList&&s.remarksList.length){
     s.remarksList.forEach((r,i)=>{
-      const dt=new Date(r.created).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
       ln.push('  Remark '+(i+1)+'      : '+r.text+' ['+dt+']');
     });
   }
@@ -2970,8 +2992,8 @@ function storyToText(s){
       const d=e.data||{};
       const icons={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳'};
       ln.push('    '+(icons[e.type]||'')+' '+e.type.toUpperCase()+(d.forName?' for '+d.forName:''));
-      if(e.type==='cab'&&d.from) ln.push('      '+d.from+(d.to?' → '+d.to:'')+(d.when?' @ '+new Date(d.when).toLocaleString('en-GB'):'')+(d.driver?' Driver: '+d.driver+(d.phone?' '+d.phone:''):'')+(d.cabNum?' Cab: '+d.cabNum:''));
-      if(e.type==='flight') ln.push('      '+(d.direction||'outbound').toUpperCase()+' '+(d.from||'')+(d.to?' → '+d.to:'')+(d.when?' @ '+new Date(d.when).toLocaleString('en-GB'):'')+(d.airline?' '+d.airline:'')+(d.flightNum?' '+d.flightNum:''));
+      if(e.type==='cab'&&d.from) ln.push('      '+d.from+(d.to?' → '+d.to:'')+(d.when?' @ '+new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+(d.driver?' Driver: '+d.driver+(d.phone?' '+d.phone:''):'')+(d.cabNum?' Cab: '+d.cabNum:''));
+      if(e.type==='flight') ln.push('      '+(d.direction||'outbound').toUpperCase()+' '+(d.from||'')+(d.to?' → '+d.to:'')+(d.when?' @ '+new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+(d.airline?' '+d.airline:'')+(d.flightNum?' '+d.flightNum:''));
       if(e.type==='hotel') ln.push('      '+(d.hotelName||'')+(d.where?', '+d.where:'')+(d.checkIn?' In:'+d.checkIn:'')+(d.checkOut?' Out:'+d.checkOut:'')+(d.priceDay?' '+d.priceDay+'/day':'')+(d.payment==='counter'?' (at counter)':''));
       if(e.type==='expense') ln.push('      '+(d.what||'')+(d.amount?' '+d.amount:'')+(d.paidBy?' by '+d.paidBy:'')+(d.paidUsing?' via '+d.paidUsing:''));
       if(d.notes) ln.push('      Notes: '+d.notes);
@@ -3021,7 +3043,7 @@ function buildFullText(){
   // Leaves
   if((state.leaves||[]).length){
     ln.push('LEAVES'); ln.push(hr);
-    const fmtDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',weekday:'short'}):d;
+    const fmtDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):d;
     state.leaves.forEach(l=>{
       ln.push('  '+(l.employeeName||'Unknown')+' — '+(l.leaveType||'')+' ['+l.status+']');
       ln.push('  From : '+fmtDate(l.dateFrom));
@@ -3440,6 +3462,7 @@ function openMobileMore(){
       <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
       <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Staff names</button>
       <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">${syncLabel}</button>
+      <button class="btn btn-ghost" style="color:var(--accent);border-color:rgba(207,102,64,.3);background:rgba(207,102,64,.04)" onclick="openSettingsModal();document.getElementById('mobile-more-modal').remove()">⚙️ Settings</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
       <button class="btn btn-ghost" onclick="document.getElementById('mobile-more-modal').remove()">Close</button>
@@ -3913,8 +3936,8 @@ function buildStoryTravelHTML(sec,s,archKey){
     if(_storyTravelForms[ek]===e.id){h+=buildStoryTravelFormHTML(sec,s.id,e.type,e,archKey);return;}
     const d=e.data||{};
     let sum='',det='';
-    if(e.type==='cab'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.from||'')+(d.to?' → '+d.to:'');det=fld('For',d.forName)+fld('From',d.from)+fld('To',d.to)+fld('When',d.when?new Date(d.when).toLocaleString('en-GB'):'')+fld('Driver',d.driver)+fld('Phone',d.phone)+fld('Cab No.',d.cabNum)+fld('Notes',d.notes);}
-    else if(e.type==='flight'){const dir=d.direction==='return'?'↩ Return':'→ Outbound';sum=(d.forName?esc(d.forName)+' · ':'')+dir+(d.from?' · '+d.from:'')+(d.to?' → '+d.to:'')+(d.flightNum?' · '+d.flightNum:'');det=fld('For',d.forName)+fld('Direction',d.direction==='return'?'Return':'Outbound')+fld('From',d.from)+fld('To',d.to)+fld('When',d.when?new Date(d.when).toLocaleString('en-GB'):'')+fld('Airline',d.airline)+fld('Flight No.',d.flightNum)+fld('Notes',d.notes);}
+    if(e.type==='cab'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.from||'')+(d.to?' → '+d.to:'');det=fld('For',d.forName)+fld('From',d.from)+fld('To',d.to)+fld('When',d.when?new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+fld('Driver',d.driver)+fld('Phone',d.phone)+fld('Cab No.',d.cabNum)+fld('Notes',d.notes);}
+    else if(e.type==='flight'){const dir=d.direction==='return'?'↩ Return':'→ Outbound';sum=(d.forName?esc(d.forName)+' · ':'')+dir+(d.from?' · '+d.from:'')+(d.to?' → '+d.to:'')+(d.flightNum?' · '+d.flightNum:'');det=fld('For',d.forName)+fld('Direction',d.direction==='return'?'Return':'Outbound')+fld('From',d.from)+fld('To',d.to)+fld('When',d.when?new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+fld('Airline',d.airline)+fld('Flight No.',d.flightNum)+fld('Notes',d.notes);}
     else if(e.type==='hotel'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.hotelName||'')+(d.where?' · '+d.where:'');det=fld('For',d.forName)+fld('Hotel',d.hotelName)+fld('Location',d.where)+fld('Check-in',d.checkIn)+fld('Check-out',d.checkOut)+fld('Price/day',d.priceDay)+fld('Payment',d.payment==='counter'?'At counter':'Paid')+fld('Notes',d.notes);}
     else if(e.type==='expense'){sum=esc(d.what||'')+(d.amount?' · '+d.amount:'')+(d.paidBy?' · Paid by '+esc(d.paidBy):'');det=fld('What',d.what)+fld('When',d.when)+fld('Where',d.where)+fld('Amount',d.amount)+fld('Paid by',d.paidBy)+fld('Method',d.paidUsing)+fld('Notes',d.notes);}
     const isOpen=_storyTravelOpen[e.id];
@@ -3955,7 +3978,7 @@ function exportTravelTxt(sec, storyId, archKey){
     const loc=[story.location,story.field_location].filter(Boolean).join(' — ');
     ln.push(pad('Location',loc));
   }
-  ln.push(pad('Exported',new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+  ln.push(pad('Exported',new Date().toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
   ln.push('');
 
   // Group by person
@@ -3979,14 +4002,14 @@ function exportTravelTxt(sec, storyId, archKey){
 
       if(e.type==='cab'){
         if(d.from||d.to)    ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → ')));
-        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
         if(d.driver)         ln.push(pad('  Driver',d.driver+(d.phone?' ('+d.phone+')':'')));
         if(d.cabNum)         ln.push(pad('  Cab No.',d.cabNum));
         if(d.notes)          ln.push(pad('  Notes',d.notes));
       } else if(e.type==='flight'){
         if(d.direction)      ln.push(pad('  Direction',d.direction==='return'?'Return':'Outbound'));
         if(d.from||d.to)     ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → ')));
-        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
         if(d.airline)        ln.push(pad('  Airline',d.airline));
         if(d.flightNum)      ln.push(pad('  Flight No.',d.flightNum));
         if(d.notes)          ln.push(pad('  Notes',d.notes));
@@ -4419,7 +4442,7 @@ function renderSearchHTML(){
         const l=r.leave;
         html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid ${l.status==='approved'?'var(--done)':'var(--progress)'}">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.employeeName||'Unknown')}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--font)">${l.dateFrom} → ${l.dateTo} · ${l.status==='approved'?`<span class="badge-dot" style="background:#15803D"></span>Approved`:`<span class="badge-dot" style="background:#B45309"></span>Pending`}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--font)">${fmtDate(l.dateFrom)} → ${fmtDate(l.dateTo)} · ${l.status==='approved'?`<span class="badge-dot" style="background:#15803D"></span>Approved`:`<span class="badge-dot" style="background:#B45309"></span>Pending`}</div>
         </div>`;
       }
     });
@@ -4440,27 +4463,22 @@ function renderTodayHTML(){
   let html='';
   html+=`<div id="backup-banners"></div>`;
 
-  const carried=getCarriedStories();
-  if(carried.length>0 && state.carryForwardDismissed!==todayStr()){
-    const uc=carried.filter(s=>s.status==='urgent').length;
-    const pc=carried.filter(s=>s.status==='in-progress').length;
-    const wc=carried.filter(s=>s.mode==='watching').length;
-    html+=`<div class="carry-banner">
-      <div class="carry-banner-icon">🔁</div>
-      <div class="carry-banner-body">
-        <div class="carry-banner-title">Carried Forward — ${carried.length} unfinished</div>
-        <div class="carry-banner-sub">${uc?`<span style="color:var(--urgent)">● ${uc} Urgent</span> `:''}${pc?`<span style="color:var(--progress)">● ${pc} In Progress</span> `:''}${wc?`<span style="color:var(--watching)">● ${wc} Watching</span> `:''}— rolled over from previous day with orange 🔁 badge.</div>
-      </div>
-      <div class="carry-banner-actions">
-        <button class="btn btn-orange btn-sm" onclick="markAllCarriedDone()">Mark All Done</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissCarryBanner()">Dismiss</button>
-      </div>
-    </div>`;
-  }
+  // Carry-forward banner removed — stories show ↻ badge on cards
   html+=`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:12px;flex-wrap:wrap">
 
   </div>`;
 
+  // EOD banner
+  if(shouldShowEOD()){
+    const eodH=state.eodSettings?.hour||18;
+    html+=`<div style="background:rgba(99,102,241,.06);border:0.5px solid rgba(99,102,241,.25);border-radius:8px;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+      <span style="font-size:12.5px;color:#3730A3;font-family:var(--font);">${(()=>{const n=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).reduce((a,s)=>a+(state.sections[s.key]||[]).filter(st=>!['completed','not-done','shelved'].includes(st.status)).length,0);return n+' stor'+(n===1?'y':'ies')+' still active — end of day approaching (${eodH}:00 IST)';})()}</span>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-ghost btn-sm" style="color:#4F46E5;border-color:rgba(99,102,241,.3)" onclick="ui.openSections.add('ibu');setView('today',null);render()">Review</button>
+        <button class="btn btn-ghost btn-sm" onclick="dismissEOD()">Dismiss</button>
+      </div>
+    </div>`;
+  }
   // On desktop and mobile: all main sections + Upcoming show on Today page
   // Tasks/Meetings/Leaves/Notes are behind bottom nav tabs on mobile
   SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).forEach(sec=>{ html+=renderAccordion(sec,null); });
@@ -4905,7 +4923,7 @@ function renderAccordion(sec,archKey){
       <span class="acc-icon">${sec.icon}</span>
       <span class="acc-name">${esc(displayName)}</span>
       ${secObj.renameable&&!archKey?`<button class="btn btn-ghost btn-xs" style="flex-shrink:0;padding:2px 7px;font-size:10px;color:var(--text3)" onclick="event.stopPropagation();startRename('${sec.key}')" title="Rename section">✏ Rename</button>`:''}
-      <span class="acc-summary">${activeStories.length?(esc(activeStories.slice().sort((a,b)=>{if(!a.deadline_date&&!b.deadline_date)return 0;if(!a.deadline_date)return 1;if(!b.deadline_date)return -1;return a.deadline_date<b.deadline_date?-1:1;})[0].title||'')):''}</span>
+      <span class="acc-summary">${(()=>{ if(!activeStories.length)return ''; const today=todayStr(); const sorted=activeStories.slice().sort((a,b)=>{ const da=a.deadline_date?Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; const db=b.deadline_date?Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; if(da!==db)return da-db; return (b.created||0)-(a.created||0); }); return esc(sorted[0].title||''); })()}</span>
       <div class="acc-meta">
         ${activeStories.length?`<span class="sbadge sb-in-progress">${activeStories.length} pending</span>`:''}
       </div>
@@ -5052,6 +5070,7 @@ function openDesktopMore(){
       <button class="btn btn-ghost" onclick="snapshotToday();document.getElementById('desktop-more-modal').remove()">📸 Snapshot today</button>
       <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('desktop-more-modal').remove()">👥 Staff names</button>
       <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('desktop-more-modal').remove()">☁️ Sync setup</button>
+      <button class="btn btn-ghost" style="color:var(--accent);border-color:rgba(207,102,64,.3);background:rgba(207,102,64,.04)" onclick="openSettingsModal();document.getElementById('desktop-more-modal').remove()">⚙️ Settings</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
       <button class="btn btn-ghost" onclick="document.getElementById('desktop-more-modal').remove()">Close</button>
@@ -5139,45 +5158,16 @@ function updateMobileDateLabel(){
   const currentKey=ui.view==='today'?todayStr():(ui.archiveKey||todayStr());
   const d=new Date(currentKey+'T00:00:00');
   const full=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'});
-  const short=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  const short=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   const lbl=document.getElementById('mobile-date-label');
   const slbl=document.getElementById('mobile-collapsed-date-label');
   if(lbl) lbl.textContent=full;
   if(slbl) slbl.textContent=short;
 }
-function renderMobileLeaveRow(){
-  const row=document.getElementById('mobile-leave-row');
-  if(!row) return;
-  const onLeave=getOnLeaveToday();
-  if(!onLeave.length){ row.style.display='none'; row.innerHTML=''; return; }
-  const chips=onLeave.map(l=>`<span class="m-leave-chip">${esc((l.employeeName||'?').split(' ')[0])}</span>`).join('');
-  row.innerHTML=`<span class="m-leave-icon">🌴</span>${chips}`;
-  row.style.display='flex';
-}
+function renderMobileLeaveRow(){ /* leave names now shown on accordion info strip */ }
 /* Mobile scroll collapse — collapses to date bar only */
 function initMobileScrollCollapse(){
-  if(window.innerWidth>720) return;
-  let lastY=0, ticking=false;
-  const collapsible=document.getElementById('mobile-collapsible');
-  const collapsedBar=document.getElementById('mobile-collapsed-bar');
-  const searchSec=document.getElementById('mobile-search-section');
-  if(!collapsible||!collapsedBar) return;
-  window.addEventListener('scroll',()=>{
-    if(ticking) return; ticking=true;
-    requestAnimationFrame(()=>{
-      const y=window.scrollY||document.documentElement.scrollTop;
-      if(y>60 && y>lastY){
-        // Scroll down: collapse everything below BBC Dashboard
-        collapsible.classList.add('m-collapsed');
-        collapsedBar.classList.add('m-visible');
-      } else if(y<lastY && y<40){
-        // Scroll up near top: restore progressively
-        collapsedBar.classList.remove('m-visible');
-        collapsible.classList.remove('m-collapsed');
-      }
-      lastY=y; ticking=false;
-    });
-  },{passive:true});
+  // Collapsed bar removed — header is always 2 rows, no duplicate date needed
 }
 
 function toggleRecurringFields(){
@@ -5240,7 +5230,7 @@ function buildStoryRemarksHTML(sec, s, archKey){
   let html='<div class="story-remarks-list">';
   html+=`<div style="font-size:11px;font-weight:700;color:var(--text2);font-family:var(--font);margin-bottom:8px">🗒 Updates / Log${list.length?' ('+list.length+')':''}</div>`;
   list.forEach(r=>{
-    const dt=new Date(r.created).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     if(editingId===r.id){
       html+=`<div class="sremark" onclick="event.stopPropagation()">
         <div class="sremark-body" style="width:100%">
@@ -5255,7 +5245,7 @@ function buildStoryRemarksHTML(sec, s, archKey){
       html+=`<div class="sremark" onclick="event.stopPropagation()">
         <div class="sremark-body">
           <div class="sremark-text">${esc(r.text)}</div>
-          <div class="sremark-meta">${dt}${r.edited?' · edited '+new Date(r.edited).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>
+          <div class="sremark-meta">${dt}${r.edited?' · edited '+new Date(r.edited).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}</div>
         </div>
         <div style="display:flex;gap:3px;flex-shrink:0">
           <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();_storyRemarkEditId['${s.id}']='${r.id}';render()" title="Edit">✏</button>
@@ -5280,7 +5270,7 @@ function renderFormRemarksList(sec, s, archKey){
   let html=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:4px">`;
   if(list.length){
     list.forEach(r=>{
-      const dt=new Date(r.created).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
       if(editingId===r.id){
         html+=`<div style="margin-bottom:8px">
           <textarea class="ftextarea" id="sr-edit-${s.id}-${r.id}" style="min-height:52px;white-space:pre-wrap;width:100%">${esc(r.text)}</textarea>
@@ -5650,7 +5640,7 @@ function renderTasksSection(){
   const accHeader=`<div class="accordion${isOpen?' acc-open':''}" id="acc-tasks">
     <div class="acc-header" onclick="toggleAccordion('tasks')">
       <span class="acc-icon">☑</span><span class="acc-name">Tasks</span>
-      <span class="acc-summary">${(()=>{ const pending=(state.tasks||[]).filter(t=>t.taskStatus==='pending'||t.taskStatus==='postponed-to'); if(!pending.length)return ''; const sorted=pending.slice().sort((a,b)=>{if(!a.deadline_date&&!b.deadline_date)return 0;if(!a.deadline_date)return 1;if(!b.deadline_date)return -1;return a.deadline_date<b.deadline_date?-1:1;}); return esc(sorted[0].title||''); })()}</span>
+      <span class="acc-summary">${(()=>{ const today=todayStr(); const pending=(state.tasks||[]).filter(t=>t.taskStatus==='pending'||t.taskStatus==='postponed-to'); if(!pending.length)return ''; const sorted=pending.slice().sort((a,b)=>{ const da=a.deadline_date?Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; const db=b.deadline_date?Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; return da-db; }); return esc(sorted[0].title||''); })()}</span>
       <div class="acc-meta">
         ${pendingCount?`<span class="sbadge sb-in-progress">${pendingCount} pending</span>`:''}
       </div>
@@ -5862,7 +5852,7 @@ function renderTaskCard(t, today){
   // Recurring tasks never show as overdue — they recur on their own schedule
   const isOverdue=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred'&&!t.isRecurring;
   const isCarried=t.carriedForward&&t.taskStatus!=='done';
-  const createdDate=new Date(t.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const createdDate=new Date(t.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
   // Card left-border class
   let cardCls='task-card ';
@@ -5910,11 +5900,11 @@ function renderTaskCard(t, today){
     else if(t.isRecurring) deadlineChip='';
     else if(days<0) deadlineChip=`<span class="task-chip mono">📅 ${t.deadline_date}</span>`;
     else if(days===0) deadlineChip=`<span class="task-chip mono">📅 Today</span>`;
-    else { const timeStr=t.deadline_time?(' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?' / '+ukToIST(t.deadline_time)+' IST':'')):''; deadlineChip=`<span class="task-chip mono">📅 ${t.deadline_date}${timeStr}</span>`; }
+    else { const timeStr=t.deadline_time?(' '+t.deadline_time+' '+ukLabel()+(ukToIST(t.deadline_time)?' / '+ukToIST(t.deadline_time)+' IST':'')):''; deadlineChip=`<span class="task-chip mono">📅 ${fmtDate(t.deadline_date)}${timeStr}</span>`; }
   }
   const postponeChip=t.taskStatus==='postponed-to'&&t.postponeTo?`<span class="task-chip">⏸ Postponed to ${t.postponeTo}</span>`:'';
   const carriedChip='';
-  const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>`:'';
+  const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>`:'';
 
   const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${recurSchedule}</span>`:'';
   return`<div class="${cardCls}" data-id="${t.id}">
@@ -6446,7 +6436,7 @@ function renderMeetingCard(m){
   const recurTimeStr=m.isRecurring&&recurDayLabel
     ? [ukDisplayTime,istDisplayTime].filter(Boolean).join(' / ')+' '+recurDayLabel
     : [ukDisplayTime,istDisplayTime].filter(Boolean).join(' / ');
-  const dateStr2=m.date?new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';
+  const dateStr2=m.date?new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'';
   const stCls=m.status==='done'?'mc-done':m.status==='cancelled'?'mc-cancelled':'';
   // Countdown chip for scheduled meetings
   // Helper: build UTC Date from BST/GMT time string + date string
@@ -6563,7 +6553,7 @@ function renderMeetingCard(m){
             </div>
           </div>`;
         }
-        const dt=new Date(r.created).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
         return`<div class="mremark">
           <div class="mremark-text">${esc(r.text)}</div>
           <div class="mremark-meta">${dt}${r.edited?' · edited':''}
@@ -6593,6 +6583,7 @@ function renderMeetingCard(m){
 
 function renderMeetingsSection(){
   if(!state.meetings) state.meetings=[];
+  const isStandaloneMeet=ui.view==='meetings';
   const isOpen=ui.openSections.has('meetings');
   const today=todayStr();
   const meetings=[...state.meetings].sort((a,b)=>{
@@ -6616,15 +6607,37 @@ function renderMeetingsSection(){
   }
   body+=`</div>`;
 
+  if(isStandaloneMeet){
+    const mCount=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled').length;
+    return`<div style="padding-bottom:80px">
+      <div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
+        <span class="acc-icon">📅</span>
+        <span class="acc-name">Meetings</span>
+        <div class="acc-meta">${mCount?`<span class="sbadge sb-in-progress">${mCount} scheduled</span>`:''}</div>
+      </div>
+      <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
+          <button class="btn btn-accent btn-sm" onclick="ui_meetForm=!ui_meetForm;ui_editMeetId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
+        </div>
+        ${body}
+      </div>
+    </div>`;
+  }
   return`<div class="accordion${isOpen?' acc-open':''}" id="acc-meetings">
     <div class="acc-header" onclick="toggleAccordion('meetings')">
       <span class="acc-icon">📅</span>
       <span class="acc-name">Meetings</span>
-      <span class="acc-summary">${(()=>{ const upcoming=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'); if(!upcoming.length)return ''; upcoming.sort((a,b)=>{ const da=a.date||''; const db=b.date||''; if(da<db)return -1; if(da>db)return 1; return (a.time||'').localeCompare(b.time||''); }); return esc(upcoming[0].name||''); })()}</span>
+      <span class="acc-summary">${(()=>{ const today=todayStr(); const upcoming=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today); if(!upcoming.length)return ''; upcoming.sort((a,b)=>{ const da=a.date||''; const db=b.date||''; if(da<db)return -1; if(da>db)return 1; return (a.time||'').localeCompare(b.time||''); }); return esc(upcoming[0].name||''); })()}</span>
       <div class="acc-meta">
         ${activeCount?`<span class="sbadge sb-in-progress">${activeCount} scheduled</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-meetings">▾</span>
+    </div>
+    <div class="meeting-info-strip" id="meeting-info-strip" style="${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length?'':'display:none';})()}">
+      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length?esc(next[0].name||''):'';})()}</span>
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px;">${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length&&next[0].time?ukToIST(next[0].time)+' IST':'';})()}</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-meetings">${body}</div>
   </div>`;
@@ -6632,6 +6645,7 @@ function renderMeetingsSection(){
 
 function renderRemarksAccordion(){
   if(!state.notes) state.notes=[];
+  const isStandaloneNote=ui.view==='notes';
   const isOpen=ui.openSections.has('remarks');
   const today=todayStr();
   const active=state.notes.filter(n=>n.status==='active');
@@ -6667,7 +6681,7 @@ function renderRemarksAccordion(){
     body+=`<div class="empty-state" style="padding:16px 0"><div class="empty-icon">📝</div><div class="empty-msg">No notes yet — click <strong>+ Add Note</strong></div></div>`;
   } else {
     active.forEach(n=>{
-      const created=new Date(n.created).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
       let dlChip='';
       if(n.deadline_date){
         const diff=new Date(n.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
@@ -6699,7 +6713,7 @@ function renderRemarksAccordion(){
   if(resolved.length){
     body+=`<div style="font-size:11px;color:var(--text3);font-family:var(--font);margin:10px 0 6px;padding-top:8px;border-top:1px dashed var(--border)">✓ ${resolved.length} resolved</div>`;
     resolved.forEach(n=>{
-      const created=new Date(n.created).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+      const created=new Date(n.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
       body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}">
         <div class="note-text" style="text-decoration:${n.status==='done'?'line-through':''}">${esc(n.text)}</div>
         <div class="note-meta">
@@ -6715,11 +6729,29 @@ function renderRemarksAccordion(){
     });
   }
 
+  if(isStandaloneNote){
+    const nCount=(active||[]).length;
+    return`<div style="padding-bottom:80px">
+      <div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
+        <span class="acc-icon">📝</span>
+        <span class="acc-name">Note</span>
+        <div class="acc-meta">${nCount?`<span class="sbadge sb-in-progress">${nCount} active</span>`:''}</div>
+      </div>
+      <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
+          <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add Note</button>
+        </div>
+        ${body}
+      </div>
+    </div>`;
+  }
   return`<div class="accordion${isOpen?' acc-open':''}" id="acc-remarks">
     <div class="acc-header" onclick="toggleAccordion('remarks')">
       <span class="acc-icon">📝</span>
       <span class="acc-name">Note</span>
-      <span class="acc-summary">${active.length?esc((active[0].headline||active[0].text||'').slice(0,60)):''}</span>
+      <span class="acc-summary">${(()=>{ if(!active.length)return ''; const today=todayStr(); const sorted=[...active].sort((a,b)=>{ const da=a.deadline_date?Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; const db=b.deadline_date?Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; if(da!==db)return da-db; return (b.created||0)-(a.created||0); }); return esc((sorted[0].headline||sorted[0].text||'').slice(0,60)); })()}</span>
       <div class="acc-meta">
         ${active.length?`<span class="sbadge sb-in-progress">${active.length} active</span>`:''}
       </div>
@@ -6929,6 +6961,7 @@ function saveStaffNames(){
 
 function renderLeavesSection(){
   if(!state.leaves)state.leaves=[];
+  const isStandaloneLeave=ui.view==='leaves';
   const today=todayStr();
   const activeLeaves=(state.leaves).filter(l=>l.dateTo>=today);
   const pastLeaves=(state.leaves).filter(l=>l.dateTo<today);
@@ -6943,8 +6976,9 @@ function renderLeavesSection(){
       </div>
       <span class="acc-chevron${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
     </div>
-    <div class="leave-names-row" id="leave-names-row">
-      ${getOnLeaveToday().slice(0,6).map(l=>`<span class="leave-name-chip">${esc((l.employeeName||'?').split(' ')[0])}</span>`).join('')}
+    <div class="leave-info-strip" id="leave-names-row" style="${getOnLeaveToday().length?'':' display:none'}">
+      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getOnLeaveToday().slice(0,6).map(l=>(l.employeeName||'?').split(' ')[0]).filter(Boolean).join(' · ')}</span>
+      <span style="font-size:10px;color:var(--text3);font-family:var(--font);flex-shrink:0;margin-left:8px;">${getOnLeaveToday().length} on leave</span>
     </div>
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
@@ -7023,6 +7057,24 @@ function renderLeavesSection(){
     }
   }
   html+=`</div>`;
+  if(isStandaloneLeave){
+    const lCount=activeLeaves.length;
+    return`<div style="padding-bottom:80px">
+      <div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
+        <span class="acc-icon">🌴</span>
+        <span class="acc-name">Leaves</span>
+        <div class="acc-meta">${lCount?`<span class="sbadge sb-in-progress">${lCount} active</span>`:''}</div>
+      </div>
+      <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
+          <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add Leave</button>
+        </div>
+        ${html}
+      </div>
+    </div>`;
+  }
   return accHeaderL+html+'</div></div>';
 }
 
@@ -7168,7 +7220,7 @@ function renderUpcomingRow(sec,s,archKey){
       ${s.expected_date?`<span class="uc-chip">${esc(s.expected_date)}${typeLabel}</span>`:''}
       ${dueChip}
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
-      ${isCompleted&&s.completedOn?`<span class="uc-chip" style="color:var(--done);font-size:10px">✅ ${new Date(s.completedOn).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span>`:''}
+      ${isCompleted&&s.completedOn?`<span class="uc-chip" style="color:var(--done);font-size:10px">✅ ${new Date(s.completedOn).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>`:''}
     </div>
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}" style="display:none"></span>
   </div>
@@ -7178,7 +7230,7 @@ function renderUpcomingRow(sec,s,archKey){
       ${field('Detail',s.detail)}
       ${field('Correspondent',s.correspondent)}
       ${field('Expected',s.expected_date?s.expected_date+typeLabel:'')}
-      ${s.deadline_date?field('Deadline',s.deadline_date+(s.deadline_uk?' · '+s.deadline_uk+' '+ukLabel():'')+(s.deadline_ist?' / '+s.deadline_ist+' IST':'')):''}
+      ${s.deadline_date?field('Deadline',fmtDate(s.deadline_date)+(s.deadline_uk?' · '+s.deadline_uk+' '+ukLabel():'')+(s.deadline_ist?' / '+s.deadline_ist+' IST':'')):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
     ${remarksHTML(s.remarks, s.id+'_cr', sec, s.id, archKey)}
@@ -7211,7 +7263,7 @@ function renderStoryCard(sec,s,archKey){
   const isComplOpen=ui.complForms.has(s.id);
   const _dot=col=>`<span class="badge-dot" style="background:${col}"></span>`; const sbL=s.status==='urgent'?_dot('#B91C1C')+'Urgent':s.status==='in-progress'?_dot('#B45309')+'In progress':s.status==='completed'?_dot('#15803D')+'Done':s.status==='on-hold'?_dot('#7C3AED')+'On hold':s.status==='not-done'?_dot('#475569')+'Not done':s.status==='postponed'?_dot('#0369A1')+'Postponed':s.status==='shelved'?_dot('#64748B')+'Shelved':'';
   const sbC=s.status==='urgent'?'sb-urgent':s.status==='in-progress'?'sb-in-progress':s.status==='completed'?'sb-completed':s.status==='on-hold'?'sb-on-hold':s.status==='not-done'?'sb-not-done':s.status==='postponed'?'sb-postponed':s.status==='shelved'?'sb-shelved':'sb-not-started';
-  const reqTime=s.created?new Date(s.created).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):null;
+  const reqTime=s.created?new Date(s.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):null;
   let loc=s.location||'';
   if(s.field_location) loc=(s.location?s.location+' — ':'')+s.field_location;
   else if(s.location) loc=s.location;
@@ -7283,7 +7335,7 @@ function renderStoryCard(sec,s,archKey){
       ${reqTime?field('Logged At',reqTime):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
-    ${s.remarks?`<div class="card-remarks" onclick="event.stopPropagation()" style="font-size:12px;color:var(--text3);font-style:italic;padding:6px 0">💬 ${esc(s.remarks)} <span style="font-size:10px;font-family:var(--mono)">(legacy remark — edit story to migrate)</span></div>`:''}
+    ${s.remarks?`<div class="card-remarks" onclick="event.stopPropagation()" style="font-size:12px;color:var(--text3);font-style:italic;padding:6px 0">💬 ${esc(s.remarks)} <span style="font-size:10px;font-family:var(--mono)"></span></div>`:''}
     ${buildStoryRemarksHTML(sec,s,archKey)}
     ${s.location==='Field'?buildStoryTravelHTML(sec,s,archKey):''}
     ${linksHtml}
@@ -7555,8 +7607,7 @@ function init(){
   updateDateHeader(); renderDateStrip(); render();
   renderOnLeavePill();
   updateMobileDateLabel();
-  renderMobileLeaveRow();
-  initMobileScrollCollapse();
+    initMobileScrollCollapse();
   // Show backup banners after render (only on today view)
   setTimeout(()=>renderBackupBanners(), 100);
   updateClock(); setInterval(updateClock, 30000);
