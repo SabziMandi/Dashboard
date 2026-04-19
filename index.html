@@ -1841,6 +1841,21 @@ function checkDateChange(){
     SECTIONS.filter(s=>!s.isUpcoming&&s.key!=='ibu'&&s.key!=='other').forEach(({key})=>{
       state.sections[key]=(state.sections[key]||[]).filter(s=>!TERM_MIDNIGHT.includes(s.status));
     });
+    // Also sweep any terminal stories that slipped through (missing timestamp fields)
+    // Safe to run every time: only removes terminal status stories from previous days
+    const _sweepDate=today;
+    state.sections.other=(state.sections.other||[]).filter(s=>{
+      if(!TERM_MIDNIGHT.includes(s.status)) return true;
+      const created=s.created?dateStr(new Date(s.created)):null;
+      return created&&created>=_sweepDate;
+    });
+    SECTIONS.filter(s=>!s.isUpcoming&&s.key!=='ibu'&&s.key!=='other').forEach(({key})=>{
+      state.sections[key]=(state.sections[key]||[]).filter(s=>{
+        if(!TERM_MIDNIGHT.includes(s.status)) return true;
+        const created=s.created?dateStr(new Date(s.created)):null;
+        return created&&created>=_sweepDate;
+      });
+    });
     // Also remove any remaining toAutoArchive items not caught above
     toAutoArchive.filter(x=>x.sec!=='ibu'&&x.sec!=='other').forEach(({story,sec})=>{
       state.sections[sec]=(state.sections[sec]||[]).filter(s=>s.id!==story.id);
@@ -2564,6 +2579,34 @@ function cleanupStuckNotDone(){
   // No-op: midnight checkDateChange() is the only removal mechanism.
   // Terminal stories stay visible on board until day rolls over.
   return 0;
+}
+function sweepStaleTerminalStories(){
+  // On every app open: remove terminal stories created on a previous day
+  // This catches cases where the app was closed at night and checkDateChange
+  // couldn't run the midnight sweep (missing timestamp fields on old entries)
+  const today=todayStr();
+  const TERM=['completed','not-done','shelved'];
+  let swept=false;
+  const keepFn=s=>{
+    if(!TERM.includes(s.status)) return true;
+    // Keep if created today (user just marked it)
+    const created=s.created?dateStr(new Date(s.created)):null;
+    if(created&&created>=today) return true;
+    // Also keep if any resolution timestamp is today
+    const resDate=s.completedOn?dateStr(new Date(s.completedOn)):
+      s.notDoneOn?dateStr(new Date(s.notDoneOn)):
+      s.shelvedAt?dateStr(new Date(s.shelvedAt)):null;
+    if(resDate&&resDate>=today) return true;
+    swept=true; return false;
+  };
+  SECTIONS.filter(s=>!s.isUpcoming&&!s.isCombined&&s.key!=='ibu').forEach(({key})=>{
+    const before=(state.sections[key]||[]).length;
+    state.sections[key]=(state.sections[key]||[]).filter(keepFn);
+  });
+  // Also sweep other (hidden combined section)
+  state.sections.other=(state.sections.other||[]).filter(keepFn);
+  // IBU always clears if date changed (handled by checkDateChange)
+  if(swept) saveAndPush();
 }
 function shelveStory(sec,id,archKey){
   updateStory(sec,id,{status:'shelved',carriedForward:false,shelvedAt:Date.now()},archKey);
@@ -3669,10 +3712,14 @@ function updateDateHeader(){
   }
 }
 function toggleAccordion(key){
-  if(ui.openSections.has(key)) ui.openSections.delete(key); else ui.openSections.add(key);
-  const b=document.getElementById('acc-body-'+key), c=document.getElementById('acc-chev-'+key), a=document.getElementById('acc-'+key);
+  const opening=!ui.openSections.has(key);
+  if(opening) ui.openSections.add(key); else ui.openSections.delete(key);
+  // Reset pagination when opening
+  if(opening&&key==='tasks') ui_taskPage=1;
+  if(opening&&(key==='ibu'||key==='upcoming')) ui_upcomingPage=1;
+  const b=document.getElementById('acc-body-'+key), cv=document.getElementById('acc-chev-'+key), a=document.getElementById('acc-'+key);
   if(b) b.classList.toggle('open',ui.openSections.has(key));
-  if(c) c.classList.toggle('open',ui.openSections.has(key));
+  if(cv) cv.classList.toggle('open',ui.openSections.has(key));
   if(a) a.classList.toggle('acc-open',ui.openSections.has(key));
 }
 function setFilter(f,el){
@@ -4949,7 +4996,17 @@ function renderAccordion(sec,archKey){
     if(!activeUpcoming.length && !isFormOpen && !completedUpcoming.length && !expiredUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
     } else {
-      activeUpcoming.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+      const upcomingLimit=ui_upcomingPage*10;
+      const visibleUpcoming=activeUpcoming.slice(0,upcomingLimit);
+      visibleUpcoming.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+      if(activeUpcoming.length>upcomingLimit){
+        const upRemaining=activeUpcoming.length-upcomingLimit;
+        html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
+          <button class="btn btn-ghost btn-sm" onclick="showMoreUpcoming();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
+            ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${upRemaining} remaining)</span>
+          </button>
+        </div>`;
+      }
     }
 
     // Completed entries — faded, struck-through, sorted newest first
@@ -5312,6 +5369,8 @@ function jumpToLeaves(){
 let ui_taskForm=false; // is the add-task form open?
 let ui_editTaskId=null;
 let ui_openTasks=new Set();
+let ui_taskPage=1;   // how many batches of 10 to show
+let ui_upcomingPage=1; // same for upcoming events
 
 function addTask(data){
   if(!state.tasks) state.tasks=[];
@@ -5668,13 +5727,13 @@ function renderTasksSection(){
     // Sort archived tasks the same way as today's tasks
     const todayMs2=new Date(today+'T00:00:00').getTime();
     const archSorted=[...allArchTasks].sort((a,b)=>{
-      const rank=t=>t.taskStatus==='done'?10:t.taskStatus==='transferred'?9:t.taskStatus==='not-done'?8:t.taskStatus==='postponed-to'?5:0;
-      const ra=rank(a),rb=rank(b); if(ra!==rb) return ra-rb;
-      if(!a.deadline_date&&!b.deadline_date) return 0;
-      if(!a.deadline_date) return 1; if(!b.deadline_date) return -1;
-      const da=Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-todayMs2);
-      const db=Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-todayMs2);
-      return da-db;
+      const sk=t=>{
+        if(!t.deadline_date) return -Infinity;
+        const diff=Math.round((new Date(t.deadline_date+'T00:00:00').getTime()-todayMs2)/86400000);
+        if(diff>=0) return diff;
+        return 100000+Math.abs(diff);
+      };
+      return sk(a)-sk(b);
     });
     if(ui_taskForm){
       html+=`<div class="task-form" id="task-form-wrap">
@@ -5813,25 +5872,35 @@ function renderTasksSection(){
   if(!tasks.length&&!ui_taskForm){
     html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks yet — click <strong>+ Add Task</strong></div></div>`;
   } else {
-    const statusRank=t=>{
-      if(t.taskStatus==='done')         return 10;
-      if(t.taskStatus==='transferred')  return 9;
-      if(t.taskStatus==='not-done')     return 8;
-      if(t.taskStatus==='postponed-to') return 5;
-      return 0;
-    };
     const todayMs=new Date(today+'T00:00:00').getTime();
-    const deadlineDist=t=>{
-      if(!t.deadline_date) return Infinity;
-      const diff=new Date(t.deadline_date+'T00:00:00').getTime()-todayMs;
-      return Math.abs(diff)*2+(diff<0?1:0);
+    const effectiveDate=t=>{
+      if(!t.deadline_date) return null;
+      if(t.isRecurring){
+        const mostRecent=mostRecentRecurOccurrence(t,today);
+        const nxt=nextRecurrenceDate({...t,deadline_date:mostRecent});
+        return nxt>=today?nxt:nextRecurrenceDate({...t,deadline_date:nxt});
+      }
+      return t.deadline_date;
     };
-    const sorted=[...tasks].sort((a,b)=>{
-      const ra=statusRank(a),rb=statusRank(b);
-      if(ra!==rb) return ra-rb;
-      return deadlineDist(a)-deadlineDist(b);
-    });
-    sorted.forEach(t=>{ html+=renderTaskCard(t,today); });
+    const sortKey=t=>{
+      const d=effectiveDate(t);
+      if(!d) return -Infinity; // no deadline → top
+      const diff=Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000);
+      if(diff>=0) return diff;          // today=0, +1d=1, +2d=2 …
+      return 100000+Math.abs(diff);     // overdue: 1d ago=100001, 3d ago=100003 …
+    };
+    const sorted=[...tasks].sort((a,b)=>sortKey(a)-sortKey(b));
+    const taskLimit=ui_taskPage*10;
+    const visibleTasks=sorted.slice(0,taskLimit);
+    visibleTasks.forEach(t=>{ html+=renderTaskCard(t,today); });
+    if(sorted.length>taskLimit){
+      const remaining=sorted.length-taskLimit;
+      html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
+        <button class="btn btn-ghost btn-sm" onclick="showMoreTasks();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
+          ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${remaining} remaining)</span>
+        </button>
+      </div>`;
+    }
   }
 
   html+=`</div>`;
@@ -5844,6 +5913,8 @@ function renderTasksSection(){
   return accHeader+html+'</div></div>';
 }
 
+function showMoreTasks(){ ui_taskPage++; render(); }
+function showMoreUpcoming(){ ui_upcomingPage++; render(); }
 function renderTaskCard(t, today){
   const TASK_DAY_NAMES={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
   const isOpen=ui_openTasks.has(t.id);
@@ -7204,7 +7275,7 @@ function renderUpcomingRow(sec,s,archKey){
     // Count overdue from deadline_date if set, else expected_date
     const overRef=s.deadline_date||s.expected_date;
     const diff=Math.round((new Date(today+'T00:00:00').getTime()-new Date(overRef+'T00:00:00').getTime())/86400000);
-    dueChip=diff===1?`<span class="uc-chip uc-chip-overdue">⚠ Yesterday</span>`:`<span class="uc-chip uc-chip-overdue">⚠ ${diff}d overdue</span>`;
+    dueChip=`<span class="uc-chip" style="color:var(--text3)">📁 ${fmtDate(overRef)}</span>`;
   }
 
   // Border class
@@ -7600,6 +7671,7 @@ function init(){
   checkDateChange();
   cleanupStuckNotDone();  // archive any not-done entries stuck in non-combined sections
   cleanupCompletedStories(); // archive completed stories from active board
+  sweepStaleTerminalStories(); // sweep terminal stories from previous days on every open
 
   // ── Service Worker registration ──────────────────────────────
   if('serviceWorker' in navigator){
