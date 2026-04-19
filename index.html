@@ -209,16 +209,9 @@ body {
   }
 
   /* On-leave row — centred, only rendered when people on leave */
-  .mobile-leave-row {
-    display: flex; align-items: center; justify-content: center;
-    gap: 5px; padding: 2px 14px 8px; flex-wrap: wrap;
-  }
-  .m-leave-icon { font-size: 13px; flex-shrink: 0; }
-  .m-leave-chip {
-    font-size: 10.5px; color: var(--watching); background: var(--watching-bg);
-    border: 1px solid rgba(180,83,9,.28); border-radius: 10px;
-    padding: 2px 8px; white-space: nowrap;
-  }
+  
+  
+  
 
   /* Collapsed date bar — shown instead of full collapsible when scrolled */
   .mobile-collapsed-bar {
@@ -260,9 +253,8 @@ body {
   .mobile-collapsible { display: none; }
   .mobile-collapsed-bar { display: none !important; }
   .mobile-date-nav { display: none; }
-  .mobile-leave-row { display: none; }
-  .leave-names-row { display: none; }
-.leave-info-strip, .meeting-info-strip { display: none; border-top: 0.5px solid rgba(99,102,241,.2); background: rgba(99,102,241,.04); padding: 5px 15px 6px; justify-content: space-between; align-items: center; }
+  
+  .leave-info-strip, .meeting-info-strip { display: none; border-top: 0.5px solid rgba(99,102,241,.2); background: rgba(99,102,241,.04); padding: 5px 15px 6px; justify-content: space-between; align-items: center; }
   .mobile-search-section { display: none !important; }
   .mobile-filter-pills { display: none; }
   .mobile-actions-bar { display: none; }
@@ -371,6 +363,7 @@ body {
 .fpill.fd  { background: var(--done-bg); color: var(--done); border-color: rgba(22,163,74,.3); }
 .fpill.fw  { background: var(--working-bg); color: var(--working); border-color: rgba(13,148,136,.3); }
 .fpill.fwt { background: var(--watching-bg); color: var(--watching); border-color: rgba(180,83,9,.3); }
+.m-arrow { font-size:22px; font-weight:700; color:var(--text2); padding:0 14px; cursor:pointer; line-height:1; user-select:none; }
 .live-clock { margin-left: auto; font-size: 11px; font-family: var(--mono); color: var(--text3); }
 
 /* ══════════════════════════════════
@@ -381,17 +374,12 @@ body {
 /* ══════════════════════════════════
    CARRY / INFO BANNERS
 ══════════════════════════════════ */
-.carry-banner {
-  background: linear-gradient(135deg, var(--carry-bg), transparent);
-  border: 1px solid rgba(234,88,12,.3); border-radius: 10px;
-  padding: 13px 17px; margin-bottom: 14px;
-  display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
-}
-.carry-banner-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-.carry-banner-body { flex: 1; min-width: 200px; }
-.carry-banner-title { font-size: 13px; font-weight: 600; color: var(--carry); margin-bottom: 3px; }
-.carry-banner-sub { font-size: 12px; color: var(--text2); line-height: 1.55; }
-.carry-banner-actions { display: flex; gap: 7px; align-items: flex-start; flex-wrap: wrap; }
+
+
+
+
+
+
 .notif-banner {
   background: rgba(217,119,6,.06); border: 1px solid rgba(217,119,6,.25);
   border-radius: var(--radius); padding: 8px 14px; margin-bottom: 12px;
@@ -491,7 +479,7 @@ body {
 .btn-ghost:hover { background: var(--surface2); border-color: var(--border2); }
 .btn-indigo { background: var(--week); color: #fff; }
 .btn-indigo:hover { background: #4338CA; }
-.btn-orange { background: var(--carry); color: #fff; }
+
 .btn-orange:hover { background: #C2410C; }
 .btn-sm  { padding: 5px 10px; font-size: 11.5px; }
 .btn-xs  { padding: 3px 8px; font-size: 11px; }
@@ -1199,9 +1187,9 @@ button.tasks-tab-btn {
     <!-- Row 2: times centred, no border above -->
     <div class="hide-mobile" style="background:var(--surface);display:flex;justify-content:center;padding:4px 22px 10px;">
       <div style="width:100%;max-width:1200px;display:flex;justify-content:center;align-items:center;gap:10px;">
-        <span id="desktop-time-bst" style="font-size:13.5px;color:var(--text3);font-family:var(--mono);">09:02 BST</span>
+        <span id="desktop-time-bst" style="font-size:13.5px;color:var(--text3);font-family:var(--mono);">--:-- BST</span>
         <span style="font-size:10px;color:var(--border2);">·</span>
-        <span id="desktop-time-ist" style="font-size:13.5px;color:var(--text3);font-family:var(--mono);">14:32 IST</span>
+        <span id="desktop-time-ist" style="font-size:13.5px;color:var(--text3);font-family:var(--mono);">--:-- IST</span>
       </div>
     </div>
     <!-- Row 3: warm tint — + far left · ‹ date › centred · search far right -->
@@ -1246,9 +1234,9 @@ button.tasks-tab-btn {
         <span class="wordmark-dot"></span>BBC Dashboard
       </div>
       <div id="mobile-times" style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);font-family:var(--mono);">
-        <span id="mobile-time-bst">09:02 BST</span>
+        <span id="mobile-time-bst">--:-- BST</span>
         <span style="color:var(--border2);">·</span>
-        <span id="mobile-time-ist">14:32 IST</span>
+        <span id="mobile-time-ist">--:-- IST</span>
       </div>
     </div>
     <!-- Collapsible block: row2 (+ date search) + leave row -->
@@ -1923,13 +1911,6 @@ function getCarriedStories(){
     });
   });
   return r;
-}
-function dismissCarryBanner(){ state.carryForwardDismissed=todayStr(); saveLocal(); render(); }
-function markAllCarriedDone(){
-  SECTIONS.filter(s=>!s.isUpcoming).forEach(sec=>{
-    state.sections[sec.key].forEach(s=>{ if(s.carriedForward&&s.status!=='completed') s.status='completed'; });
-  });
-  saveAndPush(); render();
 }
 
 /* ════════════════════════════════════════
@@ -3756,6 +3737,8 @@ function submitForm(sec,archKey){
       detail:       g('f-detail'+sfx).trim(),
       expected_type:g('f-expected-type'+sfx)||'date',
       expected_date:g('f-expected-date'+sfx),
+      expected_date_to:g('f-expected-date-to'+sfx)||'',
+      requested_by:g('f-requested-by'+sfx).trim(),
       correspondent:g('f-correspondent'+sfx).trim(),
       status:       g('f-status'+sfx),
       remarks:      g('f-remarks'+sfx).trim(),
@@ -4255,31 +4238,7 @@ function injectDataLists(){
 }
 
 /* ── Tab Date Navigator — shown inside Notes / Tasks standalone views ── */
-function renderTabDateNav(uiKey, labelToday){
-  const today=todayStr();
-  const cur=ui[uiKey]||today;
-  const isToday=cur===today;
-  const prev=addDays(cur,-1);
-  const next=addDays(cur,1);
-  const d=new Date(cur+'T00:00:00');
-  const weekday=isToday?'Today':d.toLocaleDateString('en-GB',{weekday:'long'});
-  const dateStr=isToday?d.toLocaleDateString('en-GB',{day:'numeric',month:'long'}):d.toLocaleDateString('en-GB',{day:'numeric',month:'long'});
-  const navId='tabnav-picker-'+uiKey;
-  return`<div style="display:flex;flex-direction:column;align-items:stretch;margin-bottom:14px;background:linear-gradient(135deg,#FDFAF6,#F8F3EC);border-radius:8px;border:1px solid var(--border);overflow:hidden;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;">
-      <span style="font-size:24px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${prev}';render()">&#8249;</span>
-      <div style="display:flex;align-items:baseline;gap:8px;cursor:pointer;" onclick="(function(){const p=document.getElementById('${navId}');p.value='${cur}';try{p.showPicker();}catch(e){p.style.opacity='0';p.style.pointerEvents='auto';p.style.position='fixed';p.style.top='80px';p.style.left='50%';p.style.width='140px';p.style.height='36px';p.click();setTimeout(()=>{p.style.position='absolute';p.style.pointerEvents='none';p.style.width='0';p.style.height='0';},600);}})()">
-        <span style="font-family:var(--serif);font-size:14px;font-weight:500;color:var(--text);">${weekday}</span>
-        <span style="font-family:var(--serif);font-size:18px;font-weight:500;color:var(--text);letter-spacing:-.2px;">${dateStr}</span>
-        <input type="date" id="${navId}" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0;" onchange="ui['${uiKey}']=this.value;render()">
-      </div>
-      <span style="font-size:24px;font-weight:700;color:var(--text2);padding:0 6px;cursor:pointer;line-height:1;user-select:none;" onclick="ui['${uiKey}']='${next}';render()">&#8250;</span>
-    </div>
-    ${!isToday?`<div style="text-align:center;padding:0 0 7px;"><button class="btn btn-ghost btn-xs" style="font-size:10px" onclick="ui['${uiKey}']=null;render()">↩ Back to Today</button></div>`:''}
-  </div>`;
-}
 
-/* ─── GLOBAL SEARCH ─── */
 function storyMatchesSearch(s, q){
   const fields=[
     s.title, s.correspondent, s.producer, s.shoot_edit,
@@ -4435,7 +4394,7 @@ function renderSearchHTML(){
           <span style="font-size:15px">${st}</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.title||'Untitled')}</div>
-            <div style="font-size:11px;color:var(--text3);font-family:var(--font)">Task${t.deadline_date?' · '+t.deadline_date:''}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--font)">Task${t.deadline_date?' · '+fmtDate(t.deadline_date):''}</div>
           </div>
         </div>`;
       } else if(r.type==='leave'&&r.leave){
@@ -4579,8 +4538,8 @@ function renderNotesView(){
       if(ui_noteForm){
         html+=`<div class="note-add-form">
           <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
-          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea></div>
-          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline"></div>
+          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
+          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline-arch"></div>
           <div style="display:flex;gap:7px">
             <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
             <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
@@ -4596,8 +4555,8 @@ function renderNotesView(){
       if(ui_noteForm){
         html+=`<div class="note-add-form">
           <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
-          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea></div>
-          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline"></div>
+          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
+          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline-arch"></div>
           <div style="display:flex;gap:7px">
             <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
             <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
@@ -4616,7 +4575,7 @@ function renderNotesView(){
           <div class="note-text" style="text-decoration:${nd.status==='done'||nd._deleted?'line-through':''};white-space:pre-wrap">${esc(nd.text)}</div>
           <div class="note-meta">
             <span>${created}${statusLabel}</span>
-            ${nd.deadline_date?`<span>📅 ${nd.deadline_date}</span>`:''}
+            ${nd.deadline_date?`<span>📅 ${fmtDate(nd.deadline_date)}</span>`:''}
           </div>
           ${isLive?`<div class="note-btns" style="margin-top:6px">
             ${nd.status!=='done'?`<button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${nd.id}','done')">✅ Done</button>`:''}
@@ -4691,7 +4650,7 @@ function renderArchiveHTML(key){
             <div class="note-text" style="text-decoration:${nd.status==='done'||nd._deleted?'line-through':''};white-space:pre-wrap">${esc(nd.text)}</div>
             <div class="note-meta">
               <span>${created}${sLabel}</span>
-              ${nd.deadline_date?`<span>📅 ${nd.deadline_date}</span>`:''}
+              ${nd.deadline_date?`<span>📅 ${fmtDate(nd.deadline_date)}</span>`:''}
             </div>
             ${isLive?`<div class="note-btns" style="margin-top:6px">
               ${nd.status!=='done'?`<button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${nd.id}','done')">✅ Done</button>`:''}
@@ -4717,7 +4676,7 @@ function renderArchiveHTML(key){
             <span style="font-size:12px">${td._deleted?'🗑':td.taskStatus==='done'?'✅':td.taskStatus==='not-done'?'⚫':'⏳'}</span>
             <div style="flex:1">
               <div style="font-size:12.5px;font-weight:600;color:var(--text);${strike}">${esc(td.title||'Untitled')}</div>
-              <div style="font-size:10.5px;color:var(--text3);font-family:var(--font)">Task · ${st2}${td.deadline_date?' · '+td.deadline_date:''}</div>
+              <div style="font-size:10.5px;color:var(--text3);font-family:var(--font)">Task · ${st2}${td.deadline_date?' · '+fmtDate(td.deadline_date):''}</div>
             </div>
           </div>`;
         }).join('')}
@@ -5719,7 +5678,7 @@ function renderTasksSection(){
             <div class="task-top" style="cursor:default">
               <div style="flex:1">
                 <div class="task-title" style="text-decoration:${t._deleted?'line-through':''}">${esc(t.title||'Untitled')}</div>
-                ${t.deadline_date?`<div class="task-chips"><span class="task-chip mono">📅 ${t.deadline_date}</span></div>`:''}
+                ${t.deadline_date?`<div class="task-chips"><span class="task-chip mono">📅 ${fmtDate(t.deadline_date)}</span></div>`:''}
               </div>
               <span class="task-status-badge ${aCls}">${aTxt}</span>
             </div>
@@ -5754,7 +5713,7 @@ function renderTasksSection(){
 
 
   if(ui_taskForm){
-    html+=`<div class="task-form" id="task-form-wrap">
+    html+=`<div class="task-form" id="task-form-wrap-standalone">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--upcoming)">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
       <div class="form-grid">
         <div class="fgroup full"><label class="flabel">Task *</label><input class="finput" id="tf-title" placeholder="What needs to be done…" autocomplete="off"></div>
@@ -6594,11 +6553,11 @@ function renderMeetingsSection(){
   const activeCount=meetings.filter(m=>m.status!=='done'&&m.status!=='cancelled').length;
 
   let body=`<div id="meetings-section">`;
-  body+=`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+  body+=`${!isStandaloneMeet?`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
     <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
     <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
     <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add Meeting</button>
-  </div>`;
+  </div>`:''}`;
   if(ui_meetingForm) body+=renderMeetingForm();
   if(!meetings.length&&!ui_meetingForm){
     body+=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-msg">No meetings yet</div></div>`;
@@ -6636,7 +6595,7 @@ function renderMeetingsSection(){
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-meetings">▾</span>
     </div>
     <div class="meeting-info-strip" id="meeting-info-strip" style="${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length?'':'display:none';})()}">
-      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length?esc(next[0].name||''):'';})()}</span>
+      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;">${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length?esc(next[0].name||''):'';})()}</span>
       <span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px;">${(()=>{const today=todayStr();const next=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&(m.date||'')>=today).sort((a,b)=>{const da=a.date||'';const db=b.date||'';return da<db?-1:da>db?1:(a.time||'').localeCompare(b.time||'');});return next.length&&next[0].time?ukToIST(next[0].time)+' IST':'';})()}</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-meetings">${body}</div>
@@ -6688,7 +6647,7 @@ function renderRemarksAccordion(){
         const days=Math.round(diff/86400000);
         if(days<0)       dlChip=`<span class="note-deadline-chip">⚠ Overdue by ${Math.abs(days)}d</span>`;
         else if(days===0)dlChip=`<span class="note-deadline-chip">⚠ Due today</span>`;
-        else             dlChip=`<span class="note-deadline-chip ok">📅 Due in ${days}d (${n.deadline_date})</span>`;
+        else             dlChip=`<span class="note-deadline-chip ok">📅 Due in ${days}d (${fmtDate(n.deadline_date)})</span>`;
       }
       const carriedChip=n.carriedForward?`<span class="carry-badge">↻ +${n.carriedDays||1}d</span>`:'';
       body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
@@ -6977,17 +6936,17 @@ function renderLeavesSection(){
       <span class="acc-chevron${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
     </div>
     <div class="leave-info-strip" id="leave-names-row" style="${getOnLeaveToday().length?'':' display:none'}">
-      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getOnLeaveToday().slice(0,6).map(l=>(l.employeeName||'?').split(' ')[0]).filter(Boolean).join(' · ')}</span>
+      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;">${getOnLeaveToday().slice(0,6).map(l=>(l.employeeName||'?').split(' ')[0]).filter(Boolean).join(' · ')}</span>
       <span style="font-size:10px;color:var(--text3);font-family:var(--font);flex-shrink:0;margin-left:8px;">${getOnLeaveToday().length} on leave</span>
     </div>
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
-  <div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
+  ${!isStandaloneLeave?`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
     <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="ui_showLeaveSettings=!ui_showLeaveSettings;render()">⚙ Employees</button>
     <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add Leave</button>
-  </div>`;
+  </div>`:''}`;
 
   // Employee settings
   if(ui_showLeaveSettings){
@@ -7217,7 +7176,7 @@ function renderUpcomingRow(sec,s,archKey){
       ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font);line-height:1.4">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
     </div>
     <div class="uc-meta-line">
-      ${s.expected_date?`<span class="uc-chip">${esc(s.expected_date)}${typeLabel}</span>`:''}
+      ${s.expected_date?`<span class="uc-chip">${esc(s.expected_date)}${s.expected_date_to?' – '+esc(s.expected_date_to):''}${typeLabel}</span>${s.requested_by?`<span class="uc-chip">👤 ${esc(s.requested_by)}</span>`:''}`:''}
       ${dueChip}
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${isCompleted&&s.completedOn?`<span class="uc-chip" style="color:var(--done);font-size:10px">✅ ${new Date(s.completedOn).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>`:''}
@@ -7511,8 +7470,11 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
           <option value="month"${ev.expected_type==='month'?' selected':''}>Month</option>
         </select>
         <input class="finput" type="date" id="f-expected-date${sfx}" value="${esc(ev.expected_date||'')}">
+        <input class="finput" type="date" id="f-expected-date-to${sfx}" value="${esc(ev.expected_date_to||'')}" placeholder="End date (optional)" style="margin-top:6px">
       </div>
+      <div style="font-size:10.5px;color:var(--text3);font-family:var(--font);margin-top:3px">Leave end date blank for single-day events</div>
     </div>
+    <div class="fgroup full"><label class="flabel">Requested by (optional)</label><input class="finput" id="f-requested-by${sfx}" placeholder="Name or team requesting coverage…" value="${esc(ev.requested_by||'')}"></div>
     <div class="form-divider">Deadline</div>
     <div class="deadline-split">
       <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
