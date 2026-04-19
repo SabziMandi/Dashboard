@@ -3807,7 +3807,12 @@ function submitForm(sec,archKey){
   if(!data.title){ toast('Please enter a title'); return; }
   const k=sec+(archKey?'::'+archKey:'');
   if(ui.editMap[k]){ updateStory(sec,ui.editMap[k],data,archKey); toast('Updated ✓'); }
-  else { addStory(sec,data,archKey); toast('Story added ✓'); }
+  else {
+    addStory(sec,data,archKey);
+    // Reset filter to 'all' so the new story is always visible
+    ui.filter='all';
+    toast('Story added ✓');
+  }
   ui.openForms.delete(k); delete ui.editMap[k]; render();
 }
 function toggleCard(id){
@@ -7377,9 +7382,7 @@ function renderStoryCard(sec,s,archKey){
       <div class="move-picker" onclick="event.stopPropagation()" title="Move to another section">
         <select class="fselect" style="padding:4px 24px 4px 8px;font-size:11.5px;height:29px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3)" id="move-sel-${s.id}" onchange="doMoveSelect('${sec}','${s.id}',${archKeyJS},this)">
           <option value="">Move to…</option>
-          ${SECTIONS.filter(ss=>ss.key!==sec&&!ss.isUpcoming&&!ss.hidden).map(ss=>`<option value="${ss.key}">${esc(secName(ss.key))}</option>`).join('')}
-          ${sec==='ibu'?`<option value="other">Other Stories</option>`:''}
-          ${sec==='other'?`<option value="ibu">IBU</option>`:''}
+          ${SECTIONS.filter(ss=>ss.key!==sec&&!ss.isUpcoming).map(ss=>`<option value="${ss.key}">${esc(secName(ss.key))}</option>`).join('')}
         </select>
       </div>
       <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
