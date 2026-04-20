@@ -7069,8 +7069,8 @@ function renderLeavesSection(){
       <span class="acc-chevron${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
     </div>
     <div class="leave-info-strip" id="leave-names-row" style="${getOnLeaveToday().length?'':' display:none'}">
-      <span style="font-size:10.5px;color:#4338CA;font-weight:500;font-family:var(--font);flex:1;">${getOnLeaveToday().slice(0,6).map(l=>(l.employeeName||'?').split(' ')[0]).filter(Boolean).join(' · ')}</span>
-      <span style="font-size:10px;color:var(--text3);font-family:var(--font);flex-shrink:0;margin-left:8px;">${getOnLeaveToday().length} on leave</span>
+      <span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${getOnLeaveToday().slice(0,6).map(l=>(l.employeeName||'?').split(' ')[0]).filter(Boolean).join(' · ')}</span>
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px;">${getOnLeaveToday().length} on leave</span>
     </div>
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
