@@ -1095,6 +1095,22 @@ button.tasks-tab-btn {
   .form-grid { grid-template-columns: 1fr !important; }
   .deadline-split { grid-template-columns: 1fr !important; }
   .fb-grid { grid-template-columns: 1fr !important; }
+
+  /* Tighter padding so forms don't overflow narrow screens */
+  .acc-body { padding: 12px 12px !important; }
+  .form-wrap { padding: 14px 12px !important; }
+  .task-form { padding: 14px 12px !important; }
+  .leave-form { padding: 14px 12px !important; }
+  .meeting-form { padding: 12px !important; }
+  .bt-row { padding: 10px 10px !important; }
+
+  /* Expected-row: stack dropdown + date inputs vertically on mobile */
+  .expected-row { flex-wrap: wrap; }
+  .expected-row .fselect { width: 100% !important; flex-shrink: unset; }
+  .expected-row .finput { width: 100% !important; min-width: 0; flex: unset; }
+
+  /* Prevent any flex child from overflowing its container */
+  .form-wrap *, .task-form *, .leave-form *, .meeting-form * { min-width: 0; }
 }
 @media(min-width:721px){
   .show-mobile-only { display: none !important; }
@@ -1535,7 +1551,7 @@ function archiveShortLabel(key){
 }
 function archiveStoryCount(key){
   const e=state.archive[key]; if(!e||!e.sections) return 0;
-  return SECTIONS.reduce((s,sec)=>s+(e.sections[sec.key]?.length||0),0);
+  return SECTIONS.reduce((s,sec)=>s+(e.sections[sec.key]?.filter(x=>!x._deleted).length||0),0);
 }
 function sortedArchiveKeys(){
   return Object.keys(state.archive).sort((a,b)=>{
@@ -1622,10 +1638,24 @@ function startRealtimeSync(){
       arrayKeys.forEach(k=>{
         const local=state[k]||[];
         const remote=incoming[k]||[];
-        // Merge by ID: union of both, with remote winning on conflicts
+        const deletedForKey=new Set(state.deletedIds?.[k]||[]);
+        // Merge by ID: union of both, but deletions and _deleted flags are authoritative
         const map=new Map();
         local.forEach(item=>{if(item.id) map.set(item.id,item);});
-        remote.forEach(item=>{if(item.id) map.set(item.id,item);}); // remote overrides local
+        remote.forEach(item=>{
+          if(!item.id) return;
+          if(deletedForKey.has(item.id)) return; // never resurrect locally deleted items
+          const existing=map.get(item.id);
+          if(existing&&existing._deleted) return; // local tombstone wins over remote live copy
+          if(existing){
+            // Remote wins only if it's the same age or newer
+            const remoteTs=item.updated||item.created||0;
+            const localTs=existing.updated||existing.created||0;
+            if(remoteTs>=localTs) map.set(item.id,item);
+          } else {
+            map.set(item.id,item); // new entry from remote
+          }
+        });
         mergedArrays[k]=[...map.values()];
       });
       // For archive: deep merge — keep all keys from both
@@ -1634,7 +1664,18 @@ function startRealtimeSync(){
       const mergedArchive={...localArchive};
       Object.keys(remoteArchive).forEach(dateKey=>{
         if(!mergedArchive[dateKey]){
+          // Date only exists in remote — still need to filter out locally deleted entries
           mergedArchive[dateKey]=remoteArchive[dateKey];
+          if(mergedArchive[dateKey].sections){
+            SECTIONS.forEach(sec=>{
+              const archDeletedKey=dateKey+'::'+sec.key;
+              const archDeletedIds=new Set((state.deletedIds?.[archDeletedKey]||[]));
+              if(archDeletedIds.size&&mergedArchive[dateKey].sections[sec.key]){
+                mergedArchive[dateKey].sections[sec.key]=
+                  mergedArchive[dateKey].sections[sec.key].filter(s=>!archDeletedIds.has(s.id));
+              }
+            });
+          }
         } else {
           // Merge notesLog and tasksLog arrays by ID
           ['notesLog','tasksLog'].forEach(logKey=>{
@@ -1642,7 +1683,20 @@ function startRealtimeSync(){
             const remoteLog=remoteArchive[dateKey][logKey]||[];
             const logMap=new Map();
             localLog.forEach(item=>{if(item.id) logMap.set(item.id,item);});
-            remoteLog.forEach(item=>{if(item.id) logMap.set(item.id,item);});
+            remoteLog.forEach(item=>{
+              if(!item.id) return;
+              const existing=logMap.get(item.id);
+              // Local _deleted tombstone always wins — never let remote resurrect a deleted log entry
+              if(existing&&existing._deleted) return;
+              // Use timestamp comparison — local wins if newer
+              if(existing){
+                const remoteTs=item.updated||item.deletedOn||item.created||0;
+                const localTs=existing.updated||existing.deletedOn||existing.created||0;
+                if(remoteTs>=localTs) logMap.set(item.id,item);
+              } else {
+                logMap.set(item.id,item);
+              }
+            });
             mergedArchive[dateKey][logKey]=[...logMap.values()];
           });
           // Merge story sections
@@ -1650,9 +1704,19 @@ function startRealtimeSync(){
             SECTIONS.forEach(sec=>{
               const localSec=mergedArchive[dateKey].sections?.[sec.key]||[];
               const remoteSec=remoteArchive[dateKey].sections?.[sec.key]||[];
+              // Build a set of IDs that are locally marked as deleted for this archive date
+              const archDeletedKey=dateKey+'::'+sec.key;
+              const archDeletedIds=new Set((state.deletedIds?.[archDeletedKey]||[]));
               const secMap=new Map();
               localSec.forEach(s=>{if(s.id) secMap.set(s.id,s);});
-              remoteSec.forEach(s=>{if(s.id) secMap.set(s.id,s);});
+              remoteSec.forEach(s=>{
+                if(!s.id) return;
+                if(archDeletedIds.has(s.id)) return; // never resurrect archive-deleted entries
+                const existing=secMap.get(s.id);
+                // If local copy is marked deleted, keep it (deletion wins over remote live copy)
+                if(existing&&existing._deleted) return;
+                secMap.set(s.id,s);
+              });
               if(!mergedArchive[dateKey].sections) mergedArchive[dateKey].sections={};
               mergedArchive[dateKey].sections[sec.key]=[...secMap.values()];
             });
@@ -1664,11 +1728,13 @@ function startRealtimeSync(){
       SECTIONS.forEach(sec=>{
         const localSec=state.sections[sec.key]||[];
         const remoteSec=incoming.sections?.[sec.key]||[];
+        const deletedForSec=(state.deletedIds?.[sec.key]||[]);
         const secMap=new Map();
         // Local first, then remote overrides — but compare timestamps for same ID
         localSec.forEach(s=>{ if(s.id) secMap.set(s.id,s); });
         remoteSec.forEach(s=>{
           if(!s.id) return;
+          if(deletedForSec.includes(s.id)) return; // never resurrect locally deleted entries
           const existing=secMap.get(s.id);
           if(!existing){
             secMap.set(s.id,s);
@@ -1685,8 +1751,10 @@ function startRealtimeSync(){
       // Apply all other scalar fields from remote — but preserve local-only fields
       const localBackups=state.backupSnapshots; // backups are local-only
       const localLAD=state.lastActiveDate;      // never let cloud roll back lastActiveDate
+      const localDeletedIds=state.deletedIds||{}; // deletions are local authority — never let cloud undo them
       Object.assign(state, incoming, mergedArrays, {archive:mergedArchive, sections:mergedSections});
       state.backupSnapshots=localBackups; // restore local backups after merge
+      state.deletedIds=localDeletedIds;  // restore deletion log after merge
       // Keep whichever lastActiveDate is more recent — prevents Firebase from re-triggering checkDateChange
       if(localLAD && (!state.lastActiveDate || localLAD > state.lastActiveDate))
         state.lastActiveDate=localLAD;
@@ -1842,6 +1910,12 @@ function checkDateChange(){
     // Remove all archived stories from working board
     const archivedIBU=toAutoArchive.filter(x=>x.sec==='ibu').map(x=>x.story.id);
     const archivedOther=toAutoArchive.filter(x=>x.sec==='other').map(x=>x.story.id);
+    // Track all auto-archived IDs in deletedIds so sync can't resurrect them on the live board
+    if(!state.deletedIds) state.deletedIds={};
+    toAutoArchive.forEach(({story,sec})=>{
+      if(!state.deletedIds[sec]) state.deletedIds[sec]=[];
+      if(!state.deletedIds[sec].includes(story.id)) state.deletedIds[sec].push(story.id);
+    });
     // IBU always clears fully at midnight
     state.sections.ibu=[];
     // Other/requests: remove terminal stories (completed, not-done, shelved) — they had their day
@@ -2482,6 +2556,19 @@ function deleteStory(sec,id,archKey){
     state.archive[createdDate].sections[sec].push({...story, deletedOn:Date.now(), _deleted:true});
   }
 
+  // Record deletion so Firestore onSnapshot merge cannot resurrect this entry
+  if(!state.deletedIds) state.deletedIds={};
+  if(!archKey){
+    // Live board deletion
+    if(!state.deletedIds[sec]) state.deletedIds[sec]=[];
+    if(!state.deletedIds[sec].includes(id)) state.deletedIds[sec].push(id);
+  } else {
+    // Archive deletion — keyed as "archKey::sec"
+    const archDeletedKey=archKey+'::'+sec;
+    if(!state.deletedIds[archDeletedKey]) state.deletedIds[archDeletedKey]=[];
+    if(!state.deletedIds[archDeletedKey].includes(id)) state.deletedIds[archDeletedKey].push(id);
+  }
+
   // Now remove from working board
   const filtered=arr.filter(s=>s.id!==id);
   if(archKey) state.archive[archKey].sections[sec]=filtered; else state.sections[sec]=filtered;
@@ -2596,7 +2683,8 @@ function sweepStaleTerminalStories(){
   const today=todayStr();
   const TERM=['completed','not-done','shelved'];
   let swept=false;
-  const keepFn=s=>{
+  if(!state.deletedIds) state.deletedIds={};
+  const keepFn=(s,key)=>{
     if(!TERM.includes(s.status)) return true;
     // Keep if created today (user just marked it)
     const created=s.created?dateStr(new Date(s.created)):null;
@@ -2606,14 +2694,18 @@ function sweepStaleTerminalStories(){
       s.notDoneOn?dateStr(new Date(s.notDoneOn)):
       s.shelvedAt?dateStr(new Date(s.shelvedAt)):null;
     if(resDate&&resDate>=today) return true;
+    // Record in deletedIds so sync can't bring it back
+    if(key){
+      if(!state.deletedIds[key]) state.deletedIds[key]=[];
+      if(!state.deletedIds[key].includes(s.id)) state.deletedIds[key].push(s.id);
+    }
     swept=true; return false;
   };
   SECTIONS.filter(s=>!s.isUpcoming&&!s.isCombined&&s.key!=='ibu').forEach(({key})=>{
-    const before=(state.sections[key]||[]).length;
-    state.sections[key]=(state.sections[key]||[]).filter(keepFn);
+    state.sections[key]=(state.sections[key]||[]).filter(s=>keepFn(s,key));
   });
   // Also sweep other (hidden combined section)
-  state.sections.other=(state.sections.other||[]).filter(keepFn);
+  state.sections.other=(state.sections.other||[]).filter(s=>keepFn(s,'other'));
   // IBU always clears if date changed (handled by checkDateChange)
   if(swept) saveAndPush();
 }
@@ -2668,6 +2760,7 @@ function toggleWWMode(sec,id,archKey){
   const modes=['none','working','watching'];
   const cur=modes.indexOf(s.mode||'none');
   s.mode=modes[(cur+1)%modes.length];
+  s.updated=Date.now(); // bump so merge keeps this version
   saveAndPush();
   // Update badge in DOM without full re-render
   const badge=document.getElementById('wwbadge-'+id);
@@ -2817,6 +2910,7 @@ function getStories(sec,archKey,includeShelved){
   const secObj=SECTIONS.find(s=>s.key===sec)||{};   // must be first — used in filter guard
   const arr=(archKey?state.archive[archKey]?.sections[sec]:state.sections[sec])||[];
   let a=arr.slice();
+  a=a.filter(s=>!s._deleted); // never render tombstone/deleted entries
   if(!includeShelved) a=a.filter(s=>s.status!=='shelved');
   if(ui.search){
     const q=ui.search.toLowerCase();
@@ -3903,18 +3997,20 @@ function addStoryTravel(sec,sid,type,data,archKey){
   const s=arr.find(x=>x.id===sid); if(!s) return;
   if(!s.travel) s.travel=[];
   s.travel.push({id:genId(),type,data:{...data},created:Date.now()});
+  s.updated=Date.now();
   saveAndPush(); render();
 }
 function updateStoryTravel(sec,sid,eid,data,archKey){
   const arr=getArr(sec,archKey); if(!arr) return;
   const s=arr.find(x=>x.id===sid); if(!s) return;
   const i=(s.travel||[]).findIndex(e=>e.id===eid);
-  if(i>=0){s.travel[i]={...s.travel[i],data:{...s.travel[i].data,...data}};saveAndPush();render();}
+  if(i>=0){s.travel[i]={...s.travel[i],data:{...s.travel[i].data,...data}};s.updated=Date.now();saveAndPush();render();}
 }
 function deleteStoryTravel(sec,sid,eid,archKey){
   const arr=getArr(sec,archKey); if(!arr) return;
   const s=arr.find(x=>x.id===sid); if(!s) return;
   s.travel=(s.travel||[]).filter(e=>e.id!==eid);
+  s.updated=Date.now();
   saveAndPush(); render();
 }
 function moveStoryTravel(sec,sid,eid,dir,archKey){
@@ -3923,6 +4019,7 @@ function moveStoryTravel(sec,sid,eid,dir,archKey){
   const i=s.travel.findIndex(e=>e.id===eid);
   if(dir==='up'&&i>0)[s.travel[i-1],s.travel[i]]=[s.travel[i],s.travel[i-1]];
   else if(dir==='down'&&i<s.travel.length-1)[s.travel[i],s.travel[i+1]]=[s.travel[i+1],s.travel[i]];
+  s.updated=Date.now();
   saveAndPush(); render();
 }
 function copyStoryTravelTo(sec,sid,eid,archKey){
@@ -3931,6 +4028,7 @@ function copyStoryTravelTo(sec,sid,eid,archKey){
   const e=(s.travel||[]).find(x=>x.id===eid); if(!e) return;
   const name=prompt('Copy for which person?',''); if(!name||!name.trim()) return;
   s.travel.push({id:genId(),type:e.type,data:{...e.data,forName:name.trim()},created:Date.now()});
+  s.updated=Date.now();
   saveAndPush(); render();
 }
 function submitStoryTravelForm(sec,sid,type,editId,archKey){
@@ -4249,7 +4347,7 @@ function renderDateStrip(){
   const todayActive=ui.view==='today';
   const yestActive=ui.view==='archive'&&ui.archiveKey===yest;
   const tommActive=ui.view==='archive'&&ui.archiveKey===tomm;
-  const todayCount=SECTIONS.reduce((s,sec)=>s+(state.sections[sec.key]?.length||0),0);
+  const todayCount=SECTIONS.reduce((s,sec)=>s+(state.sections[sec.key]?.filter(x=>!x._deleted).length||0),0);
   const yestCount=state.archive[yest]?archiveStoryCount(yest):0;
   const tommCount=state.archive[tomm]?archiveStoryCount(tomm):0;
   let html='';
@@ -4536,7 +4634,7 @@ function renderUpcomingView(){
 
   if(cur!==today){
     // Past date — show archived entries with full CRUD
-    const entries=(state.archive[cur]?.sections?.upcoming)||[];
+    const entries=((state.archive[cur]?.sections?.upcoming)||[]).filter(s=>!s._deleted);
     if(!entries.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events on this date</div></div>`;
     } else {
@@ -5238,6 +5336,7 @@ function addStoryRemark(sec, storyId, text, archKey){
   const story=arr?.find(s=>s.id===storyId); if(!story) return;
   if(!story.remarksList) story.remarksList=[];
   story.remarksList.push({ id:genId(), text:text.trim(), created:Date.now() });
+  story.updated=Date.now(); // bump so merge keeps this version
   saveAndPush(); render();
 }
 function updateStoryRemark(sec, storyId, remarkId, text, archKey){
@@ -5245,12 +5344,14 @@ function updateStoryRemark(sec, storyId, remarkId, text, archKey){
   const story=arr?.find(s=>s.id===storyId); if(!story) return;
   const r=(story.remarksList||[]).find(r=>r.id===remarkId); if(!r) return;
   r.text=text.trim(); r.edited=Date.now();
+  story.updated=Date.now(); // bump so merge keeps this version
   saveAndPush(); render();
 }
 function deleteStoryRemark(sec, storyId, remarkId, archKey){
   const arr=getArr(sec,archKey);
   const story=arr?.find(s=>s.id===storyId); if(!story) return;
   story.remarksList=(story.remarksList||[]).filter(r=>r.id!==remarkId);
+  story.updated=Date.now(); // bump timestamp so merge keeps this version
   saveAndPush(); render();
 }
 function submitStoryRemark(sec, storyId, archKey){
@@ -5402,7 +5503,7 @@ function addTask(data){
 function updateTask(id,data){
   if(!state.tasks) return;
   const i=state.tasks.findIndex(t=>t.id===id);
-  if(i>=0){ state.tasks[i]={...state.tasks[i],...data}; saveAndPush(); }
+  if(i>=0){ state.tasks[i]={...state.tasks[i],...data, updated:Date.now()}; saveAndPush(); }
 }
 function deleteTask(id){
   const task=(state.tasks||[]).find(t=>t.id===id); if(!task) return;
@@ -5419,6 +5520,9 @@ function deleteTask(id){
   }
 
   state.tasks=state.tasks.filter(t=>t.id!==id);
+  if(!state.deletedIds) state.deletedIds={};
+  if(!state.deletedIds.tasks) state.deletedIds.tasks=[];
+  if(!state.deletedIds.tasks.includes(id)) state.deletedIds.tasks.push(id);
   ui_openTasks.delete(id);
   saveAndPush(); renderDateStrip(); render();
 }
@@ -6172,7 +6276,7 @@ function updateNote(id, data){
   if(!state.notes) return;
   const i=state.notes.findIndex(n=>n.id===id);
   if(i>=0){
-    state.notes[i]={...state.notes[i],...data};
+    state.notes[i]={...state.notes[i],...data, updated:Date.now()};
     // Keep archive log entry in sync
     const note=state.notes[i];
     const createdDate=note.carriedFromDate||(note.created?dateStr(new Date(typeof note.created==='number'?note.created:parseInt(note.created))):todayStr());
@@ -6198,6 +6302,9 @@ function deleteNote(id){
   }
 
   state.notes=(state.notes||[]).filter(n=>n.id!==id);
+  if(!state.deletedIds) state.deletedIds={};
+  if(!state.deletedIds.notes) state.deletedIds.notes=[];
+  if(!state.deletedIds.notes.includes(id)) state.deletedIds.notes.push(id);
   saveAndPush(); renderDateStrip(); render();
 }
 function setNoteStatus(id, status){
@@ -6274,10 +6381,13 @@ function addMeeting(data){
 }
 function updateMeeting(id,data){
   const i=(state.meetings||[]).findIndex(m=>m.id===id);
-  if(i>=0){ state.meetings[i]={...state.meetings[i],...data}; saveAndPush(); }
+  if(i>=0){ state.meetings[i]={...state.meetings[i],...data, updated:Date.now()}; saveAndPush(); }
 }
 function deleteMeeting(id){
   state.meetings=(state.meetings||[]).filter(m=>m.id!==id);
+  if(!state.deletedIds) state.deletedIds={};
+  if(!state.deletedIds.meetings) state.deletedIds.meetings=[];
+  if(!state.deletedIds.meetings.includes(id)) state.deletedIds.meetings.push(id);
   ui_openMeetings.delete(id);
   saveAndPush(); render();
 }
@@ -6285,17 +6395,20 @@ function addMeetingRemark(id, text){
   const m=(state.meetings||[]).find(m=>m.id===id); if(!m) return;
   if(!m.remarks) m.remarks=[];
   m.remarks.push({id:genId(), text, created:Date.now()});
+  m.updated=Date.now(); // bump so merge keeps this version
   saveAndPush(); render();
 }
 function updateMeetingRemark(meetingId, remarkId, text){
   const m=(state.meetings||[]).find(m=>m.id===meetingId); if(!m) return;
   const r=(m.remarks||[]).find(r=>r.id===remarkId); if(!r) return;
   r.text=text; r.edited=Date.now();
+  m.updated=Date.now(); // bump so merge keeps this version
   saveAndPush(); render();
 }
 function deleteMeetingRemark(meetingId, remarkId){
   const m=(state.meetings||[]).find(m=>m.id===meetingId); if(!m) return;
   m.remarks=(m.remarks||[]).filter(r=>r.id!==remarkId);
+  m.updated=Date.now(); // bump so merge keeps this version
   saveAndPush(); render();
 }
 function submitMeetingForm(){
@@ -6725,10 +6838,16 @@ function renderMeetingsSection(){
   const _d=new Date(),_ist=new Date(_d.getTime()+330*60000);
   const _nowIST=('0'+_ist.getUTCHours()).slice(-2)+':'+('0'+_ist.getUTCMinutes()).slice(-2);
   const _isu=m=>{const ist=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !ist||ist>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !ist||ist>_nowIST;return false;};
-  const upcoming=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m));
-  if(!upcoming.length)return '';
-  upcoming.sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';const da=(a.date&&a.date>=_t?a.date:_t)+ta;const db=(b.date&&b.date>=_t?b.date:_t)+tb;return da.localeCompare(db);});
-  return esc(upcoming[0].name||'');
+  const active=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled');
+  if(!active.length) return '';
+  const upcoming=active.filter(m=>_isu(m));
+  if(upcoming.length){
+    upcoming.sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';const da=(a.date&&a.date>=_t?a.date:_t)+ta;const db=(b.date&&b.date>=_t?b.date:_t)+tb;return da.localeCompare(db);});
+    return esc(upcoming[0].name||'');
+  }
+  // Fallback: show most recently scheduled active meeting
+  const sorted=active.slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+  return esc(sorted[0].name||'');
 })()}</span>
       <div class="acc-meta">
         ${activeCount?`<span class="sbadge sb-in-progress">${activeCount} scheduled</span>`:''}
@@ -6941,10 +7060,13 @@ function addLeave(data){
 function updateLeave(id,data){
   if(!state.leaves)return;
   const i=state.leaves.findIndex(l=>l.id===id);
-  if(i>=0){state.leaves[i]={...state.leaves[i],...data};saveAndPush();}
+  if(i>=0){state.leaves[i]={...state.leaves[i],...data, updated:Date.now()};saveAndPush();}
 }
 function deleteLeave(id){
   state.leaves=(state.leaves||[]).filter(l=>l.id!==id);
+  if(!state.deletedIds) state.deletedIds={};
+  if(!state.deletedIds.leaves) state.deletedIds.leaves=[];
+  if(!state.deletedIds.leaves.includes(id)) state.deletedIds.leaves.push(id);
   ui_openLeaves.delete(id);
   // Remove the DOM element immediately without waiting for full render
   const el=document.querySelector('[data-id="'+id+'"]');
@@ -7012,7 +7134,8 @@ function saveEmployeeNames(){
     names.push((el?.value||'').trim()||('Employee '+(i+1)));
   }
   state.employees=names;
-  (state.leaves||[]).forEach(l=>{if(l.employeeIdx!=null)l.employeeName=names[l.employeeIdx];});
+  const _ts=Date.now();
+  (state.leaves||[]).forEach(l=>{if(l.employeeIdx!=null){l.employeeName=names[l.employeeIdx];l.updated=_ts;}});
   saveAndPush();toast('Employee names saved ✓');
   ui_showLeaveSettings=false;render();
 }
