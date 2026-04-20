@@ -6720,15 +6720,39 @@ function renderMeetingsSection(){
     <div class="acc-header" onclick="toggleAccordion('meetings')">
       <span class="acc-icon">📅</span>
       <span class="acc-name">Meetings</span>
-      <span class="acc-summary">${(()=>{ const today=todayStr(); const getEff=m=>m.date&&m.date>=today?m.date:m.isRecurring?today:null; const upcoming=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&getEff(m)); if(!upcoming.length)return ''; upcoming.sort((a,b)=>(getEff(a)||'').localeCompare(getEff(b)||'')||(a.time||'').localeCompare(b.time||'')); return esc(upcoming[0].name||''); })()}</span>
+      <span class="acc-summary">${(()=>{
+  const _t=todayStr();
+  const _d=new Date(),_ist=new Date(_d.getTime()+330*60000);
+  const _nowIST=('0'+_ist.getUTCHours()).slice(-2)+':'+('0'+_ist.getUTCMinutes()).slice(-2);
+  const _isu=m=>{const ist=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !ist||ist>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !ist||ist>_nowIST;return false;};
+  const upcoming=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m));
+  if(!upcoming.length)return '';
+  upcoming.sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';const da=(a.date&&a.date>=_t?a.date:_t)+ta;const db=(b.date&&b.date>=_t?b.date:_t)+tb;return da.localeCompare(db);});
+  return esc(upcoming[0].name||'');
+})()}</span>
       <div class="acc-meta">
         ${activeCount?`<span class="sbadge sb-in-progress">${activeCount} scheduled</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-meetings">▾</span>
     </div>
-    <div class="meeting-info-strip" id="meeting-info-strip" style="${(()=>{const _t=todayStr();const _ge=m=>m.date&&m.date>=_t?m.date:m.isRecurring?_t:null;const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_ge(m)).sort((a,b)=>(_ge(a)||'').localeCompare(_ge(b)||'')||(a.time||'').localeCompare(b.time||''));return _nx.length?'':'display:none';})()}">
-      <span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(()=>{const _t=todayStr();const _ge=m=>m.date&&m.date>=_t?m.date:m.isRecurring?_t:null;const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_ge(m)).sort((a,b)=>(_ge(a)||'').localeCompare(_ge(b)||'')||(a.time||'').localeCompare(b.time||''));return _nx.length?esc(_nx[0].name||''):'';})()}</span>
-      <span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px;">${(()=>{const _t=todayStr();const _ge=m=>m.date&&m.date>=_t?m.date:m.isRecurring?_t:null;const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_ge(m)).sort((a,b)=>(_ge(a)||'').localeCompare(_ge(b)||'')||(a.time||'').localeCompare(b.time||''));return _nx.length&&_nx[0].time?ukToIST(_nx[0].time)+' IST':'';})()}</span>
+    <div class="meeting-info-strip" id="meeting-info-strip" style="${(()=>{
+      const _t=todayStr();const _d=new Date(),_iv=new Date(_d.getTime()+330*60000);
+      const _nowIST=('0'+_iv.getUTCHours()).slice(-2)+':'+('0'+_iv.getUTCMinutes()).slice(-2);
+      const _isu=m=>{const _it=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !_it||_it>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !_it||_it>_nowIST;return false;};
+      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m)).sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';return ((a.date&&a.date>=_t?a.date:_t)+ta).localeCompare((b.date&&b.date>=_t?b.date:_t)+tb);});
+      return _nx.length?'':'display:none';})()}">
+      <span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(()=>{
+      const _t=todayStr();const _d=new Date(),_iv=new Date(_d.getTime()+330*60000);
+      const _nowIST=('0'+_iv.getUTCHours()).slice(-2)+':'+('0'+_iv.getUTCMinutes()).slice(-2);
+      const _isu=m=>{const _it=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !_it||_it>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !_it||_it>_nowIST;return false;};
+      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m)).sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';return ((a.date&&a.date>=_t?a.date:_t)+ta).localeCompare((b.date&&b.date>=_t?b.date:_t)+tb);});
+      return _nx.length?esc(_nx[0].name||''):'';})()}</span>
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px;">${(()=>{
+      const _t=todayStr();const _d=new Date(),_iv=new Date(_d.getTime()+330*60000);
+      const _nowIST=('0'+_iv.getUTCHours()).slice(-2)+':'+('0'+_iv.getUTCMinutes()).slice(-2);
+      const _isu=m=>{const _it=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !_it||_it>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !_it||_it>_nowIST;return false;};
+      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m)).sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';return ((a.date&&a.date>=_t?a.date:_t)+ta).localeCompare((b.date&&b.date>=_t?b.date:_t)+tb);});
+      return _nx.length&&_nx[0].time?ukToIST(_nx[0].time)+' IST':'';})()}</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-meetings">${body}</div>
   </div>`;
