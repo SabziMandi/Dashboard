@@ -1751,10 +1751,19 @@ function startRealtimeSync(){
       // Apply all other scalar fields from remote — but preserve local-only fields
       const localBackups=state.backupSnapshots; // backups are local-only
       const localLAD=state.lastActiveDate;      // never let cloud roll back lastActiveDate
-      const localDeletedIds=state.deletedIds||{}; // deletions are local authority — never let cloud undo them
+      const localDeletedIds=state.deletedIds||{};
+      const remoteDeletedIds=incoming.deletedIds||{};
+      // Merge deletedIds: union of local + remote so deletions propagate across all devices
+      const mergedDeletedIds={};
+      const _allDelKeys=new Set([...Object.keys(localDeletedIds),...Object.keys(remoteDeletedIds)]);
+      _allDelKeys.forEach(k=>{
+        const _loc=localDeletedIds[k]||[];
+        const _rem=remoteDeletedIds[k]||[];
+        mergedDeletedIds[k]=[...new Set([..._loc,..._rem])];
+      });
       Object.assign(state, incoming, mergedArrays, {archive:mergedArchive, sections:mergedSections});
       state.backupSnapshots=localBackups; // restore local backups after merge
-      state.deletedIds=localDeletedIds;  // restore deletion log after merge
+      state.deletedIds=mergedDeletedIds;  // merged so all devices honour all deletions
       // Keep whichever lastActiveDate is more recent — prevents Firebase from re-triggering checkDateChange
       if(localLAD && (!state.lastActiveDate || localLAD > state.lastActiveDate))
         state.lastActiveDate=localLAD;
@@ -2009,7 +2018,7 @@ function getCarriedStories(){
   const today=todayStr();
   const r=[];
   SECTIONS.filter(s=>!s.isUpcoming).forEach(sec=>{
-    (state.sections[sec.key]||[]).forEach(s=>{
+    (state.sections[sec.key]||[]).filter(s=>!s._deleted).forEach(s=>{
       if(!s.carriedForward) return;
       if(s.status==='completed'||s.status==='on-hold'||s.status==='not-done'||s.status==='shelved') return;
       if(s.status==='postponed'&&s.postponeTo&&s.postponeTo>today) return;
@@ -2030,7 +2039,7 @@ function createSnapshot(key,type,showToast=true){
   SECTIONS.forEach(s=>{
     const existing=state.archive[key].sections[s.key]||[];
     const ids=new Set(existing.map(st=>st.id));
-    const newOnes=(state.sections[s.key]||[]).filter(st=>!ids.has(st.id));
+    const newOnes=(state.sections[s.key]||[]).filter(st=>!ids.has(st.id)&&!st._deleted);
     state.archive[key].sections[s.key]=[...existing,...newOnes];
   });
   saveAndPush();
@@ -2887,7 +2896,7 @@ function cancelAllReminders(){
 function scheduleAllReminders(){
   // Stories — pass full object; _type not needed (no date field ambiguity)
   SECTIONS.forEach(sec=>
-    (state.sections[sec.key]||[]).forEach(s=>scheduleReminder(s))
+    (state.sections[sec.key]||[]).filter(s=>!s._deleted).forEach(s=>scheduleReminder(s))
   );
   // Tasks — tag with _type so _computeFireAt uses deadline_date correctly
   (state.tasks||[]).forEach(t=>{
@@ -3151,8 +3160,9 @@ function buildFullText(){
   // Active sections
   SECTIONS.forEach(sec=>{
     ln.push(sec.name.toUpperCase()); ln.push(hr);
-    (state.sections[sec.key]||[]).forEach(s=>{ ln.push(storyToText(s)); ln.push(''); });
-    if(!(state.sections[sec.key]||[]).length) ln.push('(No stories)');
+    const secStories=(state.sections[sec.key]||[]).filter(s=>!s._deleted);
+    secStories.forEach(s=>{ ln.push(storyToText(s)); ln.push(''); });
+    if(!secStories.length) ln.push('(No stories)');
     ln.push('');
   });
 
@@ -3204,7 +3214,7 @@ function buildFullText(){
       ln.push('\n'+archiveLabel(k).toUpperCase());
       const e=state.archive[k]; if(!e) return;
       SECTIONS.forEach(sec=>{
-        const st=e.sections?.[sec.key]||[];
+        const st=(e.sections?.[sec.key]||[]).filter(s=>!s._deleted);
         if(!st.length) return;
         ln.push('  '+sec.name.toUpperCase());
         st.forEach(s=>{ ln.push('  '+storyToText(s).replace(/\n/g,'\n  ')); ln.push(''); });
@@ -3254,6 +3264,7 @@ function doExportJSON(){
     staffNames:  state.staffNames||{},
     sectionNames:state.sectionNames||{},
     customPlatformLabels: state.customPlatformLabels||[],
+    deletedIds:  state.deletedIds||{},
     backupSnapshots: {weekly:[],monthly:[],yearly:[]}, // snapshots are local-only, not exported
     lastWeeklyBackup:  state.lastWeeklyBackup||null,
     lastMonthlyBackup: state.lastMonthlyBackup||null,
@@ -3316,6 +3327,7 @@ function handleImportFile(input){
       state.staffNames  = data.staffNames  || state.staffNames;
       state.sectionNames= data.sectionNames|| {};
       state.customPlatformLabels = data.customPlatformLabels || [];
+      state.deletedIds  = data.deletedIds  || {};
       state.backupSnapshots = data.backupSnapshots || {weekly:[],monthly:[],yearly:[]};
       state.lastWeeklyBackup  = data.lastWeeklyBackup  || null;
       state.lastMonthlyBackup = data.lastMonthlyBackup || null;
@@ -3556,7 +3568,7 @@ function doExportLeavesTxt(){
 
 function doExportSectionTxt(sec,archKey){
   const name=secName(sec);
-  const stories=archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[];
+  const stories=(archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[]).filter(s=>!s._deleted);
   const hr='─'.repeat(48);
   const lines=[name.toUpperCase(),hr,''];
   stories.forEach(s=>{lines.push(storyToText(s));lines.push('');});
@@ -3569,7 +3581,7 @@ function doExportSectionTxt(sec,archKey){
 function doEmailSection(sec,archKey){
   const meta=SECTIONS.find(s=>s.key===sec);
   const name=secName(sec);
-  const stories=archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[];
+  const stories=(archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[]).filter(s=>!s._deleted);
   const lines=[name.toUpperCase(),'─'.repeat(44)];
   stories.forEach(s=>{lines.push(storyToText(s));lines.push('');});
   sendMailto('[Newsroom] '+name+' — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
@@ -4461,7 +4473,7 @@ function renderSearchHTML(){
   // ── Today ──
   SECTIONS.forEach(sec=>{
     if(sec.isUpcoming||sec.hidden) return;
-    const arr=state.sections[sec.key]||[];
+    const arr=(state.sections[sec.key]||[]).filter(s=>!s._deleted);
     arr.forEach(s=>{
       if(secHit===sec.key || storyMatchesSearch(s,q)){
         results.push({dateKey:'today',dateLabel:'Today',sec:sec.key,secLabel:secName(sec.key),story:s,type:'story'});
@@ -4469,7 +4481,7 @@ function renderSearchHTML(){
     });
   });
   // Upcoming (today)
-  (state.sections.upcoming||[]).forEach(s=>{
+  (state.sections.upcoming||[]).filter(s=>!s._deleted).forEach(s=>{
     if(secHit==='upcoming'||storyMatchesSearch(s,q)){
       results.push({dateKey:'today',dateLabel:'Today (Upcoming)',sec:'upcoming',secLabel:'Upcoming',story:s,type:'story'});
     }
@@ -4497,7 +4509,7 @@ function renderSearchHTML(){
   Object.keys(state.archive).sort((a,b)=>b.localeCompare(a)).forEach(archKey=>{
     const entry=state.archive[archKey]; if(!entry) return;
     SECTIONS.forEach(sec=>{
-      const arr=entry.sections?.[sec.key]||[];
+      const arr=(entry.sections?.[sec.key]||[]).filter(s=>!s._deleted);
       arr.forEach(s=>{
         if(secHit===sec.key||storyMatchesSearch(s,q)){
           results.push({dateKey:archKey,dateLabel:dlabel(archKey),sec:sec.key,secLabel:secName(sec.key),story:s,type:'story',archKey});
@@ -4604,10 +4616,11 @@ function renderTodayHTML(){
   // EOD banner
   if(shouldShowEOD()){
     const eodH=state.eodSettings?.hour||18;
+    const _eodN=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).reduce((a,s)=>a+(state.sections[s.key]||[]).filter(st=>!st._deleted&&!['completed','not-done','shelved'].includes(st.status)).length,0);
     html+=`<div style="background:rgba(99,102,241,.06);border:0.5px solid rgba(99,102,241,.25);border-radius:8px;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
-      <span style="font-size:12.5px;color:#3730A3;font-family:var(--font);">${(()=>{const n=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).reduce((a,s)=>a+(state.sections[s.key]||[]).filter(st=>!['completed','not-done','shelved'].includes(st.status)).length,0);return n+' stor'+(n===1?'y':'ies')+' still active — end of day approaching (${eodH}:00 IST)';})()}</span>
+      <span style="font-size:12.5px;color:#3730A3;font-family:var(--font);">${_eodN} stor${_eodN===1?'y':'ies'} still active — end of day approaching (${eodH}:00 IST)</span>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="btn btn-ghost btn-sm" style="color:#4F46E5;border-color:rgba(99,102,241,.3)" onclick="ui.openSections.add('ibu');setView('today',null);render()">Review</button>
+        <button class="btn btn-ghost btn-sm" style="color:#4F46E5;border-color:rgba(99,102,241,.3)" onclick="ui.openSections.add('ibu');render();setTimeout(()=>document.getElementById('acc-ibu')?.scrollIntoView({behavior:'smooth',block:'start'}),80)">Review</button>
         <button class="btn btn-ghost btn-sm" onclick="dismissEOD()">Dismiss</button>
       </div>
     </div>`;
@@ -4643,7 +4656,6 @@ function renderUpcomingView(){
     }
   } else {
     // Today — render entries directly (no accordion wrapper needed on dedicated tab)
-    const all=state.sections.upcoming||[];
     const stories=getStories('upcoming',null);
     const fKey='upcoming';
     const isFormOpen=ui.openForms.has(fKey);
@@ -4928,9 +4940,9 @@ function getMigrateSourceSections(){
   const result={};
   SECTIONS.forEach(sec=>{
     if(sk){
-      result[sec.key]=(state.archive[sk]?.sections?.[sec.key]||[]);
+      result[sec.key]=(state.archive[sk]?.sections?.[sec.key]||[]).filter(s=>!s._deleted);
     } else {
-      result[sec.key]=(state.sections[sec.key]||[]);
+      result[sec.key]=(state.sections[sec.key]||[]).filter(s=>!s._deleted);
     }
   });
   return result;
@@ -4990,8 +5002,8 @@ function buildMigrateSourceHTML(){
 /* ─── ACCORDION ─── */
 function buildCombinedStoriesHTML(archKey){
   const tab=ui.combinedSubTab||'all';
-  const ibuArr=(archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[];
-  const otherArr=(archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[];
+  const ibuArr=((archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[]).filter(s=>!s._deleted);
+  const otherArr=((archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[]).filter(s=>!s._deleted);
   // Apply search + filter to each
   const filterArr=(arr)=>{
     let a=arr.filter(s=>s.status!=='shelved');
@@ -5020,7 +5032,7 @@ function renderAccordion(sec,archKey){
   if(secObj.isCombined) return renderCombinedAccordion(archKey);
 
   const displayName=secName(sec.key);
-  const all=(archKey?state.archive[archKey]?.sections[sec.key]:state.sections[sec.key])||[];
+  const all=((archKey?state.archive[archKey]?.sections[sec.key]:state.sections[sec.key])||[]).filter(s=>!s._deleted);
   const stories=secObj.hasWW?getStoriesWW(sec.key,archKey):getStories(sec.key,archKey);
   const isOpen=ui.openSections.has(sec.key);
   const fKey=sec.key+(archKey?'::'+archKey:'');
@@ -6146,8 +6158,8 @@ function renderTaskCard(t, today){
 function renderCombinedAccordion(archKey){
   const isOpen=ui.openSections.has('ibu');
   const archKeyJS=archKey?`'${archKey}'`:'null';
-  const ibuAll=(archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[];
-  const otherAll=(archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[];
+  const ibuAll=((archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[]).filter(s=>!s._deleted);
+  const otherAll=((archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[]).filter(s=>!s._deleted);
   const fKeyIbu='ibu'+(archKey?'::'+archKey:'');
   const fKeyOther='other'+(archKey?'::'+archKey:'');
   const isIBUFormOpen=ui.openForms.has(fKeyIbu);
@@ -6621,6 +6633,51 @@ function renderMeetingForm(){
   </div>`;
 }
 
+/* ── Meeting time helpers (module-level so summary/strip can use them) ── */
+function meetingUtcDate(dateStr, timeStr){
+  if(!dateStr) return null;
+  const parts=(timeStr||'00:00').split(':');
+  const ukMin=(+parts[0])*60+(+parts[1]||0);
+  const utcMin=((ukMin-ukOffMin())+1440)%1440;
+  const utcH=Math.floor(utcMin/60), utcM=utcMin%60;
+  return new Date(dateStr+'T'+p2(utcH)+':'+p2(utcM)+':00Z');
+}
+function nextMeetingOccurrenceMs(m){
+  // Returns the UTC ms of the meeting's next occurrence after now.
+  // Works for both one-time and recurring meetings.
+  const now=new Date();
+  const today=dateStr(now);
+  if(!m.isRecurring){
+    if(!m.date) return Infinity;
+    const dt=meetingUtcDate(m.date, m.time);
+    return dt>now ? dt.getTime() : Infinity;
+  }
+  // Recurring — scan forward up to 56 days
+  const DAYS=['sun','mon','tue','wed','thu','fri','sat'];
+  for(let i=0;i<56;i++){
+    const tryDate=addDays(today,i);
+    const tryDt=meetingUtcDate(tryDate, m.time);
+    if(!tryDt||tryDt<=now) continue;
+    if(m.recurFreq==='daily') return tryDt.getTime();
+    if(m.recurFreq==='weekly'&&(m.recurDaysOfWeek||[]).length){
+      const dow=DAYS[new Date(tryDate+'T12:00:00').getDay()];
+      if(m.recurDaysOfWeek.includes(dow)) return tryDt.getTime();
+    } else if(m.recurFreq==='weekly'){
+      const base=new Date((m.date||today)+'T12:00:00');
+      const tryD=new Date(tryDate+'T12:00:00');
+      if(Math.round((tryD-base)/86400000)%7===0) return tryDt.getTime();
+    } else if(m.recurFreq==='monthly'){
+      const baseDay=new Date((m.date||today)+'T12:00:00').getDate();
+      if(new Date(tryDate+'T12:00:00').getDate()===baseDay) return tryDt.getTime();
+    } else if(m.recurFreq==='custom'&&m.recurDays){
+      const base=new Date((m.date||today)+'T12:00:00');
+      const tryD=new Date(tryDate+'T12:00:00');
+      if(Math.round((tryD-base)/86400000)%m.recurDays===0) return tryDt.getTime();
+    }
+  }
+  return Infinity;
+}
+
 function renderMeetingCard(m){
   const isOpen=ui_openMeetings.has(m.id);
   const DAY_NAMES={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
@@ -6834,20 +6891,15 @@ function renderMeetingsSection(){
       <span class="acc-icon">📅</span>
       <span class="acc-name">Meetings</span>
       <span class="acc-summary">${(()=>{
-  const _t=todayStr();
-  const _d=new Date(),_ist=new Date(_d.getTime()+330*60000);
-  const _nowIST=('0'+_ist.getUTCHours()).slice(-2)+':'+('0'+_ist.getUTCMinutes()).slice(-2);
-  const _isu=m=>{const ist=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !ist||ist>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !ist||ist>_nowIST;return false;};
   const active=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled');
   if(!active.length) return '';
-  const upcoming=active.filter(m=>_isu(m));
-  if(upcoming.length){
-    upcoming.sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';const da=(a.date&&a.date>=_t?a.date:_t)+ta;const db=(b.date&&b.date>=_t?b.date:_t)+tb;return da.localeCompare(db);});
-    return esc(upcoming[0].name||'');
+  const withMs=active.map(m=>({m,ms:nextMeetingOccurrenceMs(m)})).filter(x=>x.ms<Infinity);
+  if(!withMs.length){
+    const sorted=active.slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+    return esc(sorted[0].name||'');
   }
-  // Fallback: show most recently scheduled active meeting
-  const sorted=active.slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
-  return esc(sorted[0].name||'');
+  withMs.sort((a,b)=>a.ms-b.ms);
+  return esc(withMs[0].m.name||'');
 })()}</span>
       <div class="acc-meta">
         ${activeCount?`<span class="sbadge sb-in-progress">${activeCount} scheduled</span>`:''}
@@ -6855,23 +6907,14 @@ function renderMeetingsSection(){
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-meetings">▾</span>
     </div>
     <div class="meeting-info-strip" id="meeting-info-strip" style="${(()=>{
-      const _t=todayStr();const _d=new Date(),_iv=new Date(_d.getTime()+330*60000);
-      const _nowIST=('0'+_iv.getUTCHours()).slice(-2)+':'+('0'+_iv.getUTCMinutes()).slice(-2);
-      const _isu=m=>{const _it=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !_it||_it>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !_it||_it>_nowIST;return false;};
-      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m)).sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';return ((a.date&&a.date>=_t?a.date:_t)+ta).localeCompare((b.date&&b.date>=_t?b.date:_t)+tb);});
+      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled').map(m=>({m,ms:nextMeetingOccurrenceMs(m)})).filter(x=>x.ms<Infinity).sort((a,b)=>a.ms-b.ms);
       return _nx.length?'':'display:none';})()}">
       <span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(()=>{
-      const _t=todayStr();const _d=new Date(),_iv=new Date(_d.getTime()+330*60000);
-      const _nowIST=('0'+_iv.getUTCHours()).slice(-2)+':'+('0'+_iv.getUTCMinutes()).slice(-2);
-      const _isu=m=>{const _it=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !_it||_it>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !_it||_it>_nowIST;return false;};
-      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m)).sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';return ((a.date&&a.date>=_t?a.date:_t)+ta).localeCompare((b.date&&b.date>=_t?b.date:_t)+tb);});
-      return _nx.length?esc(_nx[0].name||''):'';})()}</span>
+      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled').map(m=>({m,ms:nextMeetingOccurrenceMs(m)})).filter(x=>x.ms<Infinity).sort((a,b)=>a.ms-b.ms);
+      return _nx.length?esc(_nx[0].m.name||''):'';})()}</span>
       <span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px;">${(()=>{
-      const _t=todayStr();const _d=new Date(),_iv=new Date(_d.getTime()+330*60000);
-      const _nowIST=('0'+_iv.getUTCHours()).slice(-2)+':'+('0'+_iv.getUTCMinutes()).slice(-2);
-      const _isu=m=>{const _it=m.time?ukToIST(m.time)||m.time:null;if(m.date&&m.date>_t)return true;if(m.date&&m.date===_t)return !_it||_it>_nowIST;if(m.isRecurring&&(!m.date||m.date<=_t))return !_it||_it>_nowIST;return false;};
-      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled'&&_isu(m)).sort((a,b)=>{const ta=a.time?ukToIST(a.time)||a.time:'';const tb=b.time?ukToIST(b.time)||b.time:'';return ((a.date&&a.date>=_t?a.date:_t)+ta).localeCompare((b.date&&b.date>=_t?b.date:_t)+tb);});
-      return _nx.length&&_nx[0].time?ukToIST(_nx[0].time)+' IST':'';})()}</span>
+      const _nx=(state.meetings||[]).filter(m=>m.status!=='done'&&m.status!=='cancelled').map(m=>({m,ms:nextMeetingOccurrenceMs(m)})).filter(x=>x.ms<Infinity).sort((a,b)=>a.ms-b.ms);
+      return _nx.length&&_nx[0].m.time?ukToIST(_nx[0].m.time)+' IST':'';})()}</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-meetings">${body}</div>
   </div>`;
