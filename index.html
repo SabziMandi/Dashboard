@@ -1445,11 +1445,11 @@ function shouldShowEOD(){
   if(istHour<(s.hour||18)) return false;
   if(state.eodDismissed===todayStr()) return false;
   const hasActive=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).some(sec=>
-    (state.sections[sec.key]||[]).some(st=>!['completed','not-done','shelved'].includes(st.status))
+    (state.sections[sec.key]||[]).some(st=>!st._deleted&&!['completed','not-done','shelved'].includes(st.status))
   );
   return hasActive;
 }
-function dismissEOD(){ state.eodDismissed=todayStr(); saveLocal(); render(); }
+function dismissEOD(){ state.eodDismissed=todayStr(); saveAndPush(); render(); }
 function openSettingsModal(){
   const s=state.eodSettings||{enabled:true,hour:18,workDaysOnly:true};
   const m=document.createElement('div'); m.className='modal-bg'; m.id='settings-modal';
@@ -1631,14 +1631,24 @@ function startRealtimeSync(){
   firestoreUnsub=fireDb.collection('nd').doc('data').onSnapshot(snap=>{
     if(snap.exists){
       const incoming=snap.data();
-      // Smart merge: for arrays (leaves, tasks, notes), keep whichever is longer/newer
+      // Compute merged deletedIds FIRST — needed by all subsequent merge loops
+      const localDeletedIds=state.deletedIds||{};
+      const remoteDeletedIds=incoming.deletedIds||{};
+      const mergedDeletedIds={};
+      const _allDelKeys=new Set([...Object.keys(localDeletedIds),...Object.keys(remoteDeletedIds)]);
+      _allDelKeys.forEach(k=>{
+        const _loc=localDeletedIds[k]||[];
+        const _rem=remoteDeletedIds[k]||[];
+        mergedDeletedIds[k]=[...new Set([..._loc,..._rem])];
+      });
+      // Smart merge: for arrays (leaves, tasks, notes, meetings), keep whichever is longer/newer
       // This prevents a device with stale data from wiping entries added on another device
       const arrayKeys=['leaves','tasks','notes','meetings'];
       const mergedArrays={};
       arrayKeys.forEach(k=>{
         const local=state[k]||[];
         const remote=incoming[k]||[];
-        const deletedForKey=new Set(state.deletedIds?.[k]||[]);
+        const deletedForKey=new Set(mergedDeletedIds[k]||[]); // use merged set — catches remote deletions
         // Merge by ID: union of both, but deletions and _deleted flags are authoritative
         const map=new Map();
         local.forEach(item=>{if(item.id) map.set(item.id,item);});
@@ -1669,7 +1679,7 @@ function startRealtimeSync(){
           if(mergedArchive[dateKey].sections){
             SECTIONS.forEach(sec=>{
               const archDeletedKey=dateKey+'::'+sec.key;
-              const archDeletedIds=new Set((state.deletedIds?.[archDeletedKey]||[]));
+              const archDeletedIds=new Set((mergedDeletedIds[archDeletedKey]||[]));
               if(archDeletedIds.size&&mergedArchive[dateKey].sections[sec.key]){
                 mergedArchive[dateKey].sections[sec.key]=
                   mergedArchive[dateKey].sections[sec.key].filter(s=>!archDeletedIds.has(s.id));
@@ -1706,7 +1716,7 @@ function startRealtimeSync(){
               const remoteSec=remoteArchive[dateKey].sections?.[sec.key]||[];
               // Build a set of IDs that are locally marked as deleted for this archive date
               const archDeletedKey=dateKey+'::'+sec.key;
-              const archDeletedIds=new Set((state.deletedIds?.[archDeletedKey]||[]));
+              const archDeletedIds=new Set((mergedDeletedIds[archDeletedKey]||[]));
               const secMap=new Map();
               localSec.forEach(s=>{if(s.id) secMap.set(s.id,s);});
               remoteSec.forEach(s=>{
@@ -1728,7 +1738,7 @@ function startRealtimeSync(){
       SECTIONS.forEach(sec=>{
         const localSec=state.sections[sec.key]||[];
         const remoteSec=incoming.sections?.[sec.key]||[];
-        const deletedForSec=(state.deletedIds?.[sec.key]||[]);
+        const deletedForSec=(mergedDeletedIds[sec.key]||[]);
         const secMap=new Map();
         // Local first, then remote overrides — but compare timestamps for same ID
         localSec.forEach(s=>{ if(s.id) secMap.set(s.id,s); });
@@ -1751,22 +1761,26 @@ function startRealtimeSync(){
       // Apply all other scalar fields from remote — but preserve local-only fields
       const localBackups=state.backupSnapshots; // backups are local-only
       const localLAD=state.lastActiveDate;      // never let cloud roll back lastActiveDate
-      const localDeletedIds=state.deletedIds||{};
-      const remoteDeletedIds=incoming.deletedIds||{};
-      // Merge deletedIds: union of local + remote so deletions propagate across all devices
-      const mergedDeletedIds={};
-      const _allDelKeys=new Set([...Object.keys(localDeletedIds),...Object.keys(remoteDeletedIds)]);
-      _allDelKeys.forEach(k=>{
-        const _loc=localDeletedIds[k]||[];
-        const _rem=remoteDeletedIds[k]||[];
-        mergedDeletedIds[k]=[...new Set([..._loc,..._rem])];
-      });
+      const localEodDismissed=state.eodDismissed; // keep whichever dismissal is more recent
+      const localWeeklyBackup=state.lastWeeklyBackup;
+      const localMonthlyBackup=state.lastMonthlyBackup;
+      const localYearlyBackup=state.lastYearlyBackup;
       Object.assign(state, incoming, mergedArrays, {archive:mergedArchive, sections:mergedSections});
       state.backupSnapshots=localBackups; // restore local backups after merge
       state.deletedIds=mergedDeletedIds;  // merged so all devices honour all deletions
       // Keep whichever lastActiveDate is more recent — prevents Firebase from re-triggering checkDateChange
       if(localLAD && (!state.lastActiveDate || localLAD > state.lastActiveDate))
         state.lastActiveDate=localLAD;
+      // Keep whichever eodDismissed is more recent (today > older date > null)
+      if(localEodDismissed && (!state.eodDismissed || localEodDismissed > state.eodDismissed))
+        state.eodDismissed=localEodDismissed;
+      // Keep most recent backup timestamps
+      if(localWeeklyBackup && (!state.lastWeeklyBackup || localWeeklyBackup > state.lastWeeklyBackup))
+        state.lastWeeklyBackup=localWeeklyBackup;
+      if(localMonthlyBackup && (!state.lastMonthlyBackup || localMonthlyBackup > state.lastMonthlyBackup))
+        state.lastMonthlyBackup=localMonthlyBackup;
+      if(localYearlyBackup && (!state.lastYearlyBackup || localYearlyBackup > state.lastYearlyBackup))
+        state.lastYearlyBackup=localYearlyBackup;
       if(!state.archive) state.archive={};
       saveLocal();
       // Clean up any stuck not-done entries that remote data may have restored,
