@@ -185,9 +185,9 @@ body {
     border-color: var(--accent); color: var(--accent); background: var(--accent-bg);
   }
   .mobile-wordmark {
-    font-family: var(--serif); font-size: 26px; font-weight: 700;
+    font-family: var(--serif); font-size: 22px; font-weight: 700;
     color: var(--text); letter-spacing: -.4px;
-    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px; cursor: pointer;
   }
 
   /* Collapsible block: date-nav + leave row */
@@ -213,7 +213,7 @@ body {
   }
   .m-nav-arrow:active { background: var(--surface2); }
   .m-date-label {
-    font-family: var(--font); font-size: 13px; font-weight: 600;
+    font-family: var(--serif); font-size: 14px; font-weight: 600;
     color: var(--text); letter-spacing: -.2px; text-align: center; cursor: pointer;
   }
 
@@ -372,7 +372,7 @@ body {
 .fpill.fd  { background: var(--done-bg); color: var(--done); border-color: rgba(22,163,74,.3); }
 .fpill.fw  { background: var(--working-bg); color: var(--working); border-color: rgba(13,148,136,.3); }
 .fpill.fwt { background: var(--watching-bg); color: var(--watching); border-color: rgba(180,83,9,.3); }
-.m-arrow { font-size:22px; font-weight:700; color:var(--text2); padding:0 14px; cursor:pointer; line-height:1; user-select:none; }
+.m-arrow { font-size:18px; font-weight:600; color:var(--text2); padding:0 12px; cursor:pointer; line-height:1; user-select:none; }
 .live-clock { margin-left: auto; font-size: 11px; font-family: var(--mono); color: var(--text3); }
 
 /* ══════════════════════════════════
@@ -479,7 +479,7 @@ body {
   transition: all .15s; font-family: var(--font); white-space: nowrap;
 }
 .btn:hover { transform: translateY(-1px); }
-.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent { background: var(--accent); color: #fff; border: 1px solid transparent; }
 .btn-accent:hover { background: var(--accent2); }
 .btn-ghost {
   background: var(--surface); color: var(--text);
@@ -588,7 +588,9 @@ body {
 .sb-shelved     { background:rgba(148,163,184,.09);color:#64748B; border:0.5px solid rgba(148,163,184,.3); }
 .sb-carried     { background:rgba(234,88,12,.09);  color:#C2410C; border:0.5px solid rgba(234,88,12,.3); }
 .sb-not-started { background:rgba(148,163,184,.09);color:#64748B; border:0.5px solid rgba(148,163,184,.3); }
+.sb-story-type  { background:rgba(79,70,229,.09); color:#4338CA; border:0.5px solid rgba(79,70,229,.3); }
 .badge-dot { width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block; }
+.countdown-chip { display:inline-flex;align-items:center;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;white-space:nowrap; }
 
 .card.c-not-done  { border-left-color: #64748b; opacity: .55; }
 .card.c-not-done .card-title { text-decoration: line-through; }
@@ -619,13 +621,12 @@ body {
 }
 .shelved-toggle:hover { color: var(--text2); }
 .shelved-section { margin-top: 6px; }
-.sb-not-started { background: var(--surface3);    color: var(--text3);    border: 1px solid var(--border); }
 
 /* Working/Watching badge (clickable toggle) */
 .ww-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px; border-radius: 20px; font-size: 10.5px;
-  font-weight: 600; cursor: pointer; border: 1.5px solid transparent;
+  padding: 3px 9px; border-radius: 20px; font-size: 11px;
+  font-weight: 500; cursor: pointer; border: 0.5px solid transparent;
   transition: all .15s; font-family: var(--font);
   user-select: none; white-space: nowrap;
 }
@@ -871,7 +872,7 @@ body {
 .note-deadline-chip { color: var(--urgent); font-weight: 600; }
 .note-deadline-chip.ok { color: var(--upcoming); font-weight: 500; }
 .note-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.note-add-form { background: var(--surface); border: 1.5px solid var(--upcoming); border-radius: 8px; padding: 13px; margin-bottom: 10px; animation: slideIn .15s ease; }
+.note-add-form { background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 13px; margin-bottom: 10px; animation: slideIn .15s ease; }
 /* Broadcast slot row card */
 .bt-row {
   background: var(--surface2); border: 1px solid var(--border);
@@ -923,7 +924,7 @@ body {
 .task-body.open { display: block; }
 .task-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
 .task-form {
-  background: var(--surface); border: 1px solid var(--upcoming);
+  background: var(--surface); border: 1px solid var(--accent);
   border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
   animation: slideIn .17s ease;
 }
@@ -946,16 +947,16 @@ body {
 
 /* Sub-section label on card */
 .subsec-badge {
-  font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
-  padding:1px 6px; border-radius:4px;
+  font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.5px;
+  padding:3px 9px; border-radius:20px;
 }
-.ssb-ibu   { background:var(--accent-bg); color:var(--accent); border:1px solid rgba(207,102,64,.3); }
-.ssb-other { background:rgba(13,148,136,.08); color:var(--working); border:1px solid rgba(13,148,136,.25); }
+.ssb-ibu   { background:var(--accent-bg); color:var(--accent); border:0.5px solid rgba(207,102,64,.3); }
+.ssb-other { background:rgba(13,148,136,.08); color:var(--working); border:0.5px solid rgba(13,148,136,.3); }
 .recurring-badge {
-  font-size: 10px; font-family: var(--mono);
+  font-size: 11px; font-family: var(--font); font-weight: 500;
   color: var(--week); background: rgba(79,70,229,.08);
-  border: 1px solid rgba(79,70,229,.2);
-  padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+  border: 0.5px solid rgba(79,70,229,.3);
+  padding: 3px 9px; border-radius: 20px; white-space: nowrap;
 }
 
 /* Tasks tab button — override <a> nav behaviour */
@@ -1059,7 +1060,7 @@ button.tasks-tab-btn {
 
 /* Leave form */
 .leave-form {
-  background: var(--surface); border: 1px solid rgba(14,165,233,.4);
+  background: var(--surface); border: 1px solid var(--accent);
   border-radius: 10px; padding: 16px; margin-bottom: 12px;
   animation: slideIn .17s ease;
 }
@@ -1158,11 +1159,11 @@ button.tasks-tab-btn {
 .travel-segment.ts-hotel{border-left:3px solid #10b981;}
 .travel-segment.ts-expense{border-left:3px solid #f59e0b;}
 .travel-seg-head{display:flex;align-items:center;gap:8px;cursor:pointer;}
-.travel-type-badge{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:12px;flex-shrink:0;}
-.ttb-cab{background:rgba(14,165,233,.12);color:#0369a1;}
-.ttb-flight{background:rgba(139,92,246,.12);color:#7c3aed;}
-.ttb-hotel{background:rgba(16,185,129,.12);color:#047857;}
-.ttb-expense{background:rgba(245,158,11,.12);color:#b45309;}
+.travel-type-badge{font-size:11px;font-family:var(--font);font-weight:500;padding:3px 9px;border-radius:20px;flex-shrink:0;}
+.ttb-cab{background:rgba(14,165,233,.09);color:#0369a1;border:0.5px solid rgba(14,165,233,.3);}
+.ttb-flight{background:rgba(139,92,246,.09);color:#7c3aed;border:0.5px solid rgba(139,92,246,.3);}
+.ttb-hotel{background:rgba(16,185,129,.09);color:#047857;border:0.5px solid rgba(16,185,129,.3);}
+.ttb-expense{background:rgba(245,158,11,.09);color:#b45309;border:0.5px solid rgba(245,158,11,.3);}
 .travel-add-bar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 6px;}
 .travel-wrap{display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;}
 /* ── Meetings ── */
@@ -1189,7 +1190,7 @@ button.tasks-tab-btn {
 .mremark { padding:7px 10px; background:var(--surface2); border-radius:7px; margin-bottom:5px; border-left:2px solid var(--border2); }
 .mremark-text { font-size:12.5px; color:var(--text2); line-height:1.55; white-space:pre-wrap; }
 .mremark-meta { font-size:10px; color:var(--text3); font-family:var(--mono); margin-top:3px; }
-.meeting-form { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; }
+.meeting-form { background:var(--surface2); border:1px solid var(--accent); border-radius:10px; padding:14px; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -1256,9 +1257,9 @@ button.tasks-tab-btn {
     <!-- Row 1: BBC Dashboard + times (Option B: two centred lines) -->
     <div class="mobile-title-bar" style="flex-direction:column;align-items:center;justify-content:center;gap:3px;border-bottom:0.5px solid var(--border);padding:10px 16px 9px;">
       <div class="mobile-wordmark" onclick="goHome()" title="Go to Today" style="cursor:pointer;">
-        <span class="wordmark-dot"></span>BBC Dashboard
+        <span class="wordmark-dot" style="width:7px;height:7px;"></span>BBC Dashboard
       </div>
-      <div id="mobile-times" style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);font-family:var(--mono);">
+      <div id="mobile-times" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);font-family:var(--mono);font-weight:500;letter-spacing:.2px;">
         <span id="mobile-time-bst">--:-- BST</span>
         <span style="color:var(--border2);">·</span>
         <span id="mobile-time-ist">--:-- IST</span>
@@ -1268,15 +1269,15 @@ button.tasks-tab-btn {
     <div class="mobile-collapsible" id="mobile-collapsible">
       <!-- Row 2: + | ‹ date › | search -->
       <div class="mobile-date-nav" style="padding:6px 10px;display:flex;align-items:center;gap:0;">
-        <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" style="flex-shrink:0;">+</button>
+        <button class="mobile-icon-btn" onclick="openMobileMore()" title="More options" style="flex-shrink:0;font-size:16px;">+</button>
         <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:0;">
-          <span class="m-arrow" onclick="mobileNavDate(-1)" style="font-size:22px;font-weight:700;color:var(--text2);padding:0 14px;cursor:pointer;line-height:1;user-select:none;">‹</span>
+          <span class="m-arrow" onclick="mobileNavDate(-1)" style="font-size:18px;font-weight:600;color:var(--text2);padding:0 12px;cursor:pointer;line-height:1;user-select:none;">‹</span>
           <div style="position:relative;display:flex;align-items:center;cursor:pointer;">
             <span class="m-date-label" id="mobile-date-label" style="pointer-events:none;">Wednesday, 16 Apr</span>
             <input type="date" id="mobile-date-picker" onchange="jumpToDate(this.value)"
               style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:1;">
           </div>
-          <span class="m-arrow" onclick="mobileNavDate(1)" style="font-size:22px;font-weight:700;color:var(--text2);padding:0 14px;cursor:pointer;line-height:1;user-select:none;">›</span>
+          <span class="m-arrow" onclick="mobileNavDate(1)" style="font-size:18px;font-weight:600;color:var(--text2);padding:0 12px;cursor:pointer;line-height:1;user-select:none;">›</span>
         </div>
         <button class="mobile-icon-btn" id="mobile-search-btn" onclick="toggleMobileSearch()" title="Search" style="flex-shrink:0;font-size:15px;">🔍</button>
       </div>
@@ -3838,7 +3839,7 @@ function updateDateHeader(){
     hdEl.className='date-full sz-normal';
     ctEl.textContent='Future stories & events';
   } else if(ui.view==='notes'){
-    hdEl.textContent='Note'; hdEl.className='date-full sz-normal';
+    hdEl.textContent='Notes'; hdEl.className='date-full sz-normal';
     ctEl.textContent='Carry-forward notes';
   } else if(ui.view==='meetings'){
     hdEl.textContent='Meetings'; hdEl.className='date-full sz-normal';
@@ -4590,7 +4591,7 @@ function renderSearchHTML(){
         const n=r.note;
         html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--upcoming)">
           <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(n.text)}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--font)">Note${n.status!=='active'?' · '+(n.status==='done'?'✅ Done':'↪ Passed'):''}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--font)">Notes${n.status!=='active'?' · '+(n.status==='done'?'✅ Done':'↪ Passed'):''}</div>
         </div>`;
       } else if(r.type==='task'&&r.task){
         const t=r.task;
@@ -4738,7 +4739,7 @@ function renderNotesView(){
     const notesLog=state.archive[cur]?.notesLog||[];
     if(!notesLog.length){
       html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add Note</button>
+        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add</button>
       </div>`;
       if(ui_noteForm){
         html+=`<div class="note-add-form">
@@ -4746,7 +4747,7 @@ function renderNotesView(){
           <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
           <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline-arch"></div>
           <div style="display:flex;gap:7px">
-            <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
+            <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update':'Add'}</button>
             <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
           </div>
         </div>`;
@@ -4755,7 +4756,7 @@ function renderNotesView(){
     } else {
       html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <span style="font-size:11px;font-family:var(--font);color:var(--text3);letter-spacing:.6px">${notesLog.length} note${notesLog.length===1?'':'s'} on this day</span>
-        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add Note</button>
+        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add</button>
       </div>`;
       if(ui_noteForm){
         html+=`<div class="note-add-form">
@@ -4763,7 +4764,7 @@ function renderNotesView(){
           <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
           <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline-arch"></div>
           <div style="display:flex;gap:7px">
-            <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
+            <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update':'Add'}</button>
             <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
           </div>
         </div>`;
@@ -4794,9 +4795,9 @@ function renderNotesView(){
     }
     // Also show the free-text notes field for that date
     if(state.archive[cur]?.notes){
-      html+=`<div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-        <div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px;letter-spacing:.5px">Free notes</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">${esc(state.archive[cur].notes)}</div>
+      html+=`<div class="note-card" style="margin-top:12px">
+        <div style="font-size:10.5px;font-family:var(--mono);color:var(--text3);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase">Free notes</div>
+        <div class="note-text" style="margin-bottom:0">${esc(state.archive[cur].notes)}</div>
       </div>`;
     }
   }
@@ -5003,7 +5004,7 @@ function buildMigrateSourceHTML(){
         const sk2=k.replace(/[^a-z0-9]/gi,'-');
         const sbL=s.status==='urgent'?'🔴':s.status==='in-progress'?'🟡':s.status==='completed'?'🟢':s.status==='on-hold'?'🟣':s.status==='not-done'?'⚫':s.status==='postponed'?'🔵':s.status==='shelved'?'🗄':'⚪';
         const carry='';
-        const subsecChip=s._subsec?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;${s._subsec==='ibu'?'background:var(--accent-bg);color:var(--accent)':'background:rgba(13,148,136,.08);color:var(--working)'}">${s._subsec==='ibu'?'IBU':'Other'}</span> `:'';
+        const subsecChip=s._subsec?`<span class="subsec-badge ${s._subsec==='ibu'?'ssb-ibu':'ssb-other'}">${s._subsec==='ibu'?'IBU':'Other'}</span> `:'';
         html+=`<div class="migrate-story-row${sel?' msr-selected':''}" id="msr-${sk2}" onclick="toggleMigrateStory('${k}')">
           <div class="migrate-cb"><span class="migrate-cb-check" style="display:${sel?'block':'none'}">✓</span></div>
           <div class="migrate-story-info">
@@ -5851,7 +5852,7 @@ function renderTasksSection(){
     ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
       <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div></div>`:''}`;
 
   // ── Archive date view (both standalone and embedded) ──────────────────────
@@ -5895,7 +5896,7 @@ function renderTasksSection(){
           </div>
         </div>
         <div style="display:flex;gap:7px;margin-top:12px">
-          <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add Task'}</button>
+          <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add'}</button>
           <button class="btn btn-ghost" onclick="ui_taskForm=false;ui_editTaskId=null;render()">Cancel</button>
         </div>
       </div>`;
@@ -5910,7 +5911,7 @@ function renderTasksSection(){
           const isOvd=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred';
           const ovdDays=isOvd?Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(t.deadline_date+'T00:00:00').getTime())/86400000)):0;
           const dot=col=>`<span class="badge-dot" style="background:${col}"></span>`;
-          let aCls='tsb-pending', aTxt=dot('#B45309')+'Pending';
+          let aCls='tsb-pending', aTxt=dot('#B45309')+'Upcoming';
           if(t._deleted)                     { aCls='tsb-notdone'; aTxt=dot('#475569')+'Deleted'; }
           else if(t.taskStatus==='done')      { aCls='tsb-done';    aTxt=dot('#15803D')+'Done'; }
           else if(t.taskStatus==='not-done')  { aCls='tsb-notdone'; aTxt=dot('#475569')+'Not done'; }
@@ -5948,7 +5949,7 @@ function renderTasksSection(){
     <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
       <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add Task</button>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div>`;
   }
 
@@ -6007,14 +6008,14 @@ function renderTasksSection(){
         </div>
       </div>
       <div style="display:flex;gap:7px;margin-top:12px">
-        <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add Task'}</button>
+        <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add'}</button>
         <button class="btn btn-ghost" onclick="ui_taskForm=false;ui_editTaskId=null;render()">Cancel</button>
       </div>
     </div>`;
   }
 
   if(!tasks.length&&!ui_taskForm){
-    html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks yet — click <strong>+ Add Task</strong></div></div>`;
+    html+=`<div class="empty-state"><div class="empty-icon">☑</div><div class="empty-msg">No tasks yet — click <strong>+ Add</strong></div></div>`;
   } else {
     const todayMs=new Date(today+'T00:00:00').getTime();
     const effectiveDate=t=>{
@@ -6027,23 +6028,37 @@ function renderTasksSection(){
       return t.deadline_date;
     };
     const sortKey=t=>{
+      if(t.taskStatus==='done'||t.taskStatus==='not-done'||t.taskStatus==='transferred') return Infinity; // terminal tasks always sink
       const d=effectiveDate(t);
-      if(!d) return -Infinity; // no deadline → top
+      if(!d) return 500000;          // no deadline → below all deadline tasks, above done
       const diff=Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000);
-      if(diff>=0) return diff;          // today=0, +1d=1, +2d=2 …
-      return 100000+Math.abs(diff);     // overdue: 1d ago=100001, 3d ago=100003 …
+      if(diff===0) return -1;              // due today → top
+      if(diff<0)   return (-diff)/100000; // overdue: closest to today first (yesterday=0.00001 before 3-days-ago=0.00003)
+      if(t.taskStatus==='postponed-to') return 400000+diff; // postponed sink below active
+      return diff;                   // upcoming: 1,2,3 …
     };
     const sorted=[...tasks].sort((a,b)=>sortKey(a)-sortKey(b));
+    const _activeTasks=sorted.filter(t=>t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred');
+    const _doneTasks=sorted.filter(t=>t.taskStatus==='done'||t.taskStatus==='not-done'||t.taskStatus==='transferred').sort((a,b)=>{
+      // Within done: soonest deadline first, no deadline last
+      const da=a.deadline_date?Math.abs(Math.round((new Date(a.deadline_date+'T00:00:00').getTime()-todayMs)/86400000)):Infinity;
+      const db=b.deadline_date?Math.abs(Math.round((new Date(b.deadline_date+'T00:00:00').getTime()-todayMs)/86400000)):Infinity;
+      return da-db;
+    });
     const taskLimit=ui_taskPage*10;
-    const visibleTasks=sorted.slice(0,taskLimit);
+    const visibleTasks=_activeTasks.slice(0,taskLimit);
     visibleTasks.forEach(t=>{ html+=renderTaskCard(t,today); });
-    if(sorted.length>taskLimit){
-      const remaining=sorted.length-taskLimit;
+    if(_activeTasks.length>taskLimit){
+      const remaining=_activeTasks.length-taskLimit;
       html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
         <button class="btn btn-ghost btn-sm" onclick="showMoreTasks();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
           ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${remaining} remaining)</span>
         </button>
       </div>`;
+    }
+    if(_doneTasks.length){
+      html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_doneTasks.length} done / not done</div>`;
+      _doneTasks.forEach(t=>{ html+=renderTaskCard(t,today); });
     }
   }
 
@@ -6088,7 +6103,7 @@ function renderTaskCard(t, today){
   else if(isOverdue&&!t.isRecurring){ sbCls+='tsb-notdone'; const od=Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(_effectiveDue+'T00:00:00').getTime())/86400000)); sbTxt=dot('#B91C1C')+'Overdue '+od+'d'; }
   else if(isOverdue&&t.isRecurring){ const mostRecent2=_effectiveDue||t.deadline_date; const nxt2=nextRecurrenceDate({...t,deadline_date:mostRecent2}); const nd2=Math.round((new Date(nxt2+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000); sbCls+='tsb-pending'; sbTxt=nd2===0?dot('#B45309')+'Due today':nd2===1?dot('#B45309')+'Due tomorrow':dot('#B45309')+'Due in '+nd2+'d'; }
   else if(isCarried){ sbCls+='tsb-carried'; sbTxt='↻ +'+(t.carriedDays||1)+'d'; }
-  else { sbCls+='tsb-pending'; sbTxt=dot('#B45309')+'Pending'; }
+  else { sbCls+='tsb-pending'; sbTxt=dot('#B45309')+'Upcoming'; }
 
   // Build recurring schedule label
   let recurSchedule='';
@@ -6212,8 +6227,8 @@ function renderCombinedAccordion(archKey){
   ];
 
   // Pre-compute bits that would cause template literal nesting issues
-  const _types=[...new Set((ibuActive.concat(otherActive)).flatMap(s=>(s.story_type||'').split(',').map(t=>t.trim().toUpperCase()).filter(Boolean)))];
-  const _typeBadge=_types.length?`<span class="sbadge" style="background:rgba(79,70,229,.08);color:#4338CA;border:0.5px solid rgba(79,70,229,.25);">${_types.join(' · ')}</span>`:'';
+  const _types=[...new Set((ibuActive.concat(otherActive)).flatMap(s=>(s.story_type||'').split(',').map(t=>t.trim()).filter(Boolean)))];
+  const _typeBadge=_types.length?_types.map(t=>`<span class="sbadge sb-story-type">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):'';
   const _urgentBadge=uc?`<span class="sbadge sb-urgent">${uc} urgent</span>`:'';
   const _progressBadge=ic?`<span class="sbadge sb-in-progress">${ic} in progress</span>`:'';
   const _carryBadge=cc?`<span class="sbadge" style="background:rgba(234,88,12,.08);color:var(--carry);border:0.5px solid rgba(234,88,12,.25);">↻ ${cc} carried</span>`:'';
@@ -6232,7 +6247,7 @@ function renderCombinedAccordion(archKey){
       <div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Email</button>
         <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()">⬇ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Add Story</button>
+        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Add</button>
       </div>
       ${_ibuForm}${_otherForm}`;
 
@@ -6646,7 +6661,7 @@ function renderMeetingForm(){
       <div class="fgroup"><label class="flabel">Reminder Note</label><input class="finput" id="mf-reminder-note" placeholder="e.g. Prepare talking points"></div>
     </div>
     <div style="display:flex;gap:7px;margin-top:10px">
-      <button class="btn btn-accent" onclick="submitMeetingForm()">${isEdit?'Update Meeting':'Add Meeting'}</button>
+      <button class="btn btn-accent" onclick="submitMeetingForm()">${isEdit?'Update':'Add'}</button>
       <button class="btn btn-ghost" onclick="ui_meetingForm=false;ui_editMeetingId=null;render()">Cancel</button>
     </div>
   </div>`;
@@ -6775,18 +6790,18 @@ function renderMeetingCard(m){
           const nxtDt=meetingUtcDate(nxt,m.time);
           const nxtDiff=nxtDt-now;
           const nxtMins=Math.round(nxtDiff/60000);
-          if(nxtMins<60) countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(13,148,136,.09);color:var(--working);border:1px solid rgba(13,148,136,.25)">next in ${nxtMins}m</span>`;
-          else if(nxtMins<1440) countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(13,148,136,.09);color:var(--working);border:1px solid rgba(13,148,136,.25)">next in ${Math.round(nxtMins/60)}h</span>`;
-          else countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(79,70,229,.07);color:var(--week);border:1px solid rgba(79,70,229,.2)">next in ${Math.round(nxtMins/1440)}d</span>`;
+          if(nxtMins<60) countdownChip=`<span class="countdown-chip" style="background:rgba(13,148,136,.09);color:var(--working);border:0.5px solid rgba(13,148,136,.35)">next in ${nxtMins}m</span>`;
+          else if(nxtMins<1440) countdownChip=`<span class="countdown-chip" style="background:rgba(13,148,136,.09);color:var(--working);border:0.5px solid rgba(13,148,136,.35)">next in ${Math.round(nxtMins/60)}h</span>`;
+          else countdownChip=`<span class="countdown-chip" style="background:rgba(79,70,229,.07);color:var(--week);border:0.5px solid rgba(79,70,229,.3)">next in ${Math.round(nxtMins/1440)}d</span>`;
         }
       } else {
-        countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(22,163,74,.09);color:var(--done);border:1px solid rgba(22,163,74,.2)">ended</span>`;
+        countdownChip=`<span class="countdown-chip" style="background:rgba(22,163,74,.09);color:var(--done);border:0.5px solid rgba(22,163,74,.3)">ended</span>`;
       }
-    } else if(absMins<60){ countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(13,148,136,.09);color:var(--working);border:1px solid rgba(13,148,136,.25)">in ${absMins}m</span>`; }
-    else if(absMins<1440){ countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(13,148,136,.09);color:var(--working);border:1px solid rgba(13,148,136,.25)">in ${Math.round(absMins/60)}h</span>`; }
-    else { const days=Math.round(absMins/1440); countdownChip=`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(79,70,229,.07);color:var(--week);border:1px solid rgba(79,70,229,.2)">in ${days}d</span>`; }
+    } else if(absMins<60){ countdownChip=`<span class="countdown-chip" style="background:rgba(13,148,136,.09);color:var(--working);border:0.5px solid rgba(13,148,136,.35)">in ${absMins}m</span>`; }
+    else if(absMins<1440){ countdownChip=`<span class="countdown-chip" style="background:rgba(13,148,136,.09);color:var(--working);border:0.5px solid rgba(13,148,136,.35)">in ${Math.round(absMins/60)}h</span>`; }
+    else { const days=Math.round(absMins/1440); countdownChip=`<span class="countdown-chip" style="background:rgba(79,70,229,.07);color:var(--week);border:0.5px solid rgba(79,70,229,.3)">in ${days}d</span>`; }
   }
-  const statusChip=m.status==='done'?`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--done-bg);color:var(--done);border:1px solid rgba(22,163,74,.2)">✅ Done</span>`:m.status==='cancelled'?`<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(148,163,184,.1);color:#64748b;border:1px solid rgba(148,163,184,.3)">🚫 Cancelled</span>`:'';
+  const statusChip=m.status==='done'?`<span class="countdown-chip" style="background:var(--done-bg);color:var(--done);border:0.5px solid rgba(22,163,74,.3)">Done</span>`:m.status==='cancelled'?`<span class="countdown-chip" style="background:rgba(148,163,184,.09);color:#64748b;border:0.5px solid rgba(148,163,184,.3)">Cancelled</span>`:'';
   const pCount=(m.participants||[]).length;
   const venueIsLink=m.venue&&m.venue.startsWith('http');
   const venueMapLink=m.venue&&!venueIsLink?`https://maps.google.com/?q=${encodeURIComponent(m.venue)}`:'';
@@ -6800,7 +6815,7 @@ function renderMeetingCard(m){
       <div class="meeting-time-date">${localTZ}${m.isRecurring&&recurDayLabel?'':'&nbsp;'+dateStr2}</div>
     </div>
     <div class="meeting-title-wrap">
-      <div class="meeting-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.name||'Untitled')}${m.isRecurring?` <span class="recurring-badge" style="font-size:9px;vertical-align:middle">🔁</span>`:''}</div>
+      <div class="meeting-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.name||'Untitled')}${m.isRecurring?` <span class="recurring-badge">↻</span>`:''}</div>
       <div class="meeting-meta">${m.isRecurring&&recurDayLabel?esc(recurTimeStr):(pCount?pCount+' participant'+(pCount>1?'s':''):'')+(pCount&&m.venue?' · ':'')+( m.venue?esc(m.venue.replace(/^https?:\/\//,'').slice(0,40)):'')}</div>
     </div>
     ${statusChip||countdownChip}
@@ -6871,19 +6886,25 @@ function renderMeetingsSection(){
     const db=(b.date||'')+(b.time||'');
     return da.localeCompare(db);
   });
-  const activeCount=meetings.filter(m=>m.status!=='done'&&m.status!=='cancelled').length;
+  const _activeMeetings=meetings.filter(m=>m.status!=='done'&&m.status!=='cancelled');
+  const _doneMeetings=meetings.filter(m=>m.status==='done'||m.status==='cancelled');
+  const activeCount=_activeMeetings.length;
 
   let body=`<div id="meetings-section">`;
   body+=`${!isStandaloneMeet?`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
     <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
     <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
-    <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add Meeting</button>
+    <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
   </div>`:''}`;
   if(ui_meetingForm) body+=renderMeetingForm();
   if(!meetings.length&&!ui_meetingForm){
     body+=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-msg">No meetings yet</div></div>`;
   } else {
-    meetings.forEach(m=>{ body+=renderMeetingCard(m); });
+    _activeMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
+    if(_doneMeetings.length){
+      body+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_doneMeetings.length} done / cancelled</div>`;
+      _doneMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
+    }
   }
   body+=`</div>`;
 
@@ -6966,17 +6987,30 @@ function renderRemarksAccordion(){
         <input class="finput" type="date" id="nf-deadline">
       </div>
       <div style="display:flex;gap:7px">
-        <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update Note':'Add Note'}</button>
+        <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update':'Add'}</button>
         <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
       </div>
     </div>`;
   }
 
-  // Active notes
-  if(!active.length && !ui_noteForm){
-    body+=`<div class="empty-state" style="padding:16px 0"><div class="empty-icon">📝</div><div class="empty-msg">No notes yet — click <strong>+ Add Note</strong></div></div>`;
+  // Active notes — sort: due today → overdue (closest first) → upcoming (soonest first) → no deadline (newest created first)
+  const todayMs=new Date(today+'T00:00:00').getTime();
+  const noteSortKey=n=>{
+    if(!n.deadline_date) return Infinity;
+    const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
+    if(diff===0) return -1;           // due today → very top
+    if(diff<0)   return (-diff)/100000; // overdue: closest to today first (-1 before -3)
+    return diff;                      // upcoming: 1,2,3 … soonest first
+  };
+  const activeSorted=[...active].sort((a,b)=>{
+    const ka=noteSortKey(a), kb=noteSortKey(b);
+    if(ka!==kb) return ka-kb;
+    return (b.created||0)-(a.created||0); // tie-break: newest created first
+  });
+  if(!activeSorted.length && !ui_noteForm){
+    body+=`<div class="empty-state" style="padding:16px 0"><div class="empty-icon">📝</div><div class="empty-msg">No notes yet — click <strong>+ Add</strong></div></div>`;
   } else {
-    active.forEach(n=>{
+    activeSorted.forEach(n=>{
       const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
       let dlChip='';
       if(n.deadline_date){
@@ -7031,14 +7065,14 @@ function renderRemarksAccordion(){
     return`<div style="padding-bottom:80px">
       <div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
         <span class="acc-icon">📝</span>
-        <span class="acc-name">Note</span>
+        <span class="acc-name">Notes</span>
         <div class="acc-meta">${nCount?`<span class="sbadge sb-in-progress">${nCount} active</span>`:''}</div>
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
           <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
           <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
-          <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add Note</button>
+          <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
         </div>
         ${body}
       </div>
@@ -7047,7 +7081,7 @@ function renderRemarksAccordion(){
   return`<div class="accordion${isOpen?' acc-open':''}" id="acc-remarks">
     <div class="acc-header" onclick="toggleAccordion('remarks')">
       <span class="acc-icon">📝</span>
-      <span class="acc-name">Note</span>
+      <span class="acc-name">Notes</span>
       <span class="acc-summary">${(()=>{ if(!active.length)return ''; const today=todayStr(); const sorted=[...active].sort((a,b)=>{ const da=a.deadline_date?Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; const db=b.deadline_date?Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; if(da!==db)return da-db; return (b.created||0)-(a.created||0); }); return esc((sorted[0].headline||sorted[0].text||'').slice(0,60)); })()}</span>
       <div class="acc-meta">
         ${active.length?`<span class="sbadge sb-in-progress">${active.length} active</span>`:''}
@@ -7058,7 +7092,7 @@ function renderRemarksAccordion(){
       <div class="sec-head">
         <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
         <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add Note</button>
+        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
       </div>
       ${body}
     </div>
@@ -7265,6 +7299,8 @@ function renderLeavesSection(){
   const isStandaloneLeave=ui.view==='leaves';
   const today=todayStr();
   const activeLeaves=(state.leaves).filter(l=>l.dateTo>=today);
+  const onLeaveToday=activeLeaves.filter(l=>l.dateFrom<=today);
+  const upcomingLeaves=activeLeaves.filter(l=>l.dateFrom>today);
   const pastLeaves=(state.leaves).filter(l=>l.dateTo<today);
 
   const isOpenL=ui.openSections.has('leaves');
@@ -7273,7 +7309,8 @@ function renderLeavesSection(){
       <span class="acc-icon">🌴</span><span class="acc-name">Leaves</span>
       <span class="acc-summary">${(()=>{const ol=getOnLeaveToday();return ol.slice(0,4).map(l=>(l.employeeName||'').split(' ')[0]).filter(Boolean).join(' · ');})()}</span>
       <div class="acc-meta">
-        ${activeLeaves.length?`<span class="sbadge sb-in-progress">${activeLeaves.length} active/upcoming</span>`:''}
+        ${onLeaveToday.length?`<span class="sbadge sb-urgent">${onLeaveToday.length} on leave</span>`:''}
+        ${upcomingLeaves.length?`<span class="sbadge sb-in-progress">${upcomingLeaves.length} upcoming</span>`:''}
       </div>
       <span class="acc-chevron${isOpenL?' open':''}" id="acc-chev-leaves">▾</span>
     </div>
@@ -7286,29 +7323,13 @@ function renderLeavesSection(){
   ${!isStandaloneLeave?`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
     <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
-    <button class="btn btn-ghost btn-sm" onclick="ui_showLeaveSettings=!ui_showLeaveSettings;render()">⚙ Employees</button>
-    <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add Leave</button>
+    <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
   </div>`:''}`;
-
-  // Employee settings
-  if(ui_showLeaveSettings){
-    html+=`<div class="emp-settings">
-      <div class="emp-settings-title">👤 Set Employee Names</div>
-      ${(state.employees||[]).map((name,i)=>`<div class="emp-row">
-        <span class="emp-num">${i+1}</span>
-        <input class="finput" id="emp-name-${i}" value="${esc(name)}" placeholder="Employee ${i+1}" style="flex:1">
-      </div>`).join('')}
-      <div style="display:flex;gap:7px;margin-top:10px">
-        <button class="btn btn-accent btn-sm" onclick="saveEmployeeNames()">Save Names</button>
-        <button class="btn btn-ghost btn-sm" onclick="ui_showLeaveSettings=false;render()">Cancel</button>
-      </div>
-    </div>`;
-  }
 
   // Add / edit form
   if(ui_leaveForm){
     html+=`<div class="leave-form" id="leave-form-wrap">
-      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:#0EA5E9">${ui_editLeaveId?'✏ Edit Leave':'+ Add Leave'}</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:#0EA5E9">${ui_editLeaveId?'✏ Edit':'+ Add'}</div>
       <div class="form-grid">
         <div class="fgroup">
           <label class="flabel">Employee</label>
@@ -7334,7 +7355,7 @@ function renderLeavesSection(){
         <div class="fgroup full"><label class="flabel">Reason (optional)</label><input class="finput" id="lf-reason" placeholder="e.g. Family travel, medical appointment…"></div>
       </div>
       <div style="display:flex;gap:7px;margin-top:12px">
-        <button class="btn btn-accent" onclick="submitLeaveForm()">${ui_editLeaveId?'Update':'Add Leave'}</button>
+        <button class="btn btn-accent" onclick="submitLeaveForm()">${ui_editLeaveId?'Update':'Add'}</button>
         <button class="btn btn-ghost" onclick="ui_leaveForm=false;ui_editLeaveId=null;render()">Cancel</button>
       </div>
     </div>`;
@@ -7342,7 +7363,7 @@ function renderLeavesSection(){
 
   // Active / upcoming leaves
   if(!activeLeaves.length&&!ui_leaveForm){
-    html+=`<div class="empty-state"><div class="empty-icon">🌴</div><div class="empty-msg">No active or upcoming leaves — click <strong>+ Add Leave</strong></div></div>`;
+    html+=`<div class="empty-state"><div class="empty-icon">🌴</div><div class="empty-msg">No active or upcoming leaves — click <strong>+ Add</strong></div></div>`;
   } else {
     [...activeLeaves].sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,false); });
   }
@@ -7364,13 +7385,13 @@ function renderLeavesSection(){
       <div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
         <span class="acc-icon">🌴</span>
         <span class="acc-name">Leaves</span>
-        <div class="acc-meta">${lCount?`<span class="sbadge sb-in-progress">${lCount} active</span>`:''}</div>
+        <div class="acc-meta">${onLeaveToday.length?`<span class="sbadge sb-urgent">${onLeaveToday.length} on leave</span>`:''} ${upcomingLeaves.length?`<span class="sbadge sb-in-progress">${upcomingLeaves.length} upcoming</span>`:''}</div>
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
           <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
           <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
-          <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add Leave</button>
+          <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
         </div>
         ${html}
       </div>
@@ -7605,7 +7626,7 @@ function renderStoryCard(sec,s,archKey){
     <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px;">
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${deadlineBadge(s)}
-      ${s.story_type?s.story_type.split(',').map(t=>`<span class="sbadge" style="background:rgba(79,70,229,.09);color:#4338CA;border:0.5px solid rgba(79,70,229,.3);font-size:11px;">${t.trim().toUpperCase()}</span>`).join(''):''}
+      ${s.story_type?s.story_type.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="sbadge sb-story-type">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):''}
       ${(s.carriedForward&&s.status!=='completed'&&!s.deadline_date)?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
     </div>
 
@@ -7787,7 +7808,7 @@ function renderForm(sec,archKey){
     <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
   </div>
   <div class="form-footer">
-    <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update Story':'Add Story'}</button>
+    <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add'}</button>
     <button class="btn btn-ghost" onclick="cancelForm('${sec}',${archKeyJS})">Cancel</button>
   </div>
 </div>`;
@@ -7841,7 +7862,7 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(ev.links||'')}"></div>
   </div>
   <div class="form-footer">
-    <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add to Upcoming'}</button>
+    <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add'}</button>
     <button class="btn btn-ghost" onclick="cancelForm('${sec}',${archKeyJS})">Cancel</button>
   </div>
 </div>`;
@@ -7984,7 +8005,7 @@ document.addEventListener('DOMContentLoaded', init);
     <span class="bnb-icon">🗓</span><span style="font-size:8px">Events</span>
   </button>
   <button class="bnb-item" id="bnb-notes" onclick="bnbNav('notes')">
-    <span class="bnb-icon">📝</span><span>Note</span>
+    <span class="bnb-icon">📝</span><span>Notes</span>
   </button>
 </nav>
 </body>
