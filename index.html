@@ -561,7 +561,7 @@ body {
 .card.c-in-progress { border-left-color: var(--progress); }
 .card.c-completed   { border-left-color: var(--done); opacity: .55; }
 .card.c-completed .card-title { text-decoration: line-through; }
-.card.c-on-hold     { border-left-color: var(--onhold); }
+.card.c-on-hold     { border-left-color: var(--onhold); opacity: .75; }
 .card.c-carried     { border-left-color: var(--carry); }
 .card.c-working     { border-left-color: var(--working); }
 .card.c-watching    { border-left-color: var(--watching); }
@@ -592,7 +592,7 @@ body {
 
 .card.c-not-done  { border-left-color: #64748b; opacity: .55; }
 .card.c-not-done .card-title { text-decoration: line-through; }
-.card.c-postponed { border-left-color: #0EA5E9; }
+.card.c-postponed { border-left-color: #0EA5E9; opacity: .75; }
 .card.c-shelved   { border-left-color: #94a3b8; opacity: .6; }
 
 /* Postpone button */
@@ -1445,7 +1445,7 @@ function shouldShowEOD(){
   if(istHour<(s.hour||18)) return false;
   if(state.eodDismissed===todayStr()) return false;
   const hasActive=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).some(sec=>
-    (state.sections[sec.key]||[]).some(st=>!st._deleted&&!['completed','not-done','shelved'].includes(st.status))
+    (state.sections[sec.key]||[]).some(st=>!st._deleted&&!['completed','not-done','shelved','on-hold','postponed'].includes(st.status))
   );
   return hasActive;
 }
@@ -1893,7 +1893,7 @@ function checkDateChange(){
         return;
       }
       if(story.status==='on-hold') return; // stays, no carry
-      if(story.status==='postponed'&&story.postponeTo&&story.postponeTo>today) return;
+      if(story.status==='postponed'&&(!story.postponeTo||story.postponeTo>today)) return; // indefinite or future date: stay
       story.carriedForward=true;
       story.carriedFromDate=story.carriedFromDate||prev;
       story.carriedDays=(story.carriedDays||0)+1;
@@ -1912,7 +1912,7 @@ function checkDateChange(){
         // on-hold: stays, doesn't carry forward
         if(story.status==='on-hold') return;
         // postponed to a future date: stays
-        if(story.status==='postponed'&&story.postponeTo&&story.postponeTo>today) return;
+        if(story.status==='postponed'&&(!story.postponeTo||story.postponeTo>today)) return; // indefinite or future date: stay
         // Everything else: carry forward
         story.carriedForward=true;
         story.carriedFromDate=story.carriedFromDate||prev;
@@ -2035,7 +2035,7 @@ function getCarriedStories(){
     (state.sections[sec.key]||[]).filter(s=>!s._deleted).forEach(s=>{
       if(!s.carriedForward) return;
       if(s.status==='completed'||s.status==='on-hold'||s.status==='not-done'||s.status==='shelved') return;
-      if(s.status==='postponed'&&s.postponeTo&&s.postponeTo>today) return;
+      if(s.status==='postponed'&&(!s.postponeTo||s.postponeTo>today)) return; // indefinite or future: stay
       r.push({...s,_sec:sec.key});
     });
   });
@@ -2753,8 +2753,8 @@ function openStoryPostponeDialog(sec,id,archKey){
     <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text)">⏸ Postpone Story</div>
     <div style="font-size:12.5px;color:var(--text2);margin-bottom:14px">"${esc(story.title)}"</div>
     <div class="fgroup" style="margin-bottom:12px">
-      <label class="flabel">Postpone to</label>
-      <input class="finput" type="date" id="story-postpone-date" value="${story.postponeTo||addDays(todayStr(),1)}">
+      <label class="flabel">Postpone to (leave blank for indefinite)</label>
+      <input class="finput" type="date" id="story-postpone-date" value="${story.postponeTo||''}">
     </div>
     <div class="fgroup" style="margin-bottom:14px">
       <label class="flabel">Reason (optional)</label>
@@ -2769,12 +2769,12 @@ function openStoryPostponeDialog(sec,id,archKey){
   document.body.appendChild(d);
 }
 function confirmStoryPostpone(sec,id,archKey){
-  const dt=(document.getElementById('story-postpone-date')||{}).value;
+  const dt=((document.getElementById('story-postpone-date')||{}).value||'').trim();
   const reason=(document.getElementById('story-postpone-reason')||{}).value||'';
-  if(!dt){ toast('Pick a date'); return; }
-  updateStory(sec,id,{status:'postponed',postponeTo:dt,postponeReason:reason.trim(),carriedForward:false},archKey);
+  // dt is optional — blank means indefinite postpone
+  updateStory(sec,id,{status:'postponed',postponeTo:dt||null,postponeReason:reason.trim(),carriedForward:false},archKey);
   document.getElementById('story-postpone-dlg')?.remove();
-  toast('Postponed to '+dt+' ✓');
+  toast(dt?'Postponed to '+dt+' ✓':'Postponed indefinitely ✓');
   render();
 }
 function toggleWWMode(sec,id,archKey){
@@ -2956,9 +2956,14 @@ function getStories(sec,archKey,includeShelved){
   // Upcoming events are not governed by the story status filter bar — skip it
   if(ui.filter!=='all' && !secObj.isUpcoming) return a.filter(s=>s.status===ui.filter);
 
-  // Sort by soonest deadline/expected date first; entries with no date go last
+  // Sort: active stories first (by deadline), then on-hold/postponed at bottom
   const _today=todayStr();
+  const _isParked=s=>s.status==='on-hold'||s.status==='postponed';
   a.sort((x,y)=>{
+    // Parked stories always sink to the bottom
+    const xp=_isParked(x), yp=_isParked(y);
+    if(xp&&!yp) return 1;
+    if(!xp&&yp) return -1;
     // For upcoming: sort by expected_date (or deadline_date if no expected_date)
     const getDate=s=>{
       if(secObj.isUpcoming) return s.expected_date||s.deadline_date||'';
@@ -4630,7 +4635,7 @@ function renderTodayHTML(){
   // EOD banner
   if(shouldShowEOD()){
     const eodH=state.eodSettings?.hour||18;
-    const _eodN=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).reduce((a,s)=>a+(state.sections[s.key]||[]).filter(st=>!st._deleted&&!['completed','not-done','shelved'].includes(st.status)).length,0);
+    const _eodN=SECTIONS.filter(s=>!s.isUpcoming&&!s.hidden).reduce((a,s)=>a+(state.sections[s.key]||[]).filter(st=>!st._deleted&&!['completed','not-done','shelved','on-hold','postponed'].includes(st.status)).length,0);
     html+=`<div style="background:rgba(99,102,241,.06);border:0.5px solid rgba(99,102,241,.25);border-radius:8px;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
       <span style="font-size:12.5px;color:#3730A3;font-family:var(--font);">${_eodN} stor${_eodN===1?'y':'ies'} still active — end of day approaching (${eodH}:00 IST)</span>
       <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -6220,7 +6225,7 @@ function renderCombinedAccordion(archKey){
     <div class="acc-header" onclick="toggleAccordion('ibu')">
       <span class="acc-icon">📡</span>
       <span class="acc-name">Stories</span>
-      <div class="acc-meta">${_urgentBadge}${_progressBadge}${_typeBadge}${_carryBadge}${_filterChip}</div>
+      <div class="acc-meta">${_urgentBadge}${_progressBadge}${_carryBadge}${_typeBadge}${_filterChip}</div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
@@ -7600,7 +7605,7 @@ function renderStoryCard(sec,s,archKey){
     <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px;">
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${deadlineBadge(s)}
-      ${s.story_type?s.story_type.split(',').map(t=>`<span class="sbadge" style="background:rgba(79,70,229,.09);color:#4338CA;border:0.5px solid rgba(79,70,229,.3);font-size:11px;">${t.trim().charAt(0).toUpperCase()+t.trim().slice(1)}</span>`).join(''):''}
+      ${s.story_type?s.story_type.split(',').map(t=>`<span class="sbadge" style="background:rgba(79,70,229,.09);color:#4338CA;border:0.5px solid rgba(79,70,229,.3);font-size:11px;">${t.trim().toUpperCase()}</span>`).join(''):''}
       ${(s.carriedForward&&s.status!=='completed'&&!s.deadline_date)?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
     </div>
 
