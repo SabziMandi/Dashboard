@@ -842,7 +842,17 @@ body {
 .uc-expand-icon.open { transform: rotate(90deg); }
 .uc-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .uc-title.uc-title-past { text-decoration: line-through; color: var(--text3); }
-.uc-meta-line { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; margin-top: 2px; }
+.uc-meta-line { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; margin-left: 6px; }
+.uc-date-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(37,99,235,.07); border: 0.5px solid rgba(37,99,235,.2);
+  border-radius: 7px; width: 82px; min-width: 82px; height: 46px; text-align: center; flex-shrink: 0;
+}
+.uc-date-box.uc-date-box-overdue { background: var(--urgent-bg); border-color: rgba(220,38,38,.2); }
+.uc-date-box-day  { font-size: 11.5px; font-weight: 600; color: var(--upcoming); font-family: var(--mono); line-height: 1.2; }
+.uc-date-box-day.overdue { color: var(--urgent); }
+.uc-date-box-cnt  { font-size: 10px; color: var(--text3); font-family: var(--mono); line-height: 1.2; margin-top: 2px; }
+.uc-date-box-type { font-size: 9.5px; color: var(--text3); font-family: var(--font); line-height: 1.2; margin-top: 1px; opacity: .8; }
 .uc-chip { font-size: 11px; color: var(--text3); font-family: var(--font); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
 .uc-chip.uc-chip-overdue { color: var(--urgent); font-weight: 600; }
@@ -897,10 +907,20 @@ body {
 }
 .task-card:hover { border-color: var(--border2); box-shadow: var(--shadow); }
 .task-card.ts-done       { border-left-color: var(--done); opacity: .7; }
+.task-card.ts-today      { border-left-color: var(--urgent); }
+.task-card.ts-tomorrow   { border-left-color: var(--progress); }
 .task-card.ts-overdue    { border-left-color: var(--urgent); }
 .task-card.ts-postponed  { border-left-color: var(--onhold); }
-.task-card.ts-pending    { border-left-color: var(--progress); }
+.task-card.ts-pending    { border-left-color: var(--upcoming); }
 .task-card.ts-carried    { border-left-color: var(--carry); }
+.task-section-divider {
+  font-size: 10.5px; font-family: var(--font); font-weight: 600; letter-spacing: .6px;
+  text-transform: uppercase; color: var(--text3);
+  padding: 8px 2px 4px; margin-top: 2px;
+  border-top: 1px dashed var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.task-section-divider:first-child, .task-section-divider.tsd-first { border-top: none; margin-top: 0; padding-top: 2px; }
 .task-top {
   display: flex; align-items: center; gap: 9px;
   padding: 10px 13px; cursor: pointer; user-select: none;
@@ -1256,8 +1276,9 @@ button.tasks-tab-btn {
     <!-- Mobile layout -->
     <!-- Row 1: BBC Dashboard + times (Option B: two centred lines) -->
     <div class="mobile-title-bar" style="flex-direction:column;align-items:center;justify-content:center;gap:3px;border-bottom:0.5px solid var(--border);padding:10px 16px 9px;">
-      <div class="mobile-wordmark" onclick="goHome()" title="Go to Today" style="cursor:pointer;">
-        <span class="wordmark-dot" style="width:7px;height:7px;"></span>BBC Dashboard
+      <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+        <span class="wordmark-dot" style="width:7px;height:7px;position:absolute;left:-14px;top:50%;transform:translateY(-50%);"></span>
+        <span class="mobile-wordmark" onclick="goHome()" title="Go to Today" style="cursor:pointer;">BBC Dashboard</span>
       </div>
       <div id="mobile-times" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);font-family:var(--mono);font-weight:500;letter-spacing:.2px;">
         <span id="mobile-time-bst">--:-- BST</span>
@@ -6022,6 +6043,7 @@ function renderTasksSection(){
       if(!t.deadline_date) return null;
       if(t.isRecurring){
         const mostRecent=mostRecentRecurOccurrence(t,today);
+        if(mostRecent===today) return today; // due today — don't advance to next interval
         const nxt=nextRecurrenceDate({...t,deadline_date:mostRecent});
         return nxt>=today?nxt:nextRecurrenceDate({...t,deadline_date:nxt});
       }
@@ -6047,7 +6069,31 @@ function renderTasksSection(){
     });
     const taskLimit=ui_taskPage*10;
     const visibleTasks=_activeTasks.slice(0,taskLimit);
-    visibleTasks.forEach(t=>{ html+=renderTaskCard(t,today); });
+    // Group visible tasks into: today, tomorrow, overdue, upcoming, no-deadline
+    let _lastGroup=null;
+    visibleTasks.forEach(t=>{
+      const d=effectiveDate(t);
+      const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000):null;
+      let group;
+      if(diff===0)       group='today';
+      else if(diff!==null&&diff<0) group='overdue';
+      else if(diff===1)  group='tomorrow';
+      else if(diff!==null&&diff>1) group='upcoming';
+      else               group='nodeadline';
+      if(group!==_lastGroup){
+        const isFirst=_lastGroup===null;
+        const label={
+          today:      '📅 Today',
+          overdue:    '⚠ Overdue',
+          tomorrow:   '🔜 Tomorrow',
+          upcoming:   '🗓 Upcoming',
+          nodeadline: '· No deadline'
+        }[group]||group;
+        html+=`<div class="task-section-divider${isFirst?' tsd-first':''}">${label}</div>`;
+        _lastGroup=group;
+      }
+      html+=renderTaskCard(t,today);
+    });
     if(_activeTasks.length>taskLimit){
       const remaining=_activeTasks.length-taskLimit;
       html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
@@ -6079,18 +6125,35 @@ function renderTaskCard(t, today){
   const isOpen=ui_openTasks.has(t.id);
   // For recurring tasks, calculate overdue from most recent occurrence, not original deadline
   const _recurDue=t.isRecurring&&t.deadline_date?mostRecentRecurOccurrence(t,today):null;
-  const isOverdue=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred';
-  const _effectiveDue=t.isRecurring&&_recurDue?_recurDue:t.deadline_date;
+  // For recurring tasks, compute the true next occurrence to determine overdue state
+  const _recurNextDue=(()=>{
+    if(!t.isRecurring||!t.deadline_date) return null;
+    const mostRecent=_recurDue||t.deadline_date;
+    // If the most recent occurrence IS today, the task is due today — don't advance
+    if(mostRecent===today) return today;
+    const nxt=nextRecurrenceDate({...t,deadline_date:mostRecent});
+    // If next occurrence is today or future, use it; otherwise advance one more
+    return nxt>=today?nxt:nextRecurrenceDate({...t,deadline_date:nxt});
+  })();
+  // A recurring task is only overdue if its next scheduled occurrence is already in the past
+  // (i.e. it missed today's window — tomorrow's occurrence is also past)
+  const isOverdue=t.deadline_date&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred'&&(
+    t.isRecurring ? (_recurNextDue&&_recurNextDue<today) : t.deadline_date<today
+  );
+  const _effectiveDue=t.isRecurring?(_recurNextDue||t.deadline_date):t.deadline_date;
   const isCarried=t.carriedForward&&t.taskStatus!=='done';
   const createdDate=new Date(t.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
   // Card left-border class
+  const _daysFromToday=_effectiveDue?Math.round((new Date(_effectiveDue+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000):null;
   let cardCls='task-card ';
   if(t.taskStatus==='done') cardCls+='ts-done';
   else if(t.taskStatus==='not-done'||t.taskStatus==='transferred') cardCls+='ts-postponed';
   else if(isOverdue) cardCls+='ts-overdue';
   else if(t.taskStatus==='postponed-to') cardCls+='ts-postponed';
-  else if(isCarried) cardCls+='ts-carried';
+  else if(isCarried&&!(t.isRecurring&&_daysFromToday!==null&&_daysFromToday<=0)) cardCls+='ts-carried';
+  else if(_daysFromToday===0) cardCls+='ts-today';
+  else if(_daysFromToday===1) cardCls+='ts-tomorrow';
   else cardCls+='ts-pending';
 
   // Status badge — single source of truth on the right
@@ -6101,8 +6164,13 @@ function renderTaskCard(t, today){
   else if(t.taskStatus==='transferred'){ sbCls+='tsb-postponed'; sbTxt=dot('#7C3AED')+'Transferred'; }
   else if(t.taskStatus==='postponed-to'){ sbCls+='tsb-postponed'; sbTxt=dot('#0369A1')+'Postponed'; }
   else if(isOverdue&&!t.isRecurring){ sbCls+='tsb-notdone'; const od=Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(_effectiveDue+'T00:00:00').getTime())/86400000)); sbTxt=dot('#B91C1C')+'Overdue '+od+'d'; }
-  else if(isOverdue&&t.isRecurring){ const mostRecent2=_effectiveDue||t.deadline_date; const nxt2=nextRecurrenceDate({...t,deadline_date:mostRecent2}); const nd2=Math.round((new Date(nxt2+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000); sbCls+='tsb-pending'; sbTxt=nd2===0?dot('#B45309')+'Due today':nd2===1?dot('#B45309')+'Due tomorrow':dot('#B45309')+'Due in '+nd2+'d'; }
-  else if(isCarried){ sbCls+='tsb-carried'; sbTxt='↻ +'+(t.carriedDays||1)+'d'; }
+  else if(isOverdue&&t.isRecurring){ sbCls+='tsb-notdone'; const od=Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(_effectiveDue+'T00:00:00').getTime())/86400000)); sbTxt=dot('#B91C1C')+'Overdue '+od+'d'; }
+  else if(isCarried&&!(t.isRecurring&&_daysFromToday!==null&&_daysFromToday<=1)){ sbCls+='tsb-carried'; sbTxt='↻ +'+(t.carriedDays||1)+'d'; }
+  else if(t.isRecurring&&_effectiveDue){
+    const nd=Math.round((new Date(_effectiveDue+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
+    sbCls+='tsb-pending';
+    sbTxt=nd===0?dot('#B45309')+'Due today':nd===1?dot('#B45309')+'Due tomorrow':dot('#B45309')+'Due in '+nd+'d';
+  }
   else { sbCls+='tsb-pending'; sbTxt=dot('#B45309')+'Upcoming'; }
 
   // Build recurring schedule label
@@ -6129,14 +6197,8 @@ function renderTaskCard(t, today){
     const days=Math.round(diff/86400000);
     if(t.taskStatus==='done') deadlineChip=`<span class="task-chip mono">📅 ${fmtDate(t.deadline_date)}</span>`;
     else if(t.isRecurring){
-      // Always show next future occurrence — never show overdue for recurring
-      const mostRecent=_effectiveDue||t.deadline_date;
-      const alwaysNext=nextRecurrenceDate({...t,deadline_date:mostRecent});
-      const nxtDue=alwaysNext>=today?alwaysNext:nextRecurrenceDate({...t,deadline_date:alwaysNext});
-      const nxtDiff=Math.round((new Date(nxtDue+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
-      if(nxtDiff===0) deadlineChip=`<span class="task-chip mono">📅 Today</span>`;
-      else if(nxtDiff===1) deadlineChip=`<span class="task-chip mono">📅 Due tomorrow</span>`;
-      else deadlineChip=`<span class="task-chip mono">📅 Due in ${nxtDiff}d</span>`;
+      // No deadline chip for recurring tasks — the 🔁 recur badge shows cadence; specific date is misleading
+      deadlineChip='';
     }
     else if(days===-1) deadlineChip=`<span class="task-chip mono">📅 Yesterday</span>`;
     else if(days<0) deadlineChip=`<span class="task-chip mono">📅 ${fmtDate(t.deadline_date)}</span>`;
@@ -6712,7 +6774,7 @@ function nextMeetingOccurrenceMs(m){
   return Infinity;
 }
 
-function renderMeetingCard(m){
+function renderMeetingCard(m, isPastOneOff=false){
   const isOpen=ui_openMeetings.has(m.id);
   const DAY_NAMES={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
   const recurDayLabel=m.isRecurring&&m.recurFreq==='weekly'&&(m.recurDaysOfWeek||[]).length
@@ -6732,7 +6794,7 @@ function renderMeetingCard(m){
     ? [ukDisplayTime,istDisplayTime].filter(Boolean).join(' / ')+' '+recurDayLabel
     : [ukDisplayTime,istDisplayTime].filter(Boolean).join(' / ');
   const dateStr2=m.date?new Date(m.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'';
-  const stCls=m.status==='done'?'mc-done':m.status==='cancelled'?'mc-cancelled':'';
+  const stCls=m.status==='done'?'mc-done':m.status==='cancelled'?'mc-cancelled':isPastOneOff?'mc-done':'';
   // Countdown chip for scheduled meetings
   // Helper: build UTC Date from BST/GMT time string + date string
   function meetingUtcDate(dateStr, timeStr){
@@ -6812,11 +6874,11 @@ function renderMeetingCard(m){
   <div class="meeting-top" onclick="toggleMeetingOpen('${m.id}')">
     <div class="meeting-time-block">
       <div class="meeting-time-hr">${localTime||'—'}</div>
-      <div class="meeting-time-date">${localTZ}${m.isRecurring&&recurDayLabel?'':'&nbsp;'+dateStr2}</div>
+      <div class="meeting-time-date">${localTZ}</div>
     </div>
     <div class="meeting-title-wrap">
       <div class="meeting-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.name||'Untitled')}${m.isRecurring?` <span class="recurring-badge">↻</span>`:''}</div>
-      <div class="meeting-meta">${m.isRecurring&&recurDayLabel?esc(recurTimeStr):(pCount?pCount+' participant'+(pCount>1?'s':''):'')+(pCount&&m.venue?' · ':'')+( m.venue?esc(m.venue.replace(/^https?:\/\//,'').slice(0,40)):'')}</div>
+      <div class="meeting-meta">${m.isRecurring&&recurDayLabel?esc(recurTimeStr):((dateStr2?dateStr2:'')+(pCount?(dateStr2?' · ':'')+pCount+' participant'+(pCount>1?'s':''):'')+(m.venue?(dateStr2||pCount?' · ':'')+esc(m.venue.replace(/^https?:\/\//,'').slice(0,40)):''))}</div>
     </div>
     ${statusChip||countdownChip}
     <span class="chevron${isOpen?' open':''}" id="mc-chev-${m.id}" style="margin-left:4px">▾</span>
@@ -6886,9 +6948,21 @@ function renderMeetingsSection(){
     const db=(b.date||'')+(b.time||'');
     return da.localeCompare(db);
   });
+  const now_ms=Date.now();
+  function _meetingIsPast(m){
+    if(!m.date) return false;
+    const parts=(m.time||'23:59').split(':');
+    const ukMin=(+parts[0])*60+(+parts[1]||0);
+    const utcMin=((ukMin-ukOffMin())+1440)%1440;
+    const utcH=Math.floor(utcMin/60), utcM=utcMin%60;
+    const dt=new Date(m.date+'T'+p2(utcH)+':'+p2(utcM)+':00Z');
+    return dt.getTime()<now_ms;
+  }
   const _activeMeetings=meetings.filter(m=>m.status!=='done'&&m.status!=='cancelled');
+  const _scheduledMeetings=_activeMeetings.filter(m=>m.isRecurring||!_meetingIsPast(m));
+  const _pastOneOffMeetings=_activeMeetings.filter(m=>!m.isRecurring&&_meetingIsPast(m));
   const _doneMeetings=meetings.filter(m=>m.status==='done'||m.status==='cancelled');
-  const activeCount=_activeMeetings.length;
+  const activeCount=_scheduledMeetings.length;
 
   let body=`<div id="meetings-section">`;
   body+=`${!isStandaloneMeet?`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
@@ -6900,10 +6974,11 @@ function renderMeetingsSection(){
   if(!meetings.length&&!ui_meetingForm){
     body+=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-msg">No meetings yet</div></div>`;
   } else {
-    _activeMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
-    if(_doneMeetings.length){
-      body+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_doneMeetings.length} done / cancelled</div>`;
-      _doneMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
+    _scheduledMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
+    const _previousMeetings=[..._pastOneOffMeetings, ..._doneMeetings].sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+    if(_previousMeetings.length){
+      body+=`<div style="font-size:10.5px;font-family:var(--font);font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);padding:8px 2px 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ Previous / Done</div>`;
+      _previousMeetings.forEach(m=>{ body+=renderMeetingCard(m, _pastOneOffMeetings.includes(m)); });
     }
   }
   body+=`</div>`;
@@ -6936,10 +7011,10 @@ function renderMeetingsSection(){
   const withMs=active.map(m=>({m,ms:nextMeetingOccurrenceMs(m)})).filter(x=>x.ms<Infinity);
   if(!withMs.length){
     const sorted=active.slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
-    return esc(sorted[0].name||'');
+    const m=sorted[0]; const ist=m.time?ukToIST(m.time):''; return esc(m.name||'')+(ist?' · '+ist+' IST':'');
   }
   withMs.sort((a,b)=>a.ms-b.ms);
-  return esc(withMs[0].m.name||'');
+  const m=withMs[0].m; const ist=m.time?ukToIST(m.time):''; return esc(m.name||'')+(ist?' · '+ist+' IST':'');
 })()}</span>
       <div class="acc-meta">
         ${activeCount?`<span class="sbadge sb-in-progress">${activeCount} scheduled</span>`:''}
@@ -7501,20 +7576,26 @@ function renderUpcomingRow(sec,s,archKey){
   const _dot=col=>`<span class="badge-dot" style="background:${col}"></span>`; const sbL=s.status==='urgent'?_dot('#B91C1C')+'Urgent':s.status==='in-progress'?_dot('#B45309')+'In progress':s.status==='completed'?_dot('#15803D')+'Done':s.status==='on-hold'?_dot('#7C3AED')+'On hold':s.status==='passed'||s.status==='not-done'?_dot('#475569')+'Not done':s.status==='postponed'?_dot('#0369A1')+'Postponed':s.status==='shelved'?_dot('#64748B')+'Shelved':'';
   const sbC=s.status==='urgent'?'sb-urgent':s.status==='in-progress'?'sb-in-progress':s.status==='completed'?'sb-completed':s.status==='on-hold'?'sb-on-hold':s.status==='passed'||s.status==='not-done'?'sb-not-done':s.status==='postponed'?'sb-postponed':s.status==='shelved'?'sb-shelved':'sb-not-started';
 
-  // Due chip — prefer deadline_date for overdue calculation; fall back to expected_date
-  let dueChip='';
-  const deadlineRef=s.deadline_date||s.expected_date;
-  const expectedRef=s.expected_date;
-  if(expectedRef && !isExpired){
-    const diff=new Date(expectedRef+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
-    const days=Math.round(diff/86400000);
-    if(days===0)      dueChip=`<span class="uc-chip uc-chip-due">📅 Today</span>`;
-    else if(days>0)   dueChip=`<span class="uc-chip uc-chip-due">📅 in ${days}d</span>`;
-  } else if(isExpired && deadlineRef){
-    // Count overdue from deadline_date if set, else expected_date
-    const overRef=s.deadline_date||s.expected_date;
-    const diff=Math.round((new Date(today+'T00:00:00').getTime()-new Date(overRef+'T00:00:00').getTime())/86400000);
-    dueChip=`<span class="uc-chip" style="color:var(--text3)">📁 ${fmtDate(overRef)}</span>`;
+  // Build compact date box — short date line 1, countdown line 2
+  let dateBoxHtml='';
+  if(s.expected_date){
+    const diff=Math.round((new Date(s.expected_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
+    const isMonthType=s.expected_type==='month';
+    // For month-type: show "May" only (no year, no day); countdown line says "(month) · in Nd"
+    // For date-type: show "Fri, 11 May" — no year
+    const shortDate=isMonthType
+      ? new Date(s.expected_date+'T00:00:00').toLocaleDateString('en-GB',{month:'long'})
+      : new Date(s.expected_date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    let cntLabel='', isOverdueBox=false;
+    if(isExpired)     { cntLabel='past'; isOverdueBox=true; }
+    else if(diff===0) { cntLabel='today'; }
+    else if(diff===1) { cntLabel='tomorrow'; }
+    else if(diff>0)   { cntLabel='in '+diff+'d'; }
+    dateBoxHtml=`<div class="uc-date-box${isOverdueBox?' uc-date-box-overdue':''}">
+      <div class="uc-date-box-day${isOverdueBox?' overdue':''}">${shortDate}</div>
+      ${cntLabel?`<div class="uc-date-box-cnt">${cntLabel}</div>`:''}
+      ${isMonthType?`<div class="uc-date-box-type">month</div>`:''}
+    </div>`;
   }
 
   // Border class
@@ -7522,8 +7603,6 @@ function renderUpcomingRow(sec,s,archKey){
   if(isExpired)                rowCls+=' ucr-past';
   else if(isCompleted)         rowCls+=' ucr-completed';
   else if(s.status==='on-hold') rowCls+=' ucr-on-hold';
-
-  const typeLabel=s.expected_type&&s.expected_type!=='date'?` (${s.expected_type})`:'';
 
   const field=(lbl,val)=>val?`<div><div class="cfield-label">${lbl}</div><div class="cfield-value">${esc(val)}</div></div>`:'';
   let linksHtml='';
@@ -7539,10 +7618,9 @@ function renderUpcomingRow(sec,s,archKey){
       ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font);line-height:1.4">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
     </div>
     <div class="uc-meta-line">
-      ${s.expected_date?`<span class="uc-chip">${fmtDate(s.expected_date)}${s.expected_date_to?' – '+fmtDate(s.expected_date_to):''}${typeLabel}</span>${s.requested_by?`<span class="uc-chip">👤 ${esc(s.requested_by)}</span>`:''}`:''}
-      ${dueChip}
-      ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
-      ${isCompleted&&s.completedOn?`<span class="uc-chip" style="color:var(--done);font-size:10px">✅ ${new Date(s.completedOn).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>`:''}
+      ${dateBoxHtml}
+      ${sbL?`<span class="sbadge ${sbC}" style="font-size:10px;padding:2px 7px">${sbL}</span>`:''}
+      ${isCompleted&&s.completedOn?`<span class="uc-chip" style="color:var(--done);font-size:10px">✅ ${new Date(s.completedOn).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</span>`:''}
     </div>
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}" style="display:none"></span>
   </div>
@@ -7551,7 +7629,7 @@ function renderUpcomingRow(sec,s,archKey){
       ${s.description?`<div style="grid-column:1/-1"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
       ${field('Detail',s.detail)}
       ${field('Correspondent',s.correspondent)}
-      ${field('Expected',s.expected_date?fmtDate(s.expected_date)+(s.expected_date_to?' – '+fmtDate(s.expected_date_to):'')+' · '+typeLabel:'')}
+      ${field('Expected',s.expected_date?fmtDate(s.expected_date)+(s.expected_date_to?' – '+fmtDate(s.expected_date_to):'')+(s.expected_type&&s.expected_type!=='date'?' ('+s.expected_type+')':''):'')}
       ${s.deadline_date?field('Deadline',fmtDate(s.deadline_date)+(s.deadline_uk?' · '+s.deadline_uk+' '+ukLabel():'')+(s.deadline_ist?' / '+s.deadline_ist+' IST':'')):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
