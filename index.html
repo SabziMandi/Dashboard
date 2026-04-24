@@ -123,7 +123,7 @@ body {
   cursor: pointer;
 }
 .header-slim-bar.visible { display: flex; }
-.leave-info-strip, .meeting-info-strip {
+.leave-info-strip, .meeting-info-strip, .acc-info-strip {
   display: none;
   border-top: 0.5px solid rgba(99,102,241,.2);
   background: rgba(99,102,241,.04);
@@ -259,7 +259,7 @@ body {
   .mobile-collapsed-bar { display: none !important; }
   .mobile-date-nav { display: none; }
   
-  .leave-info-strip, .meeting-info-strip { display: none; }
+  .leave-info-strip, .meeting-info-strip, .acc-info-strip { display: none; }
   .mobile-search-section { display: none !important; }
   .mobile-filter-pills { display: none; }
   .mobile-actions-bar { display: none; }
@@ -878,6 +878,7 @@ body {
   font-size:11px;font-weight:500;font-family:var(--font);white-space:nowrap;
 }
 .tsb-done      { background:rgba(22,163,74,.09);  color:#15803D; border:0.5px solid rgba(22,163,74,.3); }
+.tsb-today     { background:rgba(217,119,6,.12);  color:#B45309; border:0.5px solid rgba(217,119,6,.4); font-weight:600; }
 .tsb-pending   { background:rgba(217,119,6,.09);  color:#B45309; border:0.5px solid rgba(217,119,6,.3); }
 .tsb-postponed { background:rgba(124,58,237,.09); color:#7C3AED; border:0.5px solid rgba(124,58,237,.3); }
 .tsb-carried   { background:rgba(234,88,12,.09);  color:#C2410C; border:0.5px solid rgba(234,88,12,.3); }
@@ -1024,7 +1025,7 @@ button.tasks-tab-btn {
 }
 
 @media(max-width:720px){
-  .leave-info-strip, .meeting-info-strip { display: flex; }
+  .leave-info-strip, .meeting-info-strip, .acc-info-strip { display: flex; }
   .migrate-layout { grid-template-columns: 1fr; }
   .migrate-dest { position: static; }
   .acc-summary { display: none; }
@@ -1813,6 +1814,18 @@ function checkDateChange(){
     });
     // Remove not-done tasks from the active task list after archiving
     state.tasks=state.tasks.filter(t=>t.taskStatus!=='not-done');
+
+    // Prune completed recurring task occurrences from previous days.
+    // Each completed occurrence is already logged in tasksLog — safe to remove from live list.
+    // Rule: keep a recurring task in state.tasks only if:
+    //   (a) it's not done, OR
+    //   (b) it was marked done TODAY (doneAt date === today)
+    state.tasks=state.tasks.filter(t=>{
+      if(!t.isRecurring) return true;                   // one-off tasks: untouched
+      if(t.taskStatus!=='done') return true;            // pending recurring: keep
+      const doneDate=t.doneAt?dateStr(new Date(t.doneAt)):null;
+      return doneDate===today;                          // done today: keep until midnight; done earlier: remove
+    });
     let carried=0;
     const toAutoArchive=[];
 
@@ -5107,6 +5120,39 @@ function renderAccordion(sec,archKey){
   const watchCnt=secObj.hasWW?activeStories.filter(s=>s.mode==='watching').length:0;
   const showShelved=ui.showShelved.has(sec.key);
   const archKeyJS=archKey?`'${archKey}'`:'null';
+  // Build info strip — logic differs per section type
+  const _accStrip=(()=>{
+    if(!activeStories.length) return '';
+    const today=todayStr();
+
+    if(sec.key==='requests'){
+      // Stalest request — exclude on-hold
+      const eligible=activeStories.filter(s=>s.status!=='on-hold'&&s.status!=='completed'&&s.status!=='not-done'&&s.status!=='shelved');
+      if(!eligible.length) return '';
+      eligible.sort((a,b)=>(a.created||0)-(b.created||0));
+      const s=eligible[0];
+      const ageDays=s.created?Math.round((Date.now()-(typeof s.created==='number'?s.created:parseInt(s.created)))/86400000):0;
+      const dotCol=ageDays>=30?'#DC2626':ageDays>=14?'#D97706':'#94a3b8';
+      const ageLabel=ageDays===0?'Today':ageDays===1?'1 day old':ageDays+'d old';
+      return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(s.title||'')}</span><span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px">${ageLabel}</span></div>`;
+    }
+
+    if(sec.key==='upcoming'||secObj.isUpcoming){
+      // Next upcoming event by date
+      const eligible=activeStories.filter(s=>s.expected_date&&s.expected_date>=today&&s.status!=='completed'&&s.status!=='on-hold');
+      if(!eligible.length) return '';
+      eligible.sort((a,b)=>a.expected_date.localeCompare(b.expected_date));
+      const s=eligible[0];
+      const diff=Math.round((new Date(s.expected_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
+      const countdown=diff===0?'today':diff===1?'tomorrow':'in '+diff+'d';
+      const shortDate=new Date(s.expected_date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      const dotCol=diff<=7?'#0D9488':'#2563EB';
+      return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(s.title||'')}</span><span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px">${shortDate} · ${countdown}</span></div>`;
+    }
+
+    return '';
+  })();
+
   let html=`<div class="accordion${isOpen?' acc-open':''}" id="acc-${sec.key}">
     <div class="acc-header" onclick="toggleAccordion('${sec.key}')">
       <span class="acc-icon">${sec.icon}</span>
@@ -5118,6 +5164,7 @@ function renderAccordion(sec,archKey){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-${sec.key}">▾</span>
     </div>
+    ${_accStrip}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-${sec.key}">`;
   {
     const wwf=ui.wwFilter[sec.key]||'all';
@@ -5630,7 +5677,7 @@ function setTaskStatus(id, status, postponeTo){
     saveAndPush();
   }
 
-  // If recurring task marked done — auto-create next occurrence
+  // If recurring task marked done — auto-create next occurrence and prune older completions
   if(status==='done'){
     const task2=(state.tasks||[]).find(t=>t.id===id);
     if(task2&&task2.isRecurring&&task2.recurFreq){
@@ -5648,6 +5695,17 @@ function setTaskStatus(id, status, postponeTo){
       };
       addTask(newTask);
       toast('✓ Done — next occurrence created for '+nextDate);
+      // Prune all OTHER completed occurrences of this recurring chain (same title+isRecurring)
+      // from state.tasks — they are already in tasksLog so nothing is lost
+      const today2=todayStr();
+      state.tasks=state.tasks.filter(t=>{
+        if(t.id===id) return true;           // keep the one we just marked done (for the rest of today)
+        if(!t.isRecurring) return true;      // one-off: never touch
+        if(t.taskStatus!=='done') return true; // still active: keep
+        if(t.title!==task2.title) return true; // different task: keep
+        const doneDate=t.doneAt?dateStr(new Date(t.doneAt)):null;
+        return doneDate===today2;            // only keep if done today
+      });
     }
   }
   render();
@@ -5858,6 +5916,36 @@ function renderTasksSection(){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-tasks">▾</span>
     </div>
+    ${(()=>{
+      const _today=todayStr();
+      const _todayMs=new Date(_today+'T00:00:00').getTime();
+      const _pending=(state.tasks||[]).filter(t=>t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred');
+      if(!_pending.length) return '';
+      const _effDate=t=>{
+        if(!t.deadline_date) return null;
+        if(t.isRecurring){
+          const mr=mostRecentRecurOccurrence(t,_today);
+          if(mr===_today) return _today;
+          const nx=nextRecurrenceDate({...t,deadline_date:mr});
+          return nx>=_today?nx:nextRecurrenceDate({...t,deadline_date:nx});
+        }
+        return t.deadline_date;
+      };
+      const _sortKey=t=>{
+        const d=_effDate(t); if(!d) return 500000;
+        const diff=Math.round((new Date(d+'T00:00:00').getTime()-_todayMs)/86400000);
+        if(diff===0) return -1;
+        if(diff<0) return (-diff)/100000;
+        return diff;
+      };
+      const _sorted=[..._pending].sort((a,b)=>_sortKey(a)-_sortKey(b));
+      const t=_sorted[0];
+      const d=_effDate(t);
+      const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-_todayMs)/86400000):null;
+      const lbl=diff===null?'No deadline':diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
+      const dotCol=diff!==null&&diff<=0?'#DC2626':diff===1?'#D97706':'#2563EB';
+      return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(t.title||'')}</span><span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px">${lbl}</span></div>`;
+    })()}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">
     ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
@@ -5921,12 +6009,17 @@ function renderTasksSection(){
           const isOvd=t.deadline_date&&t.deadline_date<today&&t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred';
           const ovdDays=isOvd?Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(t.deadline_date+'T00:00:00').getTime())/86400000)):0;
           const dot=col=>`<span class="badge-dot" style="background:${col}"></span>`;
+          const _archDays=t.deadline_date?Math.round((new Date(t.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000):null;
           let aCls='tsb-pending', aTxt=dot('#B45309')+'Upcoming';
-          if(t._deleted)                     { aCls='tsb-notdone'; aTxt=dot('#475569')+'Deleted'; }
-          else if(t.taskStatus==='done')      { aCls='tsb-done';    aTxt=dot('#15803D')+'Done'; }
-          else if(t.taskStatus==='not-done')  { aCls='tsb-notdone'; aTxt=dot('#475569')+'Not done'; }
-          else if(t.taskStatus==='transferred'){ aCls='tsb-postponed'; aTxt=dot('#7C3AED')+'Transferred'; }
-          else if(isOvd)                      { aCls='tsb-notdone'; aTxt=dot('#B91C1C')+'Overdue '+ovdDays+'d'; }
+          if(t._deleted)                      { aCls='tsb-notdone';  aTxt=dot('#475569')+'Deleted'; }
+          else if(t.taskStatus==='done')       { aCls='tsb-done';     aTxt=dot('#15803D')+'Done'; }
+          else if(t.taskStatus==='not-done')   { aCls='tsb-notdone';  aTxt=dot('#475569')+'Not done'; }
+          else if(t.taskStatus==='transferred') { aCls='tsb-postponed'; aTxt=dot('#7C3AED')+'Transferred'; }
+          else if(isOvd)                       { aCls='tsb-notdone';  aTxt=dot('#B91C1C')+'Overdue '+ovdDays+'d'; }
+          else if(_archDays===0)               { aCls='tsb-today';    aTxt=dot('#B45309')+'Due today'; }
+          else if(_archDays===1)               { aCls='tsb-pending';  aTxt=dot('#B45309')+'Due tomorrow'; }
+          else if(_archDays===-1)              { aCls='tsb-notdone';  aTxt=dot('#B91C1C')+'Due yesterday'; }
+          else if(_archDays!==null&&_archDays>1){ aCls='tsb-pending'; aTxt=dot('#B45309')+'Due in '+_archDays+'d'; }
           html+=`<div class="task-card ts-pending" style="margin-bottom:6px;opacity:${t._deleted?.6:1}">
             <div class="task-top" style="cursor:default">
               <div style="flex:1">
@@ -6152,12 +6245,17 @@ function renderTaskCard(t, today){
   else if(t.taskStatus==='postponed-to'){ sbCls+='tsb-postponed'; sbTxt=dot('#0369A1')+'Postponed'; }
   else if(isOverdue&&!t.isRecurring){ sbCls+='tsb-notdone'; const od=Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(_effectiveDue+'T00:00:00').getTime())/86400000)); sbTxt=dot('#B91C1C')+'Overdue '+od+'d'; }
   else if(isOverdue&&t.isRecurring){ sbCls+='tsb-notdone'; const od=Math.abs(Math.round((new Date(today+'T00:00:00').getTime()-new Date(_effectiveDue+'T00:00:00').getTime())/86400000)); sbTxt=dot('#B91C1C')+'Overdue '+od+'d'; }
-  else if(isCarried&&!(t.isRecurring&&_daysFromToday!==null&&_daysFromToday<=1)){ sbCls+='tsb-carried'; sbTxt='↻ +'+(t.carriedDays||1)+'d'; }
+  else if(isCarried&&!(_daysFromToday!==null&&_daysFromToday<=0)){ sbCls+='tsb-carried'; sbTxt='↻ +'+(t.carriedDays||1)+'d'; }
   else if(t.isRecurring&&_effectiveDue){
     const nd=Math.round((new Date(_effectiveDue+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
     sbCls+='tsb-pending';
-    sbTxt=nd===0?dot('#B45309')+'Due today':nd===1?dot('#B45309')+'Due tomorrow':dot('#B45309')+'Due in '+nd+'d';
+    sbTxt=nd===0?dot('#B45309')+'Due today':nd===1?dot('#B45309')+'Due tomorrow':nd<0?dot('#B91C1C')+'Overdue '+Math.abs(nd)+'d':dot('#B45309')+'Due in '+nd+'d';
   }
+  else if(_daysFromToday===0)  { sbCls+='tsb-today';   sbTxt=dot('#B45309')+'Due today'; }
+  else if(_daysFromToday===1)  { sbCls+='tsb-pending';  sbTxt=dot('#B45309')+'Due tomorrow'; }
+  else if(_daysFromToday===-1) { sbCls+='tsb-notdone';  sbTxt=dot('#B91C1C')+'Due yesterday'; }
+  else if(_daysFromToday!==null&&_daysFromToday<0) { sbCls+='tsb-notdone'; sbTxt=dot('#B91C1C')+'Overdue '+Math.abs(_daysFromToday)+'d'; }
+  else if(_daysFromToday!==null&&_daysFromToday>1) { sbCls+='tsb-pending'; sbTxt=dot('#B45309')+'Due in '+_daysFromToday+'d'; }
   else { sbCls+='tsb-pending'; sbTxt=dot('#B45309')+'Upcoming'; }
 
   // Build recurring schedule label
@@ -6285,6 +6383,23 @@ function renderCombinedAccordion(archKey){
   const _ibuForm=isIBUFormOpen?renderForm('ibu',archKey):'';
   const _otherForm=isOtherFormOpen?renderForm('other',archKey):'';
 
+  // Stories strip — most urgent active story
+  const _storiesStrip=(()=>{
+    const candidates=[...allActive].filter(s=>!['completed','not-done','on-hold','shelved'].includes(s.status));
+    if(!candidates.length) return '';
+    const priority={urgent:0,'in-progress':1,postponed:2};
+    candidates.sort((a,b)=>{
+      const pa=priority[a.status]??3, pb=priority[b.status]??3;
+      if(pa!==pb) return pa-pb;
+      return (b.created||0)-(a.created||0);
+    });
+    const s=candidates[0];
+    const dotCol=s.status==='urgent'?'#DC2626':s.status==='in-progress'?'#D97706':'#94a3b8';
+    const statusLbl=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In progress':s.status==='postponed'?'Postponed':'';
+    const meta=[statusLbl,s.correspondent?esc(s.correspondent):''].filter(Boolean).join(' · ');
+    return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(s.title||'')}</span><span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px">${meta}</span></div>`;
+  })();
+
   let html=`<div class="accordion${isOpen?' acc-open':''}" id="acc-ibu">
     <div class="acc-header" onclick="toggleAccordion('ibu')">
       <span class="acc-icon">📡</span>
@@ -6292,6 +6407,7 @@ function renderCombinedAccordion(archKey){
       <div class="acc-meta">${_urgentBadge}${_progressBadge}${_carryBadge}${_typeBadge}${_filterChip}</div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
+    ${_storiesStrip}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
       <div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Email</button>
@@ -7143,6 +7259,33 @@ function renderRemarksAccordion(){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-remarks">▾</span>
     </div>
+    ${(()=>{
+      if(!active.length) return '';
+      const _today=todayStr();
+      const _todayMs=new Date(_today+'T00:00:00').getTime();
+      const withDl=active.filter(n=>n.deadline_date);
+      let n;
+      if(withDl.length){
+        withDl.sort((a,b)=>{
+          const da=Math.round((new Date(a.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000);
+          const db=Math.round((new Date(b.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000);
+          const wa=da<0?100000+Math.abs(da):da; // overdue: sort by closeness
+          const wb=db<0?100000+Math.abs(db):db;
+          return wa-wb;
+        });
+        n=withDl[0];
+      } else {
+        n=[...active].sort((a,b)=>(b.created||0)-(a.created||0))[0];
+      }
+      const title=n.headline||n.text||'';
+      let meta='';
+      if(n.deadline_date){
+        const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000);
+        meta=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
+      }
+      const dotCol=n.deadline_date&&Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000)<=3?'#D97706':'#2563EB';
+      return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(title.slice(0,80))}</span><span style="font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;margin-left:8px">${meta}</span></div>`;
+    })()}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-remarks">
       <div class="sec-head">
         <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
