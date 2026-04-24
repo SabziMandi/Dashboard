@@ -92,10 +92,6 @@ body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-
-/* ══════════════════════════════════
-   STICKY HEADER
-══════════════════════════════════ */
 .app-header {
   position: sticky; top: 0; z-index: 300;
   background: var(--surface);
@@ -374,20 +370,7 @@ body {
 .fpill.fwt { background: var(--watching-bg); color: var(--watching); border-color: rgba(180,83,9,.3); }
 .m-arrow { font-size:18px; font-weight:600; color:var(--text2); padding:0 12px; cursor:pointer; line-height:1; user-select:none; }
 .live-clock { margin-left: auto; font-size: 11px; font-family: var(--mono); color: var(--text3); }
-
-/* ══════════════════════════════════
-   CONTENT
-══════════════════════════════════ */
 .content { padding: 20px 22px; max-width: 1100px; margin: 0 auto; }
-
-/* ══════════════════════════════════
-   CARRY / INFO BANNERS
-══════════════════════════════════ */
-
-
-
-
-
 
 .notif-banner {
   background: rgba(217,119,6,.06); border: 1px solid rgba(217,119,6,.25);
@@ -395,10 +378,6 @@ body {
   font-size: 12px; color: var(--progress);
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
 }
-
-/* ══════════════════════════════════
-   VIEW HEADERS
-══════════════════════════════════ */
 .view-header {
   border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;
   display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
@@ -412,10 +391,6 @@ body {
 .avh-title { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--text); }
 .avh-meta  { font-size: 11.5px; font-family: var(--mono); color: var(--text3); margin-top: 3px; }
 .avh-actions { display: flex; gap: 7px; margin-left: auto; flex-wrap: wrap; align-items: flex-start; }
-
-/* ══════════════════════════════════
-   ACCORDION
-══════════════════════════════════ */
 .accordion {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 10px; margin-bottom: 9px; overflow: visible;
@@ -443,10 +418,6 @@ body {
 .acc-body { display: none; border-top: 1px solid var(--border); padding: 16px 17px; background: var(--surface); }
 .acc-body.open { display: block; }
 .sec-head { display: flex; justify-content: flex-end; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
-
-/* ══════════════════════════════════
-   WORKING / WATCHING SUB-TABS
-══════════════════════════════════ */
 .ww-tabs {
   display: flex; gap: 6px; margin-bottom: 12px;
 }
@@ -469,10 +440,6 @@ body {
   background: var(--accent-bg); color: var(--accent);
   border-color: rgba(207,102,64,.4);
 }
-
-/* ══════════════════════════════════
-   BUTTONS
-══════════════════════════════════ */
 .btn {
   padding: 7px 14px; border-radius: var(--radius); border: none;
   cursor: pointer; font-size: 12.5px; font-weight: 500;
@@ -546,10 +513,6 @@ body {
 .dot-local   { background: var(--text3); }
 .dot-syncing { background: var(--progress); animation: blink .9s infinite; }
 @keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
-
-/* ══════════════════════════════════
-   STORY CARD
-══════════════════════════════════ */
 .card {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 9px; margin-bottom: 8px; overflow: visible;
@@ -563,8 +526,19 @@ body {
 .card.c-completed .card-title { text-decoration: line-through; }
 .card.c-on-hold     { border-left-color: var(--onhold); opacity: .75; }
 .card.c-carried     { border-left-color: var(--carry); }
-.card.c-working     { border-left-color: var(--working); }
-.card.c-watching    { border-left-color: var(--watching); }
+.card.c-working     { border-left-color: var(--working); background: rgba(13,148,136,.04); }
+.card.c-watching    { border-left-color: var(--watching); background: rgba(180,83,9,.035); }
+/* Request age tints */
+.card.c-req-aging   { border-left-color: var(--watching); background: rgba(180,83,9,.035); }
+.card.c-req-stale   { border-left-color: var(--urgent);   background: rgba(220,38,38,.04); }
+/* Task overdue tint */
+.task-card.ts-overdue { background: rgba(220,38,38,.05); }
+/* Note deadline-soon tint */
+.note-card.note-soon  { background: rgba(180,83,9,.04); border-left-color: var(--watching); }
+/* Upcoming near-term tint */
+.uc-row.ucr-near      { background: rgba(13,148,136,.04); border-color: rgba(13,148,136,.3); }
+/* Meeting recurring tint */
+.meeting-card.mc-recurring { background: rgba(124,58,237,.03); border-left-color: var(--onhold); }
 .card-top {
   display: flex; align-items: flex-start; gap: 9px;
   padding: 11px 13px; cursor: pointer; user-select: none;
@@ -596,6 +570,12 @@ body {
 .card.c-not-done .card-title { text-decoration: line-through; }
 .card.c-postponed { border-left-color: #0EA5E9; opacity: .75; }
 .card.c-shelved   { border-left-color: #94a3b8; opacity: .6; }
+
+/* Drag reorder */
+.card[draggable="true"] { cursor: grab; }
+.card[draggable="true"]:active { cursor: grabbing; }
+.card.drag-over { border-top: 2px solid var(--accent); transform: translateY(-2px); }
+.card.dragging  { opacity: .4; transform: scale(.98); }
 
 /* Postpone button */
 .btn-postpone {
@@ -652,6 +632,10 @@ body {
 .card-remarks { font-size: 12px; color: var(--text2); margin-top: 9px; font-style: italic; line-height: 1.55; white-space: pre-wrap; }
 .card-remarks-collapsed { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .card-remarks-expand { font-size: 11px; color: var(--accent); cursor: pointer; font-style: normal; margin-left: 4px; }
+.fi-hint { font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px; }
+.fi-form-footer { display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px; }
+.fi-card-top-border { border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0; }
+.fi-card-bot-border { border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px; }
 .card-links { margin-top: 9px; display: flex; gap: 5px; flex-wrap: wrap; }
 .link-pill {
   display: inline-flex; align-items: center; gap: 4px;
@@ -667,10 +651,6 @@ body {
 .completion-note { font-size: 12px; color: var(--text2); line-height: 1.55; white-space: pre-wrap; }
 .completion-links { margin-top: 7px; display: flex; gap: 5px; flex-wrap: wrap; }
 .compl-form { background: var(--surface3); border: 1px dashed rgba(22,163,74,.3); border-radius: 7px; padding: 13px; margin-top: 9px; animation: slideIn .15s ease; }
-
-/* ══════════════════════════════════
-   FORM
-══════════════════════════════════ */
 .form-wrap {
   background: var(--surface); border: 1px solid var(--accent);
   border-radius: 10px; padding: 18px; margin-bottom: 12px;
@@ -708,10 +688,6 @@ body {
 .expected-row { display: flex; gap: 7px; align-items: flex-end; }
 .expected-row .fselect { width: 110px; flex-shrink: 0; }
 .expected-row .finput { flex: 1; }
-
-/* ══════════════════════════════════
-   UPCOMING CARD (special styling)
-══════════════════════════════════ */
 .upcoming-card {
   background: var(--surface);
   border: 1px solid rgba(37,99,235,.2);
@@ -723,10 +699,6 @@ body {
 .upcoming-card.uc-overdue { border-left-color: var(--urgent); }
 .upcoming-card.uc-completed { border-left-color: var(--done); }
 .upcoming-card.uc-on-hold { border-left-color: var(--onhold); }
-
-/* ══════════════════════════════════
-   MIGRATE VIEW
-══════════════════════════════════ */
 .migrate-header { background: linear-gradient(135deg,rgba(79,70,229,.06),transparent); border: 1px solid rgba(79,70,229,.2); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
 .migrate-h1 { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
 .migrate-sub { font-size: 12.5px; color: var(--text2); line-height: 1.55; }
@@ -759,10 +731,6 @@ body {
 .migrate-go { width: 100%; padding: 10px; border-radius: 8px; background: var(--week); color: #fff; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font); transition: all .15s; margin-top: 8px; }
 .migrate-go:hover { background: #4338CA; transform: translateY(-1px); }
 .sel-counter { font-size: 12px; color: var(--text2); font-family: var(--mono); text-align: center; margin-bottom: 8px; min-height: 18px; }
-
-/* ══════════════════════════════════
-   BACKUP BANNERS
-══════════════════════════════════ */
 .backup-banner {
   display: flex; align-items: center; gap: 10px;
   background: linear-gradient(135deg,rgba(37,99,235,.06),transparent);
@@ -775,17 +743,9 @@ body {
 .backup-banner-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .remarks-area { width: 100%; min-height: 240px; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.75; resize: none; }
 .remarks-area::placeholder { color: var(--text3); }
-
-/* ══════════════════════════════════
-   EMPTY STATE
-══════════════════════════════════ */
 .empty-state { text-align: center; padding: 28px 20px; color: var(--text3); }
 .empty-icon  { font-size: 24px; margin-bottom: 7px; }
 .empty-msg   { font-size: 12.5px; }
-
-/* ══════════════════════════════════
-   MODAL
-══════════════════════════════════ */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadein .15s ease; }
 @keyframes fadein { from{opacity:0}to{opacity:1} }
 .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
@@ -797,17 +757,9 @@ body {
 .setup-li a { color: #2563EB; text-decoration: none; }
 .fb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 14px; }
 .modal-footer { display: flex; gap: 7px; margin-top: 16px; flex-wrap: wrap; }
-
-/* ══════════════════════════════════
-   TOAST
-══════════════════════════════════ */
 .toast-wrap { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 999; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
 .toast { background: var(--text); color: var(--bg); padding: 8px 17px; border-radius: 8px; font-size: 13px; white-space: nowrap; box-shadow: var(--shadow-lg); animation: toastin .18s ease; }
 @keyframes toastin { from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)} }
-
-/* ══════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════ */
 /* ── Compact upcoming row ── */
 .uc-row {
   background: var(--surface); border: 1px solid var(--border);
@@ -821,15 +773,8 @@ body {
 .uc-row.ucr-on-hold  { border-left-color: var(--onhold); }
 .uc-row.ucr-past     { border-left-color: var(--text3); opacity: .6; }
 .uc-row.ucr-past:hover { border-color: var(--border); box-shadow: none; }
-.leave-card { overflow-anchor: none; }
-.leave-body { overflow-anchor: none; }
-.meeting-card { overflow-anchor: none; }
-.meeting-body { overflow-anchor: none; }
-/* Prevent scroll-anchor adjustment when accordions or leave cards expand.
-   Applied to each expanding container — NOT to html/body (too broad). */
-.accordion  { overflow-anchor: none; }
-.acc-body   { overflow-anchor: none; }
-.app-header { overflow-anchor: none; }
+/* Prevent scroll-anchor adjustment when accordions or cards expand */
+.accordion,.acc-body,.app-header,.leave-card,.leave-body,.meeting-card,.meeting-body { overflow-anchor: none; }
 .uc-top {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 9px 13px; cursor: pointer; user-select: none;
@@ -866,9 +811,6 @@ body {
   transition: all .15s; font-family: var(--font); text-decoration: none;
 }
 .tasks-tab-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-bg); }
-/* ══════════════════════════════════════
-   STRUCTURED NOTES
-══════════════════════════════════════ */
 .note-card {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 8px; padding: 11px 13px; margin-bottom: 8px;
@@ -948,10 +890,6 @@ body {
   border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
   animation: slideIn .17s ease;
 }
-
-/* ══════════════════════════════════
-   LEAVE SYSTEM
-══════════════════════════════════ */
 
 /* Combined IBU/Other sub-tabs */
 .cst-bar { display:flex; gap:5px; margin-bottom:12px; }
@@ -1344,9 +1282,6 @@ button.tasks-tab-btn {
 <main id="main-content"></main>
 
 <script>
-/* ════════════════════════════════════════
-   CONSTANTS
-════════════════════════════════════════ */
 // Section order: Stories → Requests → Upcoming
 const SECTIONS = [
   { key:'ibu',      name:'Stories',               icon:'📡', hasWW:true, renameable:false, isCombined:true },
@@ -1357,10 +1292,6 @@ const SECTIONS = [
 const REMINDER_DELAYS = {
   '15min':900000,'30min':1800000,'1hr':3600000,'4hr':14400000,'1day':86400000,'1week':604800000
 };
-
-/* ════════════════════════════════════════
-   STATE
-════════════════════════════════════════ */
 let state = {
   sections:{ ibu:[], other:[], requests:[], upcoming:[] },
   remarks:'',
@@ -1385,6 +1316,7 @@ let state = {
   lastMonthlyBackup:null,
   lastYearlyBackup:null,
   backupSnapshots:{ weekly:[], monthly:[], yearly:[] },
+  autoBackup:{ weeklyEnabled:true, monthlyEnabled:true, yearlyEnabled:true },
 };
 let ui = {
   view:'today', archiveKey:null,
@@ -1414,10 +1346,6 @@ let ui = {
   showPassedUpcoming: false,   // toggle passed upcoming events sub-section
 };
 let fireDb=null, firestoreUnsub=null, reminderTimers={};
-
-/* ════════════════════════════════════════
-   DATE HELPERS
-════════════════════════════════════════ */
 function p2(n){ return String(n).padStart(2,'0'); }
 function dateStr(d){ return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()); }
 function todayStr()    { return dateStr(new Date()); }
@@ -1497,7 +1425,6 @@ function openSettingsModal(){
   m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
   document.body.appendChild(m);
 }
-
 
 /* ── Time normalisation ──────────────────────────────────────────
    Accepts: "1430" "14.30" "14:30" "230" "2.30" "2:30" "900" "9"
@@ -1581,10 +1508,6 @@ function sortedArchiveKeys(){
     return df(b).localeCompare(df(a));
   });
 }
-
-/* ════════════════════════════════════════
-   STORAGE
-════════════════════════════════════════ */
 function loadLocal(){
   try{
     const raw=localStorage.getItem('nd_v5');
@@ -1630,10 +1553,6 @@ function loadLocal(){
   if(!state.backupSnapshots) state.backupSnapshots={weekly:[],monthly:[],yearly:[]};
 }
 function saveLocal(){ try{ localStorage.setItem('nd_v5',JSON.stringify(state)); }catch(e){} }
-
-/* ════════════════════════════════════════
-   FIREBASE
-════════════════════════════════════════ */
 function getFireConfig(){ try{ const r=localStorage.getItem('nd_fbcfg'); return r?JSON.parse(r):null; }catch(e){ return null; } }
 function initFirebase(cfg, silent){
   if(window._firebaseLoadFailed||typeof firebase==='undefined'){
@@ -1836,7 +1755,6 @@ async function pushToCloud(){
     setSyncUI('live');
   }catch(e){
     setSyncUI('offline');
-    console.error('Firestore push failed:',e.message);
     // Show user-visible error if it looks like a size issue
     if(e.message&&(e.message.includes('size')||e.message.includes('limit')||e.code==='invalid-argument')){
       toast('⚠ Sync failed: data too large. Try clearing old archive entries.');
@@ -1857,10 +1775,6 @@ function setSyncUI(s){
   applySync(dm,lm,true);
 }
 function saveAndPush(){ saveLocal(); if(fireDb){ setSyncUI('syncing'); pushToCloud(); } }
-
-/* ════════════════════════════════════════
-   AUTO CARRY + UPCOMING MIGRATION
-════════════════════════════════════════ */
 function checkDateChange(){
   const today=todayStr();
   if(state.lastActiveDate && state.lastActiveDate!==today){
@@ -2045,7 +1959,6 @@ function checkDateChange(){
         cursor+=msPerDay;
       }
     }
-    // ────────────────────────────────────────────────────────────────────────
   }
   state.lastActiveDate=today;
   saveLocal();
@@ -2063,10 +1976,6 @@ function getCarriedStories(){
   });
   return r;
 }
-
-/* ════════════════════════════════════════
-   SNAPSHOT
-════════════════════════════════════════ */
 function createSnapshot(key,type,showToast=true){
   if(!state.archive[key]){
     state.archive[key]={ type, label:archiveLabel(key), sections:{}, notes:'', created:Date.now() };
@@ -2086,71 +1995,81 @@ function snapshotToday(){
   createSnapshot(todayStr(),'day',true);
   renderDateStrip();
 }
-
-/* ════════════════════════════════════════
-   BACKUP SYSTEM
-════════════════════════════════════════ */
 function checkBackupsDue(){
   if(!state.backupSnapshots) state.backupSnapshots={weekly:[],monthly:[],yearly:[]};
-  const now=new Date();
+  if(!state.autoBackup) state.autoBackup={weeklyEnabled:true,monthlyEnabled:true,yearlyEnabled:true};
   const today=todayStr();
   const thisWeekMon=weekMondayStr(today);
-  const thisMonth=today.slice(0,7);       // YYYY-MM
-  const thisYear=today.slice(0,4);        // YYYY
+  const thisMonth=today.slice(0,7);
+  const thisYear=today.slice(0,4);
   const due=[];
-
-  // Weekly: due if last weekly backup was before this week's Monday
-  if(!state.lastWeeklyBackup || state.lastWeeklyBackup < thisWeekMon){
-    due.push({type:'weekly', label:'Weekly backup due', period:thisWeekMon});
-  }
-  // Monthly: due if last monthly backup was before this month
-  if(!state.lastMonthlyBackup || state.lastMonthlyBackup < thisMonth){
-    due.push({type:'monthly', label:'Monthly backup due', period:thisMonth});
-  }
-  // Yearly: due if last yearly was before this year
-  if(!state.lastYearlyBackup || state.lastYearlyBackup < thisYear){
-    due.push({type:'yearly', label:'Yearly backup due', period:thisYear});
-  }
+  if(state.autoBackup.weeklyEnabled!==false && (!state.lastWeeklyBackup||state.lastWeeklyBackup<thisWeekMon))
+    due.push({type:'weekly',label:'Weekly backup due',period:thisWeekMon});
+  if(state.autoBackup.monthlyEnabled!==false && (!state.lastMonthlyBackup||state.lastMonthlyBackup<thisMonth))
+    due.push({type:'monthly',label:'Monthly backup due',period:thisMonth});
+  if(state.autoBackup.yearlyEnabled!==false && (!state.lastYearlyBackup||state.lastYearlyBackup<thisYear))
+    due.push({type:'yearly',label:'Yearly backup due',period:thisYear});
   return due;
 }
 
 function makeBackupSnapshot(){
+  // Full state snapshot — JSON format, fully restorable
   return {
-    timestamp: Date.now(),
-    date: todayStr(),
-    sections: JSON.parse(JSON.stringify(state.sections)),
-    remarks: state.remarks,
-    archive: JSON.parse(JSON.stringify(state.archive)),
+    _backupMeta: { type:'', period:'', appVersion:'nd_v5', created: Date.now(), date: todayStr() },
+    sections:    JSON.parse(JSON.stringify(state.sections)),
+    remarks:     state.remarks,
+    archive:     JSON.parse(JSON.stringify(state.archive)),
+    tasks:       JSON.parse(JSON.stringify(state.tasks||[])),
+    meetings:    JSON.parse(JSON.stringify(state.meetings||[])),
+    leaves:      JSON.parse(JSON.stringify(state.leaves||[])),
+    notes:       JSON.parse(JSON.stringify(state.notes||[])),
+    sectionNames:JSON.parse(JSON.stringify(state.sectionNames||{})),
+    employees:   JSON.parse(JSON.stringify(state.employees||[])),
+    staffNames:  JSON.parse(JSON.stringify(state.staffNames||{})),
+    eodSettings: JSON.parse(JSON.stringify(state.eodSettings||{})),
   };
 }
 
-function runBackup(type, period, fromBanner){
+function _triggerJsonDownload(snap, filename){
+  const json=JSON.stringify(snap, null, 2);
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+}
+
+function runBackup(type, period, silent){
   if(!state.backupSnapshots) state.backupSnapshots={weekly:[],monthly:[],yearly:[]};
   const snap=makeBackupSnapshot();
-  snap.period=period;
-  // Keep last 52 weekly, 12 monthly, 5 yearly
-  const limits={weekly:52, monthly:12, yearly:5};
+  snap._backupMeta.type=type; snap._backupMeta.period=period;
+  const limits={weekly:52,monthly:12,yearly:5};
   state.backupSnapshots[type].unshift(snap);
   state.backupSnapshots[type]=state.backupSnapshots[type].slice(0,limits[type]);
-  // Mark last backup date
   if(type==='weekly')  state.lastWeeklyBackup=weekMondayStr(todayStr());
   if(type==='monthly') state.lastMonthlyBackup=todayStr().slice(0,7);
   if(type==='yearly')  state.lastYearlyBackup=todayStr().slice(0,4);
-  // Save backups to a SEPARATE localStorage key — never pushed to Firestore (too large)
   try{ localStorage.setItem('nd_backups', JSON.stringify(state.backupSnapshots)); }catch(e){}
-  // Only save dates to main state (not the snapshot content)
-  saveLocal();  // saveLocal only, NOT saveAndPush — backups stay local
-  // Trigger download
-  downloadBackupTxt(snap, type, period);
-  if(fromBanner){ renderBackupBanners(); toast(capitalize(type)+' backup saved ✓'); }
+  saveLocal();
+  const fname='newsroom-backup-'+type+'-'+period+'.json';
+  _triggerJsonDownload(snap, fname);
+  if(!silent) toast(capitalize(type)+' backup saved → Downloads/'+fname);
+}
+
+function autoRunDueBackups(){
+  const due=checkBackupsDue();
+  due.forEach(d=>runBackup(d.type,d.period,true));
+  if(due.length) toast(due.map(d=>capitalize(d.type)).join(' & ')+' backup'+(due.length>1?'s':'')+' auto-saved to Downloads ✓');
 }
 
 function downloadBackupTxt(snap, type, period){
+  // Legacy plain-text export — kept for the "human readable" download option in panel
   const lines=[
     'NEWSROOM DASHBOARD — '+capitalize(type).toUpperCase()+' BACKUP',
     'Period: '+period,
-    'Created: '+new Date(snap.timestamp).toLocaleString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}),
-    '═'.repeat(56), ''
+    'Created: '+new Date(snap._backupMeta?.created||snap.timestamp||Date.now()).toLocaleString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}),
+    '═'.repeat(56),''
   ];
   SECTIONS.forEach(sec=>{
     lines.push(sec.name.toUpperCase()); lines.push('─'.repeat(44));
@@ -2159,20 +2078,6 @@ function downloadBackupTxt(snap, type, period){
     else st.forEach(s=>{ lines.push(storyToText(s)); lines.push(''); });
     lines.push('');
   });
-  if(snap.remarks&&snap.remarks.trim()){ lines.push('REMARKS'); lines.push('─'.repeat(44)); lines.push(snap.remarks); lines.push(''); }
-  const archKeys=Object.keys(snap.archive||{}).sort((a,b)=>{
-    const df=k=>k.startsWith('week-')?k.slice(5):k.startsWith('month-')?k.slice(6)+'-01':k;
-    return df(b).localeCompare(df(a));
-  });
-  if(archKeys.length){
-    lines.push('ARCHIVE'); lines.push('─'.repeat(44));
-    archKeys.forEach(k=>{
-      lines.push('\n'+archiveLabel(k).toUpperCase());
-      const e=snap.archive[k]; if(!e) return;
-      SECTIONS.forEach(sec=>{ const st=e.sections?.[sec.key]||[]; if(!st.length)return; lines.push('  '+sec.name.toUpperCase()); st.forEach(s=>{lines.push('  '+storyToText(s).replace(/\n/g,'\n  '));lines.push('');}); });
-      if(e.notes&&e.notes.trim()) lines.push('  NOTES: '+e.notes);
-    });
-  }
   const txt=lines.join('\n');
   const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -2180,31 +2085,62 @@ function downloadBackupTxt(snap, type, period){
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
 }
 
+// restoreFromBackup() merged into openImportDialog() — both export and backup .json files accepted there
+
 function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+/* ── Drag-to-reorder ── */
+let _dragId=null, _dragSec=null, _dragArch=null;
+function onDragStart(e,sec,id,archKey){
+  _dragId=id; _dragSec=sec; _dragArch=archKey||null;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function onDragEnd(e){ e.currentTarget.classList.remove('dragging','drag-over'); }
+function onDragOver(e,id){
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('.card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+  const el=document.querySelector(`.card[data-id="${id}"]`);
+  if(el&&id!==_dragId) el.classList.add('drag-over');
+}
+function onDrop(e,sec,targetId,archKey){
+  e.preventDefault();
+  document.querySelectorAll('.card.drag-over,.card.dragging').forEach(c=>c.classList.remove('drag-over','dragging'));
+  if(!_dragId||_dragId===targetId||_dragSec!==sec) return;
+  const arr=getArr(sec,archKey||null);
+  if(!arr) return;
+  const fromIdx=arr.findIndex(s=>s.id===_dragId);
+  const toIdx=arr.findIndex(s=>s.id===targetId);
+  if(fromIdx<0||toIdx<0) return;
+  const [item]=arr.splice(fromIdx,1);
+  arr.splice(toIdx,0,item);
+  setArr(sec,archKey||null,arr);
+  saveAndPush(); render();
+  _dragId=null; _dragSec=null; _dragArch=null;
+}
 
 function downloadStoredBackup(type, idx){
   if(!state.backupSnapshots) return;
   const snap=state.backupSnapshots[type]?.[idx];
   if(!snap){ toast('Backup not found'); return; }
-  downloadBackupTxt(snap, type, snap.period||snap.date);
-  toast('Downloading '+type+' backup ✓');
+  const period=snap._backupMeta?.period||snap.period||snap.date;
+  const fname='newsroom-backup-'+type+'-'+period+'.json';
+  if(window.showSaveFilePicker){
+    const json=JSON.stringify(snap,null,2);
+    const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+    window.showSaveFilePicker({ suggestedName:fname, types:[{description:'JSON backup',accept:{'application/json':['.json']}}] })
+      .then(fh=>fh.createWritable()).then(w=>{w.write(blob);return w;}).then(w=>w.close())
+      .then(()=>toast('Backup saved ✓'))
+      .catch(err=>{ if(err.name!=='AbortError'){ _triggerJsonDownload(snap,fname); toast('Saved to Downloads ✓'); } });
+  } else {
+    _triggerJsonDownload(snap,fname);
+    toast('Downloading '+type+' backup ✓');
+  }
 }
 
 function renderBackupBanners(){
   const container=document.getElementById('backup-banners');
-  if(!container) return;
-  const due=checkBackupsDue();
-  if(!due.length){ container.innerHTML=''; return; }
-  container.innerHTML=due.map(d=>`
-    <div class="backup-banner" id="backup-banner-${d.type}">
-      <span class="backup-banner-icon">💾</span>
-      <span class="backup-banner-text"><strong>${d.label}</strong> — save a ${d.type} snapshot of your entire dashboard as a .txt file.</span>
-      <div class="backup-banner-btns">
-        <button class="btn btn-accent btn-sm" onclick="runBackup('${d.type}','${d.period}',true)">⬇ Save ${capitalize(d.type)} Backup</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissBackupBanner('${d.type}','${d.period}')">Later</button>
-      </div>
-    </div>
-  `).join('');
+  if(container) container.innerHTML=''; // banners replaced by silent auto-backup
 }
 
 function dismissBackupBanner(type, period){
@@ -2246,21 +2182,80 @@ function openBackupsPanel(){
     html+='</div>';
   });
   const due=checkBackupsDue();
+  const ab=state.autoBackup||{weeklyEnabled:true,monthlyEnabled:true,yearlyEnabled:true};
+  const today=todayStr();
+  const autoSettingsHtml=`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:13px 15px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">⚙️ Auto-backup settings</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5">When enabled, backups download automatically the first time you open the app in a new week / month / year.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${['weekly','monthly','yearly'].map(t=>{
+          const enabled=ab[t+'Enabled']!==false;
+          const last=t==='weekly'?state.lastWeeklyBackup:t==='monthly'?state.lastMonthlyBackup:state.lastYearlyBackup;
+          const lastLabel=last?'Last: '+last:'Never backed up';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;font-size:12.5px;color:var(--text)">
+              <input type="checkbox" ${enabled?'checked':''} onchange="toggleAutoBackup('${t}',this.checked)" style="width:14px;height:14px;cursor:pointer">
+              ${capitalize(t)} backup
+            </label>
+            <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${lastLabel}</span>
+            <button class="btn btn-ghost btn-sm" onclick="runManualBackup('${t}')">⬇ Now</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
   const m=document.createElement('div'); m.className='modal-bg'; m.id='backups-modal';
   m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:600px">
     <h2>💾 Backups</h2>
-    <p class="modal-sub">The app stores your last 52 weekly, 12 monthly, and 5 yearly snapshots here. Each is downloadable as a plain-text file.</p>
-    ${due.length?`<div style="background:var(--accent-bg);border:1px solid rgba(207,102,64,.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--accent)">
-      ⚠ <strong>${due.length} backup${due.length>1?'s':''} due:</strong> ${due.map(d=>d.label).join(' · ')}
-      <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">${due.map(d=>`<button class="btn btn-accent btn-sm" onclick="runBackup('${d.type}','${d.period}',false);setTimeout(()=>openBackupsPanel(),400)">⬇ ${capitalize(d.type)}</button>`).join('')}</div>
-    </div>`:''}
+    <p class="modal-sub">Backups save as <strong>.json</strong> — fully restorable. Auto-backups go to Downloads silently; manual backups open a Save As dialog so you can choose the folder.</p>
+    ${autoSettingsHtml}
     ${html}
-    <div class="modal-footer">
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost" style="border-color:rgba(220,38,38,.35);color:#B91C1C" onclick="openImportDialog()">📂 Restore from backup…</button>
       <button class="btn btn-ghost" onclick="document.getElementById('backups-modal').remove()">Close</button>
     </div>
   </div>`;
   m.addEventListener('click',e=>{ if(e.target===m) m.remove(); });
   document.body.appendChild(m);
+}
+
+function toggleAutoBackup(type, enabled){
+  if(!state.autoBackup) state.autoBackup={weeklyEnabled:true,monthlyEnabled:true,yearlyEnabled:true};
+  state.autoBackup[type+'Enabled']=enabled;
+  saveLocal();
+  toast((enabled?'Auto ':'Manual-only ')+capitalize(type)+' backup '+(enabled?'on':'off'));
+}
+
+function runManualBackup(type){
+  const today=todayStr();
+  const period=type==='weekly'?weekMondayStr(today):type==='monthly'?today.slice(0,7):today.slice(0,4);
+  if(!state.backupSnapshots) state.backupSnapshots={weekly:[],monthly:[],yearly:[]};
+  const snap=makeBackupSnapshot();
+  snap._backupMeta.type=type; snap._backupMeta.period=period;
+  const limits={weekly:52,monthly:12,yearly:5};
+  state.backupSnapshots[type].unshift(snap);
+  state.backupSnapshots[type]=state.backupSnapshots[type].slice(0,limits[type]);
+  if(type==='weekly')  state.lastWeeklyBackup=weekMondayStr(todayStr());
+  if(type==='monthly') state.lastMonthlyBackup=todayStr().slice(0,7);
+  if(type==='yearly')  state.lastYearlyBackup=todayStr().slice(0,4);
+  try{ localStorage.setItem('nd_backups', JSON.stringify(state.backupSnapshots)); }catch(e){}
+  saveLocal();
+  const fname='newsroom-backup-'+type+'-'+period+'.json';
+  const json=JSON.stringify(snap,null,2);
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  // Use File System Access API (Save As dialog) if available, else fall back to Downloads
+  if(window.showSaveFilePicker){
+    window.showSaveFilePicker({ suggestedName:fname, types:[{description:'JSON backup',accept:{'application/json':['.json']}}] })
+      .then(fh=>fh.createWritable())
+      .then(w=>{ w.write(blob); return w; })
+      .then(w=>w.close())
+      .then(()=>{ toast(capitalize(type)+' backup saved ✓'); setTimeout(()=>{ const m=document.getElementById('backups-modal'); if(m){m.remove();openBackupsPanel();} },300); })
+      .catch(err=>{ if(err.name!=='AbortError'){ _triggerJsonDownload(snap,fname); toast(capitalize(type)+' backup saved → Downloads'); } });
+  } else {
+    _triggerJsonDownload(snap,fname);
+    toast(capitalize(type)+' backup saved → Downloads/'+fname);
+    setTimeout(()=>{ const m=document.getElementById('backups-modal'); if(m){m.remove();openBackupsPanel();} },300);
+  }
 }
 
 /* ════════════════════════════════════════
@@ -2350,10 +2345,6 @@ function restoreFormState(saved){
     });
   }
 }
-
-/* ════════════════════════════════════════
-   SECTION NAME HELPERS
-════════════════════════════════════════ */
 function secName(key){
   if(state.sectionNames&&state.sectionNames[key]) return state.sectionNames[key];
   return SECTIONS.find(s=>s.key===key)?.name||key;
@@ -2368,10 +2359,6 @@ function startRename(key){
     toast('Renamed to "'+newName.trim()+'" ✓');
   }
 }
-
-/* ════════════════════════════════════════
-   BROADCAST TIME SLOTS (IBU multi-live)
-════════════════════════════════════════ */
 // In-memory slot counter per form session
 let _btSlotCounter=1;
 function getBroadcastSlots(sec,archKey){
@@ -2517,7 +2504,7 @@ function buildSlotRowHTML(idx,slot){
       </div>
     </div>
     <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:2px">
-      <div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">Per-slot details (optional)</div>
+      <div class="fi-hint">Per-slot details (optional)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Slot Deadline Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
         <div class="fgroup" style="margin:0"><label class="flabel">Deadline (GMT)</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
@@ -2546,6 +2533,10 @@ function genId(){ return Date.now().toString(36)+Math.random().toString(36).slic
 function getArr(sec,archKey){
   if(archKey){ if(!state.archive[archKey]) return null; if(!state.archive[archKey].sections[sec]) state.archive[archKey].sections[sec]=[]; return state.archive[archKey].sections[sec]; }
   return state.sections[sec];
+}
+function setArr(sec,archKey,arr){
+  if(archKey){ if(state.archive[archKey]&&state.archive[archKey].sections) state.archive[archKey].sections[sec]=arr; }
+  else state.sections[sec]=arr;
 }
 function addStory(sec,data,archKey){
   const arr=getArr(sec,archKey); if(!arr) return;
@@ -2815,10 +2806,6 @@ function toggleWWMode(sec,id,archKey){
   }
 }
 
-/* ════════════════════════════════════════
-   REMINDERS
-════════════════════════════════════════ */
-
 /* Send a message to the Service Worker and get a reply */
 function _swMsg(data){
   return new Promise(resolve=>{
@@ -2947,10 +2934,6 @@ function scheduleAllReminders(){
     }
   });
 }
-
-/* ════════════════════════════════════════
-   FILTER
-════════════════════════════════════════ */
 function getStories(sec,archKey,includeShelved){
   const secObj=SECTIONS.find(s=>s.key===sec)||{};   // must be first — used in filter guard
   const arr=(archKey?state.archive[archKey]?.sections[sec]:state.sections[sec])||[];
@@ -3013,10 +2996,6 @@ function getStoriesWW(sec,archKey){
   if(wwf==='watching') a=a.filter(s=>s.mode==='watching');
   return a;
 }
-
-/* ════════════════════════════════════════
-   MIGRATION
-════════════════════════════════════════ */
 function doMigrate(){
   const selected=[...ui.selectedStories];
   if(!selected.length){ toast('Select at least one story first'); return; }
@@ -3127,10 +3106,6 @@ function toggleMigrateSec(key){
   if(c) c.style.transform=ui.migrateOpenSecs.has(key)?'rotate(180deg)':'';
 }
 function renderMigrateSource(){ const w=document.getElementById('migrate-source-wrap'); if(w) w.innerHTML=buildMigrateSourceHTML(); }
-
-/* ════════════════════════════════════════
-   EXPORT
-════════════════════════════════════════ */
 function storyToText(s){
   const ln=[];
   ln.push('['+((s.status||'–').toUpperCase())+'] '+(s.title||'Untitled'));
@@ -3323,7 +3298,7 @@ function openImportDialog(){
   const m=document.createElement('div'); m.className='modal-bg'; m.id='import-modal';
   m.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
     <h2>⬆ Import Data</h2>
-    <p class="modal-sub">Restore your newsroom data from a previously exported <code>.json</code> file. This will <strong>replace</strong> all current data in this app.</p>
+    <p class="modal-sub">Load data from an <strong>export</strong> or a <strong>backup</strong> <code>.json</code> file. Both formats are accepted. This will replace all current data.</p>
     <div style="background:var(--urgent-bg);border:1px solid rgba(220,38,38,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--urgent)">
       ⚠ <strong>This overwrites everything currently in the app.</strong> If you have unsaved work here, use <em>Export data</em> first to back it up.
     </div>
@@ -3346,19 +3321,28 @@ function handleImportFile(input){
   reader.onload=function(e){
     try{
       const data=JSON.parse(e.target.result);
-      // Validate it looks like our export
-      if(!data._version||!data.sections){
-        toast('❌ This doesn\'t look like a Newsroom Dashboard export file');
+      const isExport=data._version&&data.sections;
+      const isBackup=data._backupMeta&&data.sections;
+      if(!isExport&&!isBackup){
+        toast('❌ Unrecognised file — use an export or backup .json from this app');
         input.value=''; return;
       }
-      // Confirm before overwriting
       const storyCount=Object.values(data.sections||{}).reduce((s,a)=>s+(a?.length||0),0);
       const archCount=Object.keys(data.archive||{}).length;
-      const msg=`Import this data?\n\n• ${storyCount} active stories\n• ${archCount} archive entries\n• ${(data.tasks||[]).length} tasks\n• Exported: ${data._exported?.slice(0,10)||'unknown date'}\n\nThis will replace all current data.`;
+      const sourceLabel=isBackup
+        ? capitalize(data._backupMeta.type||'manual')+' backup — period: '+(data._backupMeta.period||'—')
+        : 'Export — '+(data._exported?.slice(0,10)||'unknown date');
+      const msg=`Load this data?\n\nSource: ${sourceLabel}\n• ${storyCount} active stories\n• ${archCount} archive entries\n• ${(data.tasks||[]).length} tasks\n\n⚠ This will replace all current data.`;
       if(!confirm(msg)){ input.value=''; return; }
-      // Apply
+      const preserved={
+        backupSnapshots:   state.backupSnapshots,
+        autoBackup:        state.autoBackup,
+        lastWeeklyBackup:  state.lastWeeklyBackup,
+        lastMonthlyBackup: state.lastMonthlyBackup,
+        lastYearlyBackup:  state.lastYearlyBackup,
+      };
       state.sections    = data.sections    || state.sections;
-      state.remarks     = data.remarks     || '';
+      state.remarks     = data.remarks     ?? '';
       state.archive     = data.archive     || {};
       state.tasks       = data.tasks       || [];
       state.meetings    = data.meetings    || [];
@@ -3369,18 +3353,15 @@ function handleImportFile(input){
       state.sectionNames= data.sectionNames|| {};
       state.customPlatformLabels = data.customPlatformLabels || [];
       state.deletedIds  = data.deletedIds  || {};
-      state.backupSnapshots = data.backupSnapshots || {weekly:[],monthly:[],yearly:[]};
-      state.lastWeeklyBackup  = data.lastWeeklyBackup  || null;
-      state.lastMonthlyBackup = data.lastMonthlyBackup || null;
-      state.lastYearlyBackup  = data.lastYearlyBackup  || null;
       state.lastActiveDate = todayStr();
-      // Ensure section arrays exist
+      Object.assign(state, preserved);
       SECTIONS.forEach(s=>{ if(!state.sections[s.key]) state.sections[s.key]=[]; });
       saveAndPush();
       document.getElementById('import-modal')?.remove();
+      document.getElementById('backups-modal')?.remove();
       input.value='';
       render(); renderDateStrip();
-      toast('✓ Data imported successfully — '+storyCount+' stories, '+archCount+' archive entries');
+      toast('✓ Loaded — '+storyCount+' stories, '+archCount+' archive entries');
     } catch(err){
       toast('❌ Could not read file: '+err.message);
       input.value='';
@@ -3469,10 +3450,6 @@ function copyEmailBody(encodedBody){
     toast('Select all text in the box and copy manually');
   }
 }
-
-/* ════════════════════════════════════════
-   EMAIL + EXPORT — MEETINGS / NOTES / LEAVES
-════════════════════════════════════════ */
 function meetingToText(m){
   const DAY_NAMES={sun:'Sunday',mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'};
   const recurDayLabel=m.isRecurring&&m.recurFreq==='weekly'&&(m.recurDaysOfWeek||[]).length
@@ -3630,10 +3607,6 @@ function doEmailSection(sec,archKey){
 function doEmailAll(){
   sendMailto('[Newsroom Dashboard] '+new Date().toLocaleDateString('en-GB'), buildFullText());
 }
-
-/* ════════════════════════════════════════
-   UI ACTIONS
-════════════════════════════════════════ */
 /* ════════════════════════════════════════
    SCROLL-COLLAPSE HEADER (mobile)
 ════════════════════════════════════════ */
@@ -3824,7 +3797,7 @@ function setView(view,archiveKey){
   if(view==='migrate'){ ui.selectedStories.clear(); ui.migrateSourceKey=null; }
   updateDateHeader(); renderDateStrip(); render();
   updateMobileDateLabel();
-  if(view==='today') setTimeout(()=>renderBackupBanners(),100);
+  if(view==='today'){ setTimeout(()=>{ autoRunDueBackups(); renderBackupBanners(); },300); }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function updateDateHeader(){
@@ -4293,10 +4266,6 @@ function reqNotif(){
   });
 }
 function deleteArchiveEntry(key){ if(!confirm('Delete "'+archiveLabel(key)+'"? Cannot be undone.')) return; delete state.archive[key]; saveAndPush(); renderDateStrip(); setView('today',null); }
-
-/* ════════════════════════════════════════
-   SYNC MODAL
-════════════════════════════════════════ */
 function openSyncModal(){
   if(document.getElementById('sync-modal')){ document.getElementById('sync-modal').remove(); return; }
   const cfg=getFireConfig();
@@ -4347,10 +4316,6 @@ function disconnectFirebase(){
   if(firestoreUnsub) firestoreUnsub(); firestoreUnsub=null; fireDb=null;
   localStorage.removeItem('nd_fbcfg'); setSyncUI('local'); toast('Sync disconnected'); document.getElementById('sync-modal')?.remove();
 }
-
-/* ════════════════════════════════════════
-   DEADLINE BADGE
-════════════════════════════════════════ */
 function deadlineBadge(s){
   if(!s.deadline_date) return '';
   if(s.status==='completed') return ''; // completed items never show overdue
@@ -4372,10 +4337,6 @@ function upcomingDueBadge(s){
   const days=Math.ceil(diff/86400000);
   return `<span class="upcoming-due-badge">📅 in ${days}d</span>`;
 }
-
-/* ════════════════════════════════════════
-   DATE STRIP
-════════════════════════════════════════ */
 function renderDateStrip(){
   const strip=document.getElementById('date-strip'); if(!strip) return;
   const today=todayStr();
@@ -4421,10 +4382,6 @@ function renderDateStrip(){
   strip.innerHTML=html;
   setTimeout(()=>{ const ac=strip.querySelector('.dp-active'); if(ac&&!todayActive) ac.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); },80);
 }
-
-/* ════════════════════════════════════════
-   RENDER — MAIN
-════════════════════════════════════════ */
 function render(){
   // Preserve any open form's values across the re-render
   const savedForm=captureFormState();
@@ -4546,6 +4503,29 @@ function renderSearchHTML(){
     });
   }
 
+  // Meetings
+  if(secHit==='meetings'||(state.meetings||[]).some(m=>(m.name||'').toLowerCase().includes(q)||(m.agenda||'').toLowerCase().includes(q)||(m.remarks||'').toLowerCase().includes(q))){
+    (state.meetings||[]).filter(m=>secHit==='meetings'||(m.name||'').toLowerCase().includes(q)||(m.agenda||'').toLowerCase().includes(q)||(m.remarks||'').toLowerCase().includes(q)).forEach(m=>{
+      results.push({dateKey:'today',dateLabel:'Meetings',sec:'meetings',secLabel:'Meeting',meeting:m,type:'meeting'});
+    });
+  }
+  // Shelved stories (today's sections)
+  SECTIONS.forEach(sec=>{
+    if(sec.isUpcoming) return;
+    const arr=(state.sections[sec.key]||[]).filter(s=>!s._deleted&&s.status==='shelved');
+    arr.forEach(s=>{
+      if(storyMatchesSearch(s,q)){
+        results.push({dateKey:'today',dateLabel:'Today (Shelved)',sec:sec.key,secLabel:secName(sec.key)+' — shelved',story:s,type:'story'});
+      }
+    });
+  });
+  // Upcoming events (today)
+  (state.sections.upcoming||[]).filter(s=>!s._deleted).forEach(s=>{
+    if(storyMatchesSearch(s,q)){
+      results.push({dateKey:'today',dateLabel:'Upcoming Events',sec:'upcoming',secLabel:'Upcoming',story:s,type:'story'});
+    }
+  });
+
   // ── Archive ──
   Object.keys(state.archive).sort((a,b)=>b.localeCompare(a)).forEach(archKey=>{
     const entry=state.archive[archKey]; if(!entry) return;
@@ -4556,6 +4536,13 @@ function renderSearchHTML(){
           results.push({dateKey:archKey,dateLabel:dlabel(archKey),sec:sec.key,secLabel:secName(sec.key),story:s,type:'story',archKey});
         }
       });
+    });
+    // Archive upcoming events
+    const archUpcoming=(entry.sections?.upcoming||[]).filter(s=>!s._deleted);
+    archUpcoming.forEach(s=>{
+      if(storyMatchesSearch(s,q)){
+        results.push({dateKey:archKey,dateLabel:dlabel(archKey)+' (Upcoming)',sec:'upcoming',secLabel:'Upcoming',story:s,type:'story',archKey});
+      }
     });
   });
 
@@ -4629,6 +4616,17 @@ function renderSearchHTML(){
         html+=`<div style="padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid ${l.status==='approved'?'var(--done)':'var(--progress)'}">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(l.employeeName||'Unknown')}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--font)">${fmtDate(l.dateFrom)} → ${fmtDate(l.dateTo)} · ${l.status==='approved'?`<span class="badge-dot" style="background:#15803D"></span>Approved`:`<span class="badge-dot" style="background:#B45309"></span>Pending`}</div>
+        </div>`;
+      } else if(r.type==='meeting'&&r.meeting){
+        const m=r.meeting;
+        const mDate=m.date?fmtDate(m.date):'';
+        const mTime=m.time_uk?m.time_uk+' '+ukLabel():'';
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;border-left:3px solid #7C3AED;cursor:pointer" onclick="bnbNav('meetings')">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.name||'Untitled meeting')}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--font)">Meeting${mDate?' · '+mDate:''}${mTime?' · '+mTime:''}</div>
+          </div>
+          <span style="font-size:11px;color:var(--text3);flex-shrink:0">›</span>
         </div>`;
       }
     });
@@ -4709,7 +4707,7 @@ function renderUpcomingView(){
       </div>
     </div>
     <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
-      <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+      <div class="fi-form-footer">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
         <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">⬇ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
@@ -4737,7 +4735,7 @@ function renderUpcomingView(){
 
     if(expiredUpcoming.length){
       html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">📁 ${expiredUpcoming.length} expired</div>
+        <div class="fi-hint">📁 ${expiredUpcoming.length} expired</div>
         ${expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join('')}
       </div>`;
     }
@@ -4796,7 +4794,12 @@ function renderNotesView(){
         const nd=live||n;
         const isLive=!!live&&!nd._deleted;
         const statusLabel=nd._deleted?'🗑 Deleted':nd.status==='done'?'✅ Done':nd.status==='pass'||nd.status==='passed'?'↪ Passed':'📌 Active';
-        const cCls=nd._deleted?'note-pass':nd.status==='done'?'note-done':nd.status==='pass'||nd.status==='passed'?'note-pass':nd.carriedForward?'note-carried':'';
+        const _noteDeadlineSoon=(()=>{
+          if(nd.status!=='active'||!nd.deadline_date) return false;
+          const diff=Math.round((new Date(nd.deadline_date+'T00:00:00').getTime()-new Date(todayStr()+'T00:00:00').getTime())/86400000);
+          return diff>=0&&diff<=3;
+        })();
+        const cCls=nd._deleted?'note-pass':nd.status==='done'?'note-done':nd.status==='pass'||nd.status==='passed'?'note-pass':nd.carriedForward?'note-carried':_noteDeadlineSoon?'note-soon':'';
         const created=nd.created?new Date(nd.created).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · ':'';
         html+=`<div class="note-card ${cCls}">
           <div class="note-text" style="text-decoration:${nd.status==='done'||nd._deleted?'line-through':''};white-space:pre-wrap">${esc(nd.text)}</div>
@@ -5180,7 +5183,7 @@ function renderAccordion(sec,archKey){
     // Expired entries — past date, not completed — faded at bottom
     if(expiredUpcoming.length){
       html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">📁 ${expiredUpcoming.length} expired</div>
+        <div class="fi-hint">📁 ${expiredUpcoming.length} expired</div>
         ${expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
       </div>`;
     }
@@ -5200,7 +5203,7 @@ function renderAccordion(sec,archKey){
     // Shelved ribbon — always visible, displayed below active stories
     if(shelvedCount>0){
       html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-      html+=`<div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">🗄 Shelved (${shelvedCount})</div>`;
+      html+=`<div class="fi-hint">🗄 Shelved (${shelvedCount})</div>`;
       html+=`<div class="shelved-section">`;
       all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
       html+=`</div></div>`;
@@ -5215,13 +5218,7 @@ function toggleShowShelved(secKey){
   else ui.showShelved.add(secKey);
   render();
 }
-/* ════════════════════════════════════════
-   MOBILE HEADER FUNCTIONS
-════════════════════════════════════════ */
 
-/* ════════════════════════════════════════
-   DESKTOP HEADER FUNCTIONS
-════════════════════════════════════════ */
 function openDesktopDatePicker(){
   const p=document.getElementById('date-jump-picker');
   if(!p) return;
@@ -5525,10 +5522,6 @@ function jumpToLeaves(){
   if(ui.view!=='today') setView('today',null);
   setTimeout(()=>document.getElementById('leaves-section')?.scrollIntoView({behavior:'smooth',block:'start'}),ui.view!=='today'?250:50);
 }
-
-/* ════════════════════════════════════════
-   TASKS CRUD
-════════════════════════════════════════ */
 let ui_taskForm=false; // is the add-task form open?
 let ui_editTaskId=null;
 let ui_openTasks=new Set();
@@ -5843,10 +5836,6 @@ function confirmTaskTransfer(id, mode){
   document.getElementById('task-transfer-dlg')?.remove();
   render();
 }
-
-/* ════════════════════════════════════════
-   TASKS RENDER
-════════════════════════════════════════ */
 function renderTasksSection(){
   if(!state.tasks) state.tasks=[];
   const today=todayStr();
@@ -5967,14 +5956,12 @@ function renderTasksSection(){
     </div>
   </div>
   <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
-    <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+    <div class="fi-form-footer">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
       <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
       <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div>`;
   }
-
-
 
   if(ui_taskForm){
     html+=`<div class="task-form" id="task-form-wrap-standalone">
@@ -6330,17 +6317,13 @@ function renderCombinedAccordion(archKey){
   }
   html+='</div>';
   if(shelvedAll.length){
-    html+='<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><div style="font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px">🗄 Shelved ('+shelvedAll.length+')</div>';
+    html+='<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px"><div class="fi-hint">🗄 Shelved ('+shelvedAll.length+')</div>';
     html+=[...ibuAll.filter(s=>s.status==='shelved').map(s=>renderCard('ibu',s,archKey)),...otherAll.filter(s=>s.status==='shelved').map(s=>renderCard('other',s,archKey))].join('');
     html+='</div>';
   }
   html+='</div></div>';
   return html;
 }
-
-/* ════════════════════════════════════════
-   NOTES SYSTEM (formerly "Remarks & Notes")
-════════════════════════════════════════ */
 let ui_noteForm=false;
 let ui_openNotes=new Set();
 let ui_editNoteId=null;
@@ -6472,10 +6455,6 @@ function toggleNoteOpen(id){
   if(ui_openNotes.has(id)) ui_openNotes.delete(id); else ui_openNotes.add(id);
   render();
 }
-
-/* ════════════════════════════════════════
-   MEETINGS SYSTEM
-════════════════════════════════════════ */
 let ui_meetingForm=false;
 let ui_editMeetingId=null;
 let ui_openMeetings=new Set();
@@ -6870,7 +6849,8 @@ function renderMeetingCard(m, isPastOneOff=false){
   const showRemarkForm=ui_meetingRemarkForms[m.id];
   const editingRemarkId=ui_editMeetingRemarkId[m.id];
 
-  return`<div class="meeting-card ${stCls}" data-id="${m.id}">
+  const _recCls=m.isRecurring&&m.status!=='done'&&m.status!=='cancelled'?' mc-recurring':'';
+  return`<div class="meeting-card ${stCls}${_recCls}" data-id="${m.id}">
   <div class="meeting-top" onclick="toggleMeetingOpen('${m.id}')">
     <div class="meeting-time-block">
       <div class="meeting-time-hr">${localTime||'—'}</div>
@@ -6992,7 +6972,7 @@ function renderMeetingsSection(){
         <div class="acc-meta">${mCount?`<span class="sbadge sb-in-progress">${mCount} scheduled</span>`:''}</div>
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
-        <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+        <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
           <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
           <button class="btn btn-accent btn-sm" onclick="ui_meetForm=!ui_meetForm;ui_editMeetId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
@@ -7144,7 +7124,7 @@ function renderRemarksAccordion(){
         <div class="acc-meta">${nCount?`<span class="sbadge sb-in-progress">${nCount} active</span>`:''}</div>
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
-        <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+        <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
           <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
           <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
@@ -7173,10 +7153,6 @@ function renderRemarksAccordion(){
     </div>
   </div>`;
 }
-
-/* ════════════════════════════════════════
-   LEAVE SYSTEM
-════════════════════════════════════════ */
 /* Returns sorted unique staff names for leave dropdown */
 function getLeaveStaffNames(){
   const sn=state.staffNames||{};
@@ -7463,7 +7439,7 @@ function renderLeavesSection(){
         <div class="acc-meta">${onLeaveToday.length?`<span class="sbadge sb-urgent">${onLeaveToday.length} on leave</span>`:''} ${upcomingLeaves.length?`<span class="sbadge sb-in-progress">${upcomingLeaves.length} upcoming</span>`:''}</div>
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
-        <div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+        <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
           <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
           <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
@@ -7600,9 +7576,13 @@ function renderUpcomingRow(sec,s,archKey){
 
   // Border class
   let rowCls='uc-row';
-  if(isExpired)                rowCls+=' ucr-past';
-  else if(isCompleted)         rowCls+=' ucr-completed';
+  if(isExpired)                 rowCls+=' ucr-past';
+  else if(isCompleted)          rowCls+=' ucr-completed';
   else if(s.status==='on-hold') rowCls+=' ucr-on-hold';
+  else if(s.expected_date){
+    const _ucDiff=Math.round((new Date(s.expected_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
+    if(_ucDiff>=0&&_ucDiff<=7) rowCls+=' ucr-near';
+  }
 
   const field=(lbl,val)=>val?`<div><div class="cfield-label">${lbl}</div><div class="cfield-value">${esc(val)}</div></div>`:'';
   let linksHtml='';
@@ -7678,13 +7658,21 @@ function renderStoryCard(sec,s,archKey){
     : '';
   const isIBU=sec==='ibu'&&!archKey;
   const cardBorderCls=carried?'c-carried':s.status?'c-'+s.status:'';
-  const cardCls='card '+cardBorderCls;
+  const wwModeCls=mode&&mode!=='none'?' c-'+mode:'';
+  // Requests for Future — age tint based on days since created
+  let reqAgeCls='';
+  if(sec==='requests'&&s.created&&!['completed','not-done','shelved'].includes(s.status)){
+    const ageDays=Math.round((Date.now()-(typeof s.created==='number'?s.created:parseInt(s.created)))/86400000);
+    if(ageDays>=30)      reqAgeCls=' c-req-stale';
+    else if(ageDays>=14) reqAgeCls=' c-req-aging';
+  }
+  const cardCls='card '+cardBorderCls+wwModeCls+reqAgeCls;
   const field=(lbl,val)=>val?`<div><div class="cfield-label">${lbl}</div><div class="cfield-value">${esc(val)}</div></div>`:'';
   let linksHtml='';
   if(s.links){ const ls=s.links.split(',').map(l=>l.trim()).filter(Boolean); if(ls.length) linksHtml=`<div class="card-links">${ls.map(l=>`<a class="link-pill" href="${esc(l)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 ${esc(l.replace(/^https?:\/\//,'').slice(0,36))}</a>`).join('')}</div>`; }
   let clHtml='';
   if(s.completion_links){ const ls=s.completion_links.split(',').map(l=>l.trim()).filter(Boolean); if(ls.length) clHtml=`<div class="completion-links">${ls.map(l=>`<a class="link-pill" href="${esc(l)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 ${esc(l.replace(/^https?:\/\//,'').slice(0,36))}</a>`).join('')}</div>`; }
-  return`<div class="${cardCls}" data-id="${s.id}">
+  return`<div class="${cardCls}" data-id="${s.id}" draggable="true" ondragstart="onDragStart(event,'${sec}','${s.id}',${archKeyJS})" ondragend="onDragEnd(event)" ondragover="onDragOver(event,'${s.id}')" ondrop="onDrop(event,'${sec}','${s.id}',${archKeyJS})">
   <div class="card-top" onclick="toggleCard('${s.id}')">
     <div class="card-title-wrap">
       <div class="card-title">${esc(s.title||'Untitled')} ${subsecBadge}</div>
@@ -7699,6 +7687,13 @@ function renderStoryCard(sec,s,archKey){
         ${secObj.hasWW&&!archKey?`<span class="ww-badge ww-${mode}" id="wwbadge-${s.id}" onclick="toggleWWMode('${sec}','${s.id}',${archKeyJS});event.stopPropagation()" title="Click to cycle: None → Working → Watching">${wwLabel}</span>`:''}
         ${s.migratedAt?`<span class="migrated-tag">⇄ Migrated</span>`:''}
         ${s.autoMigratedOn?`<span class="migrated-tag">🗓 Auto-migrated ${s.autoMigratedOn}</span>`:''}
+        ${(()=>{
+          if(sec!=='requests'||!s.created||['completed','not-done','shelved'].includes(s.status)) return '';
+          const ageDays=Math.round((Date.now()-(typeof s.created==='number'?s.created:parseInt(s.created)))/86400000);
+          if(ageDays>=30) return `<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;background:rgba(220,38,38,.09);color:#B91C1C;border:0.5px solid rgba(220,38,38,.25)">${ageDays}d old</span>`;
+          if(ageDays>=14) return `<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;background:rgba(180,83,9,.09);color:#92400e;border:0.5px solid rgba(180,83,9,.25)">${ageDays}d old</span>`;
+          return '';
+        })()}
       </div>
     </div>
     <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px;">
@@ -7951,17 +7946,9 @@ function updateExpectedInput(sec,archKey){
   const inp=document.getElementById('f-expected-date'+sfx);
   if(inp){ inp.type=t==='month'?'month':'date'; inp.value=''; }
 }
-
-/* ════════════════════════════════════════
-   HELPERS
-════════════════════════════════════════ */
 function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(msg){ const w=document.getElementById('toast-wrap'); if(!w) return; const el=document.createElement('div'); el.className='toast'; el.textContent=msg; w.appendChild(el); setTimeout(()=>el.remove(),3800); }
 function confirmDelete(sec,id,archKey){ const arr=getArr(sec,archKey); const s=arr?.find(s=>s.id===id); if(!s) return; if(confirm('Delete "'+s.title+'"?')) deleteStory(sec,id,archKey); }
-
-/* ════════════════════════════════════════
-   CLOCK
-════════════════════════════════════════ */
 function updateClock(){
   const el=document.getElementById('live-clock');
   const now=new Date();
@@ -7979,10 +7966,6 @@ function updateClock(){
   if(dBst) dBst.textContent=ukTime+' '+ukLabel();
   if(dIst) dIst.textContent=ist+' IST';
 }
-
-/* ════════════════════════════════════════
-   INIT
-════════════════════════════════════════ */
 function init(){
   loadLocal();
   checkDateChange();
@@ -7994,13 +7977,11 @@ function init(){
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./service-worker.js', {scope:'./'})
       .then(reg=>{
-        console.log('[SW] Registered, scope:', reg.scope);
         navigator.serviceWorker.ready.then(()=>{ scheduleAllReminders(); });
         setInterval(()=>_swMsg({type:'PING'}), 30 * 60 * 1000);
       })
       .catch(()=>{}); // silently skip if SW script not available (e.g. single-file deployment)
   }
-  // ─────────────────────────────────────────────────────────────
 
   scheduleAllReminders();
   const cfg=getFireConfig(); if(cfg) initFirebase(cfg, true);
