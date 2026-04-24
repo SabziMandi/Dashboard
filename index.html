@@ -3903,7 +3903,7 @@ function onSearch(v){
       if(ui.view==='search') ui.view='today';
     }
     render();
-    const el=document.getElementById('search-input');
+    const el=document.getElementById('search-input')||document.getElementById('search-input-mobile');
     if(el){ el.value=v; el.focus(); }
   },200);
 }
@@ -4516,8 +4516,9 @@ function renderSearchHTML(){
   }
 
   // Meetings
-  if(secHit==='meetings'||(state.meetings||[]).some(m=>(m.name||'').toLowerCase().includes(q)||(m.agenda||'').toLowerCase().includes(q)||(m.remarks||'').toLowerCase().includes(q))){
-    (state.meetings||[]).filter(m=>secHit==='meetings'||(m.name||'').toLowerCase().includes(q)||(m.agenda||'').toLowerCase().includes(q)||(m.remarks||'').toLowerCase().includes(q)).forEach(m=>{
+  const _mStr=m=>[m.name,m.agenda,typeof m.remarks==='string'?m.remarks:Array.isArray(m.remarks)?m.remarks.map(r=>r.text||'').join(' '):''].join(' ').toLowerCase();
+  if(secHit==='meetings'||(state.meetings||[]).some(m=>_mStr(m).includes(q))){
+    (state.meetings||[]).filter(m=>secHit==='meetings'||_mStr(m).includes(q)).forEach(m=>{
       results.push({dateKey:'today',dateLabel:'Meetings',sec:'meetings',secLabel:'Meeting',meeting:m,type:'meeting'});
     });
   }
@@ -5157,7 +5158,7 @@ function renderAccordion(sec,archKey){
       <span class="acc-icon">${sec.icon}</span>
       <span class="acc-name">${esc(displayName)}</span>
       ${secObj.renameable&&!archKey?`<button class="btn btn-ghost btn-xs" style="flex-shrink:0;padding:2px 7px;font-size:10px;color:var(--text3)" onclick="event.stopPropagation();startRename('${sec.key}')" title="Rename section">✏ Rename</button>`:''}
-      <span class="acc-summary">${(()=>{ if(!activeStories.length)return ''; const today=todayStr(); const sorted=activeStories.slice().sort((a,b)=>{ const da=a.deadline_date?Math.abs(new Date(a.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; const db=b.deadline_date?Math.abs(new Date(b.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime()):Infinity; if(da!==db)return da-db; return (b.created||0)-(a.created||0); }); return esc(sorted[0].title||''); })()}</span>
+      <span class="acc-summary">${(()=>{ const eligible=activeStories.filter(s=>s.status!=='on-hold'&&s.status!=='completed'&&s.status!=='not-done'&&s.status!=='shelved'); if(!eligible.length)return ''; eligible.sort((a,b)=>(b.created||0)-(a.created||0)); return esc(eligible[0].title||''); })()}</span>
       <div class="acc-meta">
         ${activeStories.length?`<span class="sbadge sb-in-progress">${activeStories.length} pending</span>`:''}
       </div>
@@ -5939,7 +5940,7 @@ function renderTasksSection(){
         return diff;
       };
       const _sorted=[..._pending].sort((a,b)=>_sortKey(a)-_sortKey(b));
-      const t=_sorted[0];
+      const t=_sorted[0]; if(!t) return '';
       const d=_effDate(t);
       const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-_todayMs)/86400000):null;
       const lbl=diff===null?'No deadline':diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
@@ -7262,6 +7263,7 @@ function renderRemarksAccordion(){
       } else {
         n=[...active].sort((a,b)=>(b.created||0)-(a.created||0))[0];
       }
+      if(!n) return '';
       const title=n.headline||n.text||'';
       let meta='';
       if(n.deadline_date){
