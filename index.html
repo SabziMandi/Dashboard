@@ -130,6 +130,7 @@ body {
   padding: 0 13px 9px;
   margin-top: -3px;
 }
+.acc-open .acc-info-strip { display: none !important; }
 @media(max-width:720px){ .header-slim-bar { display: none !important; } }
 
 /* Row 1 */
@@ -5943,7 +5944,7 @@ function renderTasksSection(){
       const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-_todayMs)/86400000):null;
       const lbl=diff===null?'No deadline':diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
       const dotCol=diff!==null&&diff<=0?'#DC2626':diff===1?'#D97706':'#2563EB';
-      return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(t.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${lbl}</span></div>`;
+      return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(t.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${lbl}</span></div>`;
     })()}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">
     ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
@@ -7268,7 +7269,7 @@ function renderRemarksAccordion(){
         meta=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
       }
       const dotCol=n.deadline_date&&Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000)<=3?'#D97706':'#2563EB';
-      return `<div class="acc-info-strip"><span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10.5px;color:#4338CA;font-weight:600;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:6px">${esc(title.slice(0,80))}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
+      return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(title.slice(0,80))}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
     })()}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-remarks">
       <div class="sec-head">
