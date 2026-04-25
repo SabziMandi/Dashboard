@@ -1672,9 +1672,9 @@ function startRealtimeSync(){
         const _rem=remoteDeletedIds[k]||[];
         mergedDeletedIds[k]=[...new Set([..._loc,..._rem])];
       });
-      // Smart merge: for arrays (leaves, tasks, notes, meetings), keep whichever is longer/newer
+      // Smart merge: for arrays (leaves, tasks, notes, meetings, travelEntries), keep whichever is longer/newer
       // This prevents a device with stale data from wiping entries added on another device
-      const arrayKeys=['leaves','tasks','notes','meetings'];
+      const arrayKeys=['leaves','tasks','notes','meetings','travelEntries'];
       const mergedArrays={};
       arrayKeys.forEach(k=>{
         const local=state[k]||[];
@@ -1689,10 +1689,10 @@ function startRealtimeSync(){
           const existing=map.get(item.id);
           if(existing&&existing._deleted) return; // local tombstone wins over remote live copy
           if(existing){
-            // Remote wins only if it's the same age or newer
+            // Remote wins only if strictly newer — local wins on tie (same-device push/snapshot)
             const remoteTs=item.updated||item.created||0;
             const localTs=existing.updated||existing.created||0;
-            if(remoteTs>=localTs) map.set(item.id,item);
+            if(remoteTs>localTs) map.set(item.id,item);
           } else {
             map.set(item.id,item); // new entry from remote
           }
@@ -1796,7 +1796,12 @@ function startRealtimeSync(){
       const localWeeklyBackup=state.lastWeeklyBackup;
       const localMonthlyBackup=state.lastMonthlyBackup;
       const localYearlyBackup=state.lastYearlyBackup;
+      // Capture travel state BEFORE Object.assign wipes it — mergedArrays handles travelEntries
+      // but travelDismissed is a plain array not in mergedArrays, so capture it now
+      const localTravelDismissed=[...(state.travelDismissed||[])];
       Object.assign(state, incoming, mergedArrays, {archive:mergedArchive, sections:mergedSections});
+      // Restore travel dismissed as a union — Object.assign above may have set it to the stale cloud value
+      state.travelDismissed=[...new Set([...localTravelDismissed,...(incoming.travelDismissed||[])])];
       state.backupSnapshots=localBackups; // restore local backups after merge
       state.deletedIds=mergedDeletedIds;  // merged so all devices honour all deletions
       // Keep whichever lastActiveDate is more recent — prevents Firebase from re-triggering checkDateChange
@@ -7409,7 +7414,7 @@ function _teEntriesForStory(sid){ return (state.travelEntries||[]).filter(e=>e.s
 function _teEntriesGeneral(){ return (state.travelEntries||[]).filter(e=>!e.storyId); }
 
 // ── CRUD ──────────────────────────────────────────────────
-function _teSave(){ saveLocal(); _teRefresh(); }
+function _teSave(){ saveAndPush(); _teRefresh(); }
 
 function _teAdd(entry){
   if(!state.travelEntries) state.travelEntries=[];
@@ -7764,6 +7769,13 @@ function renderTravelSection(){
   });
   const summary=stories.length?esc((stories[0].s.title||'').slice(0,32)):'';
 
+  const travelStrip=(()=>{
+    if(!summary&&!notClaimedCount&&!allClaimed) return '';
+    const dotCol=notClaimedCount?'#D97706':allClaimed?'#16A34A':'#94a3b8';
+    const meta=notClaimedCount?`⏳ ${notClaimedCount} unclaimed`:allClaimed?'✅ all claimed':'';
+    return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${summary}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
+  })();
+
   return`<div class="accordion${isOpen?' acc-open':''}" id="acc-travel">
     <div class="acc-header" onclick="toggleAccordion('travel')">
       <span class="acc-icon">🗺</span>
@@ -7775,6 +7787,7 @@ function renderTravelSection(){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-travel">▾</span>
     </div>
+    ${travelStrip}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-travel">
       ${isOpen?_teRenderBody():''}
     </div>
