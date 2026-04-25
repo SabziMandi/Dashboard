@@ -17,6 +17,19 @@
 <script>
 // Firebase loaded inline to avoid CDN failures
 window._firebaseLoadAttempted = false;
+// Global error handler — shows any crash on screen instead of silent blank page
+window.onerror = function(msg, src, line, col, err) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#DC2626;color:#fff;padding:12px 16px;font-family:monospace;font-size:13px;z-index:9999;white-space:pre-wrap;word-break:break-all';
+  d.textContent = '⚠ JS Error: ' + msg + '\nLine ' + line + ' · ' + (src||'').split('/').pop();
+  document.body.appendChild(d);
+};
+window.addEventListener('unhandledrejection', function(e) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:40px;left:0;right:0;background:#B45309;color:#fff;padding:12px 16px;font-family:monospace;font-size:13px;z-index:9999;white-space:pre-wrap;word-break:break-all';
+  d.textContent = '⚠ Promise Error: ' + (e.reason?.message || e.reason || 'unknown');
+  document.body.appendChild(d);
+});
 </script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" onerror="window._firebaseLoadFailed=true"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" onerror="window._firebaseLoadFailed=true"></script>
@@ -644,6 +657,11 @@ body {
 }
 .link-pill:hover { border-color: #93C5FD; }
 .card-btns { display: flex; gap: 7px; margin-top: 11px; flex-wrap: wrap; }
+.card-delete-row { display: inline-flex; }
+@media(max-width:720px){
+  .card-delete-row { width: 100%; border-top: 1px dashed var(--border); padding-top: 7px; margin-top: 3px; }
+  .card-delete-row button { width: 100%; text-align: left; }
+}
 .completion-box { background: var(--done-bg); border: 1px solid rgba(22,163,74,.2); border-radius: 7px; padding: 11px 13px; margin-top: 11px; }
 .completion-label { font-size: 10.5px; color: var(--done); font-family: var(--font); font-weight: 500; margin-bottom: 7px; }
 .completion-note { font-size: 12px; color: var(--text2); line-height: 1.55; white-space: pre-wrap; }
@@ -682,6 +700,28 @@ body {
 /* Deadline split row */
 .deadline-split { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; grid-column: 1 / -1; }
 .deadline-split-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; font-family: var(--mono); grid-column: 1 / -1; margin-bottom: -4px; }
+/* Mobile deadline: date full-width, BST+IST side by side */
+@media(max-width:720px){
+  .deadline-split { grid-template-columns: 1fr; }
+  .deadline-split .dl-times-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+}
+/* Form section blocks */
+.fsec { border-radius: 8px; padding: 12px 14px; margin-bottom: 2px; grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.fsec.fs-story  { background: var(--surface2); border: 1px solid var(--border); }
+.fsec.fs-people { background: rgba(124,58,237,.03); border: 1px solid rgba(124,58,237,.15); border-left: 3px solid var(--onhold); }
+.fsec.fs-req    { background: rgba(217,119,6,.03); border: 1px solid rgba(217,119,6,.15); border-left: 3px solid var(--progress); }
+.fsec.fs-dead   { background: rgba(207,102,64,.03); border: 1px solid rgba(207,102,64,.18); border-left: 3px solid var(--accent); }
+.fsec.fs-bcast  { background: rgba(79,70,229,.03); border: 1px solid rgba(79,70,229,.15); border-left: 3px solid var(--week); }
+.fsec.fs-loc    { background: rgba(13,148,136,.03); border: 1px solid rgba(13,148,136,.15); border-left: 3px solid var(--working); }
+.fsec.fs-status { background: rgba(22,163,74,.03); border: 1px solid rgba(22,163,74,.15); border-left: 3px solid var(--done); }
+.fsec.fs-links  { background: var(--surface2); border: 1px solid var(--border); }
+.fsec .form-divider { border-top: none; padding-top: 0; margin-top: 0; }
+.fsec.fs-people .form-divider { color: var(--onhold); }
+.fsec.fs-req    .form-divider { color: var(--progress); }
+.fsec.fs-dead   .form-divider { color: var(--accent); }
+.fsec.fs-bcast  .form-divider { color: var(--week); }
+.fsec.fs-loc    .form-divider { color: var(--working); }
+.fsec.fs-status .form-divider { color: var(--done); }
 /* Upcoming expected row */
 .expected-row { display: flex; gap: 7px; align-items: flex-end; }
 .expected-row .fselect { width: 110px; flex-shrink: 0; }
@@ -1535,6 +1575,8 @@ function loadLocal(){
   if(!state.meetings) state.meetings=[];
   if(!state.leaves) state.leaves=[];
   if(!state.notes) state.notes=[];
+  if(!state.travelDismissed) state.travelDismissed=[];
+  if(!state.generalTravel) state.generalTravel=[];
   if(!state.staffNames) state.staffNames={correspondents:[],producers:[],shootEdit:[]};
   if(!state.staffNames.correspondents) state.staffNames.correspondents=[];
   if(!state.staffNames.producers) state.staffNames.producers=[];
@@ -2039,6 +2081,8 @@ function makeBackupSnapshot(){
     employees:   JSON.parse(JSON.stringify(state.employees||[])),
     staffNames:  JSON.parse(JSON.stringify(state.staffNames||{})),
     eodSettings: JSON.parse(JSON.stringify(state.eodSettings||{})),
+    generalTravel: JSON.parse(JSON.stringify(state.generalTravel||[])),
+    travelDismissed: JSON.parse(JSON.stringify(state.travelDismissed||[])),
   };
 }
 
@@ -2278,7 +2322,10 @@ function runManualBackup(type){
 function captureFormState(){
   const saved={};
   document.querySelectorAll('.form-wrap input,.form-wrap select,.form-wrap textarea,.task-form input,.task-form select,.task-form textarea').forEach(el=>{
-    if(el.id) saved[el.id]=el.value;
+    if(el.id){
+      if(el.type==='checkbox') saved['__cb_'+el.id]=el.checked;
+      else saved[el.id]=el.value;
+    }
     // Capture radio buttons
     if(el.type==='radio'&&el.name) saved['__radio_'+el.name]=el.checked?el.value:(saved['__radio_'+el.name]||'');
   });
@@ -2318,6 +2365,14 @@ function restoreFormState(saved){
       const name=id.replace('__radio_','');
       const el=document.querySelector(`input[name="${name}"][value="${val}"]`);
       if(el) el.checked=true;
+      return;
+    }
+    if(id.startsWith('__cb_')){
+      const realId=id.replace('__cb_','');
+      const belongsToEdit=[...editFieldPrefixes].some(pfx=>realId.endsWith(pfx));
+      if(belongsToEdit) return;
+      const el=document.getElementById(realId);
+      if(el&&el.type==='checkbox') el.checked=val;
       return;
     }
     if(!val) return;
@@ -2507,8 +2562,8 @@ function buildSlotRowHTML(idx,slot){
       <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
         <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
       </div>
-      <div class="fgroup" style="margin:0"><label class="flabel">UK time (GMT)</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})" onblur="btUKBlur(${idx})"></div>
-      <div class="fgroup" style="margin:0"><label class="flabel">India time (IST)</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})" onblur="btISTBlur(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">${ukLabel()}</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})" onblur="btUKBlur(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">IST</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})" onblur="btISTBlur(${idx})"></div>
       <div style="display:flex;flex-direction:row;gap:4px;align-self:flex-end;padding-bottom:1px;flex-wrap:nowrap">
         <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
         <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
@@ -2518,14 +2573,14 @@ function buildSlotRowHTML(idx,slot){
     <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:2px">
       <div class="fi-hint">Per-slot details (optional)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:6px">
-        <div class="fgroup" style="margin:0"><label class="flabel">Slot Deadline Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline (GMT)</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Deadline time (IST)</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">${ukLabel()}</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
         <div class="fgroup" style="margin:0"><label class="flabel">Commissioner</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Their Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Their Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
+        <div class="fgroup" style="margin:0"><label class="flabel">Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
       </div>
     </div>`;
 }
@@ -3862,6 +3917,10 @@ function toggleAccordion(key){
   if(b) b.classList.toggle('open',ui.openSections.has(key));
   if(cv) cv.classList.toggle('open',ui.openSections.has(key));
   if(a) a.classList.toggle('acc-open',ui.openSections.has(key));
+  // Lazy-render travel body on first open
+  if(key==='travel'&&opening&&b&&!b.innerHTML.trim()){
+    b.innerHTML=_renderTravelBody();
+  }
 }
 function setFilter(f,el){
   ui.filter=f;
@@ -3990,11 +4049,21 @@ function submitForm(sec,archKey){
       deadline_date: g('f-deadline-date'+sfx),
       deadline_uk:   normaliseTime(g('f-deadline-uk'+sfx)),
       deadline_ist:  normaliseTime(g('f-deadline-ist'+sfx)),
+      remarks:       g('f-remarks-new'+sfx).trim(),
     };
   }
   if(!data.title){ toast('Please enter a title'); return; }
   const k=sec+(archKey?'::'+archKey:'');
-  if(ui.editMap[k]){ updateStory(sec,ui.editMap[k],data,archKey); toast('Updated ✓'); }
+  if(ui.editMap[k]){
+    // Preserve location and travel from existing story if form read them as empty
+    const existing=(getArr(sec,archKey)||[]).find(s=>s.id===ui.editMap[k]);
+    if(existing){
+      if(!data.location && existing.location) data.location=existing.location;
+      if(!data.field_location && existing.field_location) data.field_location=existing.field_location;
+      if(existing.travel) data.travel=existing.travel;
+    }
+    updateStory(sec,ui.editMap[k],data,archKey); toast('Updated ✓');
+  }
   else {
     addStory(sec,data,archKey);
     // Reset filter to 'all' so the new story is always visible
@@ -4020,11 +4089,70 @@ function submitComplForm(sec,id,archKey){
   updateStory(sec,id,{completion_note:note.trim(),completion_links:lnks.trim(),status:'completed',carriedForward:false,completedOn:Date.now()},archKey);
   ui.complForms.delete(id); cleanupCompletedStories(); toast('Marked done ✓'); render();
 }
-function showFieldRow(sec,archKey){
+function updateLocationPlaceholder(sec,archKey){
   const sfx='-'+sec+(archKey?'-arch':'');
   const locEl=document.getElementById('f-location'+sfx);
-  const tw=document.getElementById('travel-wrap'+sfx);
-  if(locEl&&tw) tw.style.display=locEl.value==='Field'?'block':'none';
+  const detailEl=document.getElementById('f-field-location'+sfx);
+  if(detailEl&&locEl){
+    const ph=locEl.value==='Studio'?'Which bureau or studio?':locEl.value==='Remote'?'Platform / dial-in':'City, country or address';
+    detailEl.placeholder=ph;
+  }
+}
+// Keep showFieldRow as alias for restoreFormState compatibility
+function showFieldRow(sec,archKey){ updateLocationPlaceholder(sec,archKey); }
+
+function toggleTravelSeg(eid){
+  _storyTravelOpen[eid]=!_storyTravelOpen[eid];
+  const det=document.getElementById('tsd-'+eid);
+  const arr=document.getElementById('tsa-'+eid);
+  if(det) det.style.display=_storyTravelOpen[eid]?'block':'none';
+  if(arr) arr.textContent=_storyTravelOpen[eid]?'▾':'▸';
+}
+function openTravelForm(sid,type){
+  _storyTravelForms[sid+type]='new';
+  const wrap=_getTravelWrapForStory(sid);
+  if(wrap){ _injectTravelHTML(wrap,sid); } else { render(); }
+}
+function openTravelEditForm(sid,type,eid){
+  _storyTravelForms[sid+type+'_edit']=eid;
+  const wrap=_getTravelWrapForStory(sid);
+  if(wrap){ _injectTravelHTML(wrap,sid); } else { render(); }
+}
+function closeTravelForm(sid,type){
+  delete _storyTravelForms[sid+type];
+  delete _storyTravelForms[sid+type+'_edit'];
+  const wrap=_getTravelWrapForStory(sid);
+  if(wrap){ _injectTravelHTML(wrap,sid); } else { render(); }
+}
+function _getTravelWrapForStory(sid){
+  // Travel lives in card-body — find the .travel-wrap inside the card for this story
+  const card=document.querySelector(`.card[data-id="${sid}"]`);
+  if(card) return card.querySelector('.travel-wrap');
+  return null;
+}
+function _injectTravelHTML(wrap,sid){
+  // Find sec and archKey from the story's section
+  let sec=null,archKey=null;
+  for(const s of SECTIONS){
+    if((state.sections[s.key]||[]).find(x=>x.id===sid)){ sec=s.key; break; }
+  }
+  if(!sec){
+    // Check archive
+    for(const ak of Object.keys(state.archive)){
+      for(const s of SECTIONS){
+        if((state.archive[ak]?.sections?.[s.key]||[]).find(x=>x.id===sid)){ sec=s.key; archKey=ak; break; }
+      }
+      if(sec) break;
+    }
+  }
+  if(!sec){ render(); return; }
+  const arr=getArr(sec,archKey); if(!arr) return;
+  const story=arr.find(x=>x.id===sid); if(!story) return;
+  wrap.innerHTML=buildStoryTravelHTML(sec,story,archKey);
+  wrap.style.display='block';
+  // Also refresh travel accordion if open
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
 }
 
 /* ─── Story Travel CRUD ─── */
@@ -4073,14 +4201,15 @@ function submitStoryTravelForm(sec,sid,type,editId,archKey){
   const g=id=>(document.getElementById(id)||{}).value||'';
   let data={};
   const ak=archKey?`'${archKey}'`:'null';
-  if(type==='cab') data={forName:g('st-cab-for-'+sid),from:g('st-cab-from-'+sid),to:g('st-cab-to-'+sid),when:g('st-cab-when-'+sid),driver:g('st-cab-driver-'+sid),phone:g('st-cab-phone-'+sid),cabNum:g('st-cab-num-'+sid),notes:g('st-cab-notes-'+sid)};
-  else if(type==='flight') data={forName:g('st-flt-for-'+sid),direction:g('st-flt-dir-'+sid),from:g('st-flt-from-'+sid),to:g('st-flt-to-'+sid),when:g('st-flt-when-'+sid),airline:g('st-flt-airline-'+sid),flightNum:g('st-flt-num-'+sid),notes:g('st-flt-notes-'+sid)};
+  if(type==='cab') data={forName:g('st-cab-for-'+sid),from:g('st-cab-from-'+sid),to:g('st-cab-to-'+sid),when:g('st-cab-when-'+sid),dropWhen:g('st-cab-dropwhen-'+sid),driver:g('st-cab-driver-'+sid),phone:g('st-cab-phone-'+sid),cabNum:g('st-cab-num-'+sid),payment:g('st-cab-pay-'+sid),notes:g('st-cab-notes-'+sid)};
+  else if(type==='flight') data={forName:g('st-flt-for-'+sid),direction:g('st-flt-dir-'+sid),from:g('st-flt-from-'+sid),to:g('st-flt-to-'+sid),when:g('st-flt-when-'+sid),airline:g('st-flt-airline-'+sid),flightNum:g('st-flt-num-'+sid),flightPayment:g('st-flt-pay-'+sid),notes:g('st-flt-notes-'+sid)};
   else if(type==='hotel') data={forName:g('st-htl-for-'+sid),hotelName:g('st-htl-name-'+sid),where:g('st-htl-where-'+sid),checkIn:g('st-htl-ci-'+sid),checkOut:g('st-htl-co-'+sid),priceDay:g('st-htl-price-'+sid),payment:g('st-htl-pay-'+sid),notes:g('st-htl-notes-'+sid)};
-  else if(type==='expense') data={what:g('st-exp-what-'+sid),when:g('st-exp-when-'+sid),where:g('st-exp-where-'+sid),amount:g('st-exp-amt-'+sid),paidBy:g('st-exp-paidby-'+sid),paidUsing:g('st-exp-method-'+sid),notes:g('st-exp-notes-'+sid)};
-  if(editId) updateStoryTravel(sec,sid,editId,data,archKey);
-  else addStoryTravel(sec,sid,type,data,archKey);
+  else if(type==='expense') data={what:g('st-exp-what-'+sid),when:g('st-exp-when-'+sid),where:g('st-exp-where-'+sid),amount:g('st-exp-amt-'+sid),paidBy:g('st-exp-paidby-'+sid),paidUsing:g('st-exp-method-'+sid),claimed:g('st-exp-claimed-'+sid),notes:g('st-exp-notes-'+sid)};
+  // Clear form state BEFORE save so the render() inside save/update sees no open form
   delete _storyTravelForms[sid+type];
   delete _storyTravelForms[sid+type+'_edit'];
+  if(editId) updateStoryTravel(sec,sid,editId,data,archKey);
+  else addStoryTravel(sec,sid,type,data,archKey);
 }
 function buildStoryTravelFormHTML(sec,sid,type,editData,archKey){
   const ak=archKey?`'${archKey}'`:'null';
@@ -4088,21 +4217,29 @@ function buildStoryTravelFormHTML(sec,sid,type,editData,archKey){
   const eid=editData?.id||'';
   const lbl={cab:'Cab',flight:'Flight',hotel:'Hotel',expense:'Expense'};
   const ico={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳'};
+  // Normalise stored datetime-local value → strip seconds/ms/tz so input pre-fills correctly
+  const normDT=v=>{ if(!v) return ''; const s=String(v); if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) return s; try{ const d=new Date(s); if(isNaN(d)) return ''; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }catch(e){ return ''; } };
+  // Normalise stored date value → YYYY-MM-DD
+  const normD=v=>{ if(!v) return ''; const s=String(v); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; try{ const d=new Date(s); if(isNaN(d)) return ''; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }catch(e){ return ''; } };
   const inp=(l,id,v,ph,tp)=>`<div class="fgroup"><label class="flabel">${l}</label><input class="finput" type="${tp||'text'}" id="${id}" value="${esc(v||'')}" placeholder="${ph||''}"></div>`;
   const sel=(l,id,opts)=>`<div class="fgroup"><label class="flabel">${l}</label><select class="fselect" id="${id}">${opts}</select></div>`;
   const forInp=(v,pfx)=>`<div class="fgroup"><label class="flabel">For (Employee)</label><input class="finput" list="dl-staff-all" id="${pfx}-${sid}" value="${esc(v||'')}" placeholder="Select or type name" autocomplete="off"></div>`;
   const ta=(l,id,v)=>`<div class="fgroup full"><label class="flabel">${l}</label><textarea class="ftextarea" id="${id}" style="min-height:40px">${esc(v||'')}</textarea></div>`;
+  const payOpts=(cur)=>['cash','upi','bbc-direct','account','unpaid','other'].map(v=>{
+    const lbl={cash:'Cash',upi:'UPI',['bbc-direct']:'BBC Direct','account':'On Account','unpaid':'Unpaid','other':'Other'}[v]||v;
+    return `<option value="${v}"${cur===v?' selected':''}>${lbl}</option>`;
+  }).join('');
   let f='';
-  if(type==='cab') f=forInp(ed.forName,'st-cab-for')+inp('From','st-cab-from-'+sid,ed.from,'Pickup')+inp('To','st-cab-to-'+sid,ed.to,'Drop')+inp('When','st-cab-when-'+sid,ed.when,'','datetime-local')+inp('Driver','st-cab-driver-'+sid,ed.driver)+inp('Phone','st-cab-phone-'+sid,ed.phone)+inp('Cab No.','st-cab-num-'+sid,ed.cabNum)+ta('Notes','st-cab-notes-'+sid,ed.notes);
-  else if(type==='flight') f=forInp(ed.forName,'st-flt-for')+sel('Direction','st-flt-dir-'+sid,`<option value="outbound"${ed.direction!=='return'?' selected':''}>Outbound</option><option value="return"${ed.direction==='return'?' selected':''}>Return</option>`)+inp('From','st-flt-from-'+sid,ed.from,'Departure')+inp('To','st-flt-to-'+sid,ed.to,'Arrival')+inp('When','st-flt-when-'+sid,ed.when,'','datetime-local')+inp('Airline','st-flt-airline-'+sid,ed.airline)+inp('Flight No.','st-flt-num-'+sid,ed.flightNum,'e.g. AI202')+ta('Notes','st-flt-notes-'+sid,ed.notes);
-  else if(type==='hotel') f=forInp(ed.forName,'st-htl-for')+inp('Hotel Name','st-htl-name-'+sid,ed.hotelName)+inp('City/Location','st-htl-where-'+sid,ed.where)+inp('Check-in','st-htl-ci-'+sid,ed.checkIn,'','date')+inp('Check-out','st-htl-co-'+sid,ed.checkOut,'','date')+inp('Price/day','st-htl-price-'+sid,ed.priceDay,'₹ or £')+sel('Payment','st-htl-pay-'+sid,`<option value="paid"${ed.payment==='paid'?' selected':''}>Paid</option><option value="counter"${ed.payment==='counter'?' selected':''}>At counter</option>`)+ta('Notes','st-htl-notes-'+sid,ed.notes);
-  else if(type==='expense') f=inp('What','st-exp-what-'+sid,ed.what)+inp('When','st-exp-when-'+sid,ed.when,'','date')+inp('Where','st-exp-where-'+sid,ed.where,'Vendor/location')+inp('Amount','st-exp-amt-'+sid,ed.amount,'₹ or £')+`<div class="fgroup"><label class="flabel">Paid By</label><input class="finput" list="dl-staff-all" id="st-exp-paidby-${sid}" value="${esc(ed.paidBy||'')}" placeholder="Name" autocomplete="off"></div>`+sel('Paid Using','st-exp-method-'+sid,['cash','card','upi','other'].map(v=>`<option value="${v}"${ed.paidUsing===v?' selected':''}>${v[0].toUpperCase()+v.slice(1)}</option>`).join(''))+ta('Notes','st-exp-notes-'+sid,ed.notes);
+  if(type==='cab') f=forInp(ed.forName,'st-cab-for')+inp('From','st-cab-from-'+sid,ed.from,'Pickup location')+inp('To','st-cab-to-'+sid,ed.to,'Drop-off location')+inp('Pick-up time','st-cab-when-'+sid,normDT(ed.when),'','datetime-local')+inp('Drop-off time','st-cab-dropwhen-'+sid,normDT(ed.dropWhen),'','datetime-local')+inp('Driver','st-cab-driver-'+sid,ed.driver)+inp('Phone','st-cab-phone-'+sid,ed.phone)+inp('Cab No.','st-cab-num-'+sid,ed.cabNum)+sel('Payment','st-cab-pay-'+sid,payOpts(ed.payment))+ta('Notes','st-cab-notes-'+sid,ed.notes);
+  else if(type==='flight') f=forInp(ed.forName,'st-flt-for')+sel('Direction','st-flt-dir-'+sid,`<option value="outbound"${ed.direction!=='return'?' selected':''}>Outbound</option><option value="return"${ed.direction==='return'?' selected':''}>Return</option>`)+inp('From','st-flt-from-'+sid,ed.from,'Departure airport')+inp('To','st-flt-to-'+sid,ed.to,'Arrival airport')+inp('When','st-flt-when-'+sid,normDT(ed.when),'','datetime-local')+inp('Airline','st-flt-airline-'+sid,ed.airline)+inp('Flight No.','st-flt-num-'+sid,ed.flightNum,'e.g. AI202')+sel('Payment','st-flt-pay-'+sid,payOpts(ed.flightPayment))+ta('Notes','st-flt-notes-'+sid,ed.notes);
+  else if(type==='hotel') f=forInp(ed.forName,'st-htl-for')+inp('Hotel Name','st-htl-name-'+sid,ed.hotelName)+inp('City/Location','st-htl-where-'+sid,ed.where)+inp('Check-in','st-htl-ci-'+sid,normD(ed.checkIn),'','date')+inp('Check-out','st-htl-co-'+sid,normD(ed.checkOut),'','date')+inp('Price/day','st-htl-price-'+sid,ed.priceDay,'₹ or £')+sel('Payment','st-htl-pay-'+sid,payOpts(ed.payment))+ta('Notes','st-htl-notes-'+sid,ed.notes);
+  else if(type==='expense') f=inp('What','st-exp-what-'+sid,ed.what)+inp('When','st-exp-when-'+sid,normD(ed.when),'','date')+inp('Where','st-exp-where-'+sid,ed.where,'Vendor/location')+inp('Amount','st-exp-amt-'+sid,ed.amount,'₹ or £')+`<div class="fgroup"><label class="flabel">Paid By</label><input class="finput" list="dl-staff-all" id="st-exp-paidby-${sid}" value="${esc(ed.paidBy||'')}" placeholder="Name" autocomplete="off"></div>`+sel('Paid Using','st-exp-method-'+sid,payOpts(ed.paidUsing))+sel('Expense Claimed','st-exp-claimed-'+sid,`<option value="no"${(ed.claimed==='no'||!ed.claimed)?' selected':''}>Not claimed</option><option value="yes"${ed.claimed==='yes'?' selected':''}>Claimed</option>`)+ta('Notes','st-exp-notes-'+sid,ed.notes);
   return`<div class="note-add-form" style="border-color:var(--upcoming);margin:8px 0" onclick="event.stopPropagation()">
     <div style="font-size:12px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ico[type]} ${eid?'Edit':'Add'} ${lbl[type]}</div>
     <div class="form-grid">${f}</div>
     <div style="display:flex;gap:7px;margin-top:8px">
       <button class="btn btn-accent btn-sm" onclick="submitStoryTravelForm('${sec}','${sid}','${type}','${eid}',${ak});event.stopPropagation()">Save</button>
-      <button class="btn btn-ghost btn-sm" onclick="delete _storyTravelForms['${sid+type}'];delete _storyTravelForms['${sid+type}_edit'];render();event.stopPropagation()">Cancel</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeTravelForm('${sid}','${type}');event.stopPropagation()">Cancel</button>
     </div>
   </div>`;
 }
@@ -4116,10 +4253,10 @@ function buildStoryTravelHTML(sec,s,archKey){
   const fld=(l,v)=>v?`<div><div class="cfield-label">${l}</div><div class="cfield-value">${esc(v)}</div></div>`:'';
   let h=`<div class="travel-wrap" style="display:block" onclick="event.stopPropagation()">
     <div class="travel-add-bar">
-      <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}cab']='new';render();event.stopPropagation()">🚕 +Cab</button>
-      <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}flight']='new';render();event.stopPropagation()">✈️ +Flight</button>
-      <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}hotel']='new';render();event.stopPropagation()">🏨 +Hotel</button>
-      <button class="btn btn-ghost btn-sm" onclick="_storyTravelForms['${s.id}expense']='new';render();event.stopPropagation()">💳 +Expense</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','cab');event.stopPropagation()">🚕 +Cab</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','flight');event.stopPropagation()">✈️ +Flight</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','hotel');event.stopPropagation()">🏨 +Hotel</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','expense');event.stopPropagation()">💳 +Expense</button>
       ${travel.length?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="exportTravelTxt('${sec}','${s.id}',${ak});event.stopPropagation()" title="Download travel details as text file">⬇ Export</button>`:''}
     </div>`;
   ['cab','flight','hotel','expense'].forEach(t=>{
@@ -4131,25 +4268,27 @@ function buildStoryTravelHTML(sec,s,archKey){
     if(_storyTravelForms[ek]===e.id){h+=buildStoryTravelFormHTML(sec,s.id,e.type,e,archKey);return;}
     const d=e.data||{};
     let sum='',det='';
-    if(e.type==='cab'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.from||'')+(d.to?' → '+d.to:'');det=fld('For',d.forName)+fld('From',d.from)+fld('To',d.to)+fld('When',d.when?new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+fld('Driver',d.driver)+fld('Phone',d.phone)+fld('Cab No.',d.cabNum)+fld('Notes',d.notes);}
-    else if(e.type==='flight'){const dir=d.direction==='return'?'↩ Return':'→ Outbound';sum=(d.forName?esc(d.forName)+' · ':'')+dir+(d.from?' · '+d.from:'')+(d.to?' → '+d.to:'')+(d.flightNum?' · '+d.flightNum:'');det=fld('For',d.forName)+fld('Direction',d.direction==='return'?'Return':'Outbound')+fld('From',d.from)+fld('To',d.to)+fld('When',d.when?new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+fld('Airline',d.airline)+fld('Flight No.',d.flightNum)+fld('Notes',d.notes);}
-    else if(e.type==='hotel'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.hotelName||'')+(d.where?' · '+d.where:'');det=fld('For',d.forName)+fld('Hotel',d.hotelName)+fld('Location',d.where)+fld('Check-in',d.checkIn)+fld('Check-out',d.checkOut)+fld('Price/day',d.priceDay)+fld('Payment',d.payment==='counter'?'At counter':'Paid')+fld('Notes',d.notes);}
-    else if(e.type==='expense'){sum=esc(d.what||'')+(d.amount?' · '+d.amount:'')+(d.paidBy?' · Paid by '+esc(d.paidBy):'');det=fld('What',d.what)+fld('When',d.when)+fld('Where',d.where)+fld('Amount',d.amount)+fld('Paid by',d.paidBy)+fld('Method',d.paidUsing)+fld('Notes',d.notes);}
+    const fmtDT=v=>{ if(!v) return ''; try{ return new Date(v).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return v; } };
+    const fmtPay=v=>({cash:'Cash',upi:'UPI','bbc-direct':'BBC Direct',account:'On Account',unpaid:'Unpaid',paid:'Paid',other:'Other',counter:'At Counter'}[v]||v||'');
+    if(e.type==='cab'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.from||'')+(d.to?' → '+d.to:'');det=fld('For',d.forName)+fld('From',d.from)+fld('To',d.to)+fld('Pick-up',fmtDT(d.when))+fld('Drop-off',fmtDT(d.dropWhen))+fld('Driver',d.driver)+fld('Phone',d.phone)+fld('Cab No.',d.cabNum)+fld('Payment',fmtPay(d.payment))+fld('Notes',d.notes);}
+    else if(e.type==='flight'){const dir=d.direction==='return'?'↩ Return':'→ Outbound';sum=(d.forName?esc(d.forName)+' · ':'')+dir+(d.from?' · '+d.from:'')+(d.to?' → '+d.to:'')+(d.flightNum?' · '+d.flightNum:'');det=fld('For',d.forName)+fld('Direction',d.direction==='return'?'Return':'Outbound')+fld('From',d.from)+fld('To',d.to)+fld('When',fmtDT(d.when))+fld('Airline',d.airline)+fld('Flight No.',d.flightNum)+fld('Payment',fmtPay(d.flightPayment))+fld('Notes',d.notes);}
+    else if(e.type==='hotel'){sum=(d.forName?esc(d.forName)+' · ':'')+esc(d.hotelName||'')+(d.where?' · '+d.where:'');det=fld('For',d.forName)+fld('Hotel',d.hotelName)+fld('Location',d.where)+fld('Check-in',d.checkIn)+fld('Check-out',d.checkOut)+fld('Price/day',d.priceDay)+fld('Payment',fmtPay(d.payment))+fld('Notes',d.notes);}
+    else if(e.type==='expense'){sum=esc(d.what||'')+(d.amount?' · '+d.amount:'')+(d.paidBy?' · Paid by '+esc(d.paidBy):'')+(d.claimed==='yes'?' · ✅ Claimed':' · ⏳ Not claimed');det=fld('What',d.what)+fld('When',d.when)+fld('Where',d.where)+fld('Amount',d.amount)+fld('Paid by',d.paidBy)+fld('Method',fmtPay(d.paidUsing))+fld('Claimed',d.claimed==='yes'?'✅ Yes':'⏳ Not yet')+fld('Notes',d.notes);}
     const isOpen=_storyTravelOpen[e.id];
     h+=`<div class="travel-segment ${tcls[e.type]}">
-      <div class="travel-seg-head" onclick="_storyTravelOpen['${e.id}']=!_storyTravelOpen['${e.id}'];render();event.stopPropagation()">
+      <div class="travel-seg-head" onclick="toggleTravelSeg('${e.id}');event.stopPropagation()">
         <span class="travel-type-badge ${bcls[e.type]}">${ico[e.type]} ${tlbl[e.type]}</span>
         <span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 6px">${sum||'(no details)'}</span>
         <div style="display:flex;gap:3px;flex-shrink:0" onclick="event.stopPropagation()">
           <button class="btn btn-ghost btn-xs" onclick="moveStoryTravel('${sec}','${s.id}','${e.id}','up',${ak});event.stopPropagation()" title="Move up">↑</button>
           <button class="btn btn-ghost btn-xs" onclick="moveStoryTravel('${sec}','${s.id}','${e.id}','down',${ak});event.stopPropagation()" title="Move down">↓</button>
           <button class="btn btn-ghost btn-xs" onclick="copyStoryTravelTo('${sec}','${s.id}','${e.id}',${ak});event.stopPropagation()" title="Copy for another person">⎘</button>
-          <button class="btn btn-ghost btn-xs" onclick="_storyTravelForms['${s.id+e.type}_edit']='${e.id}';render();event.stopPropagation()">✏</button>
+          <button class="btn btn-ghost btn-xs" onclick="openTravelEditForm('${s.id}','${e.type}','${e.id}');event.stopPropagation()">✏</button>
           <button class="btn btn-ghost btn-xs btn-danger" onclick="deleteStoryTravel('${sec}','${s.id}','${e.id}',${ak});event.stopPropagation()">🗑</button>
         </div>
-        <span style="font-size:11px;color:var(--text3);margin-left:4px">${isOpen?'▾':'▸'}</span>
+        <span id="tsa-${e.id}" style="font-size:11px;color:var(--text3);margin-left:4px">${isOpen?'▾':'▸'}</span>
       </div>
-      ${isOpen?`<div class="card-fields" style="margin-top:6px">${det}</div>`:''}
+      <div id="tsd-${e.id}" class="card-fields" style="margin-top:6px;display:${isOpen?'block':'none'}">${det}</div>
     </div>`;
   });
   h+=`</div>`;
@@ -4197,9 +4336,11 @@ function exportTravelTxt(sec, storyId, archKey){
 
       if(e.type==='cab'){
         if(d.from||d.to)    ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → ')));
-        if(d.when)           ln.push(pad('  When',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+        if(d.when)           ln.push(pad('  Pick-up',new Date(d.when).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
+        if(d.dropWhen)       ln.push(pad('  Drop-off',new Date(d.dropWhen).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})));
         if(d.driver)         ln.push(pad('  Driver',d.driver+(d.phone?' ('+d.phone+')':'')));
         if(d.cabNum)         ln.push(pad('  Cab No.',d.cabNum));
+        if(d.payment)        ln.push(pad('  Payment',d.payment));
         if(d.notes)          ln.push(pad('  Notes',d.notes));
       } else if(e.type==='flight'){
         if(d.direction)      ln.push(pad('  Direction',d.direction==='return'?'Return':'Outbound'));
@@ -4687,6 +4828,7 @@ function renderTodayHTML(){
   html+=renderRemarksAccordion();
   html+=renderMeetingsSection();
   html+=renderLeavesSection();
+  html+=renderTravelSection();
   return html;
 }
 
@@ -5158,7 +5300,19 @@ function renderAccordion(sec,archKey){
       <span class="acc-icon">${sec.icon}</span>
       <span class="acc-name">${esc(displayName)}</span>
       ${secObj.renameable&&!archKey?`<button class="btn btn-ghost btn-xs" style="flex-shrink:0;padding:2px 7px;font-size:10px;color:var(--text3)" onclick="event.stopPropagation();startRename('${sec.key}')" title="Rename section">✏ Rename</button>`:''}
-      <span class="acc-summary">${(()=>{ const eligible=activeStories.filter(s=>s.status!=='on-hold'&&s.status!=='completed'&&s.status!=='not-done'&&s.status!=='shelved'); if(!eligible.length)return ''; eligible.sort((a,b)=>(b.created||0)-(a.created||0)); return esc(eligible[0].title||''); })()}</span>
+      <span class="acc-summary">${(()=>{
+  const today=todayStr();
+  if(sec.key==='upcoming'||secObj.isUpcoming){
+    const eligible=activeStories.filter(s=>s.expected_date&&s.expected_date>=today&&s.status!=='completed'&&s.status!=='on-hold');
+    if(!eligible.length) return '';
+    eligible.sort((a,b)=>a.expected_date.localeCompare(b.expected_date));
+    return esc(eligible[0].title||'');
+  }
+  const eligible=activeStories.filter(s=>s.status!=='on-hold'&&s.status!=='completed'&&s.status!=='not-done'&&s.status!=='shelved');
+  if(!eligible.length) return '';
+  eligible.sort((a,b)=>(b.created||0)-(a.created||0));
+  return esc(eligible[0].title||'');
+})()}</span>
       <div class="acc-meta">
         ${activeStories.length?`<span class="sbadge sb-in-progress">${activeStories.length} pending</span>`:''}
       </div>
@@ -7594,6 +7748,525 @@ function renderLeavesSection(){
   return accHeaderL+html+'</div></div>';
 }
 
+/* ════════════════════════════════════════
+   TRAVEL & EXPENSES ACCORDION
+   Collects entries from all Field stories/requests
+════════════════════════════════════════ */
+let ui_travelFilter='all'; // 'all','cab','flight','hotel','expense','unpaid'
+let ui_travelHighlight=null; // storyId to highlight/scroll to
+
+// claimed lives at e.data.claimed (story entries) or e.claimed (general entries)
+function _getClaimed(e){ return e.data?.claimed||e.claimed||'no'; }
+
+function _getTravelStories(){
+  // Field stories from ibu, other, and requests — live board only
+  if(!state.travelDismissed) state.travelDismissed=[];
+  const out=[];
+  ['ibu','other','requests'].forEach(sec=>{
+    (state.sections[sec]||[]).forEach(s=>{
+      if(s.location==='Field'||s.location==='field') out.push({sec,s});
+    });
+  });
+  return out;
+}
+function _getTravelStoriesVisible(){
+  if(!state.travelDismissed) state.travelDismissed=[];
+  return _getTravelStories().filter(({s})=>!state.travelDismissed.includes(s.id));
+}
+function _getTravelStoriesDismissed(){
+  if(!state.travelDismissed) state.travelDismissed=[];
+  return _getTravelStories().filter(({s})=>state.travelDismissed.includes(s.id));
+}
+function dismissTravelStory(storyId){
+  if(!state.travelDismissed) state.travelDismissed=[];
+  if(!state.travelDismissed.includes(storyId)) state.travelDismissed.push(storyId);
+  saveLocal();
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
+}
+function restoreTravelStory(storyId){
+  if(!state.travelDismissed) state.travelDismissed=[];
+  state.travelDismissed=state.travelDismissed.filter(id=>id!==storyId);
+  saveLocal();
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
+}
+
+function jumpToTravel(storyId){
+  ui_travelHighlight=storyId;
+  ui.openSections.add('travel');
+  render();
+  setTimeout(()=>{
+    const el=document.getElementById('acc-travel');
+    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(()=>{
+      const grp=document.getElementById('tgrp-'+storyId);
+      if(grp) grp.scrollIntoView({behavior:'smooth',block:'nearest'});
+      // Clear highlight after a moment
+      setTimeout(()=>{ ui_travelHighlight=null; },1500);
+    },300);
+  },80);
+}
+
+function setTravelFilter(f){
+  ui_travelFilter=f;
+  const body=document.getElementById('acc-body-travel'); if(!body) return;
+  body.innerHTML=_renderTravelBody();
+}
+
+let ui_travelAddForm=false; // is the standalone add form open?
+
+function addGeneralTravel(data){
+  if(!state.generalTravel) state.generalTravel=[];
+  state.generalTravel.push({id:genId(),...data,created:Date.now()});
+  saveLocal();
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
+}
+function updateGeneralTravel(eid,data){
+  if(!state.generalTravel) return;
+  const i=state.generalTravel.findIndex(e=>e.id===eid);
+  if(i>=0){ state.generalTravel[i]={...state.generalTravel[i],...data}; saveLocal(); }
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
+}
+function deleteGeneralTravel(eid){
+  if(!state.generalTravel) return;
+  state.generalTravel=state.generalTravel.filter(e=>e.id!==eid);
+  saveLocal();
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
+}
+function submitGeneralTravelForm(editId){
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  const type=g('gt-type');
+  if(!type){ toast('Select a type'); return; }
+  const tripName=g('gt-trip').trim();
+  const storyLink=g('gt-story').trim()||null;
+  let data={};
+  const normDT=v=>{ if(!v) return ''; try{ const d=new Date(v); if(isNaN(d)) return v; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }catch(e){return v;} };
+  const normD=v=>{ if(!v) return ''; const s=String(v); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; try{ const d=new Date(s); if(isNaN(d)) return v; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }catch(e){return v;} };
+  if(type==='cab') data={forName:g('gt-for'),from:g('gt-from'),to:g('gt-to'),when:normDT(g('gt-when')),dropWhen:normDT(g('gt-dropwhen')),driver:g('gt-driver'),phone:g('gt-phone'),cabNum:g('gt-cabnum'),payment:g('gt-payment'),notes:g('gt-notes')};
+  else if(type==='flight') data={forName:g('gt-for'),direction:g('gt-dir'),from:g('gt-from'),to:g('gt-to'),when:normDT(g('gt-when')),airline:g('gt-airline'),flightNum:g('gt-flightnum'),flightPayment:g('gt-payment'),notes:g('gt-notes')};
+  else if(type==='hotel') data={forName:g('gt-for'),hotelName:g('gt-hotel'),where:g('gt-where'),checkIn:normD(g('gt-checkin')),checkOut:normD(g('gt-checkout')),priceDay:g('gt-price'),payment:g('gt-payment'),notes:g('gt-notes')};
+  else if(type==='expense') data={what:g('gt-what'),when:normD(g('gt-when')),where:g('gt-where'),amount:g('gt-amount'),paidBy:g('gt-paidby'),paidUsing:g('gt-payment'),claimed:g('gt-claimed'),notes:g('gt-notes')};
+  const entry={type,tripName,storyLink,...data};
+  if(editId) updateGeneralTravel(editId,entry);
+  else addGeneralTravel(entry);
+  ui_travelAddForm=false;
+  const tb=document.getElementById('acc-body-travel');
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_renderTravelBody();
+}
+function _renderGeneralTravelForm(editEntry){
+  const ed=editEntry||{};
+  const allStories=_getTravelStories();
+  const storyOptions=allStories.map(({s})=>`<option value="${s.id}"${ed.storyLink===s.id?' selected':''}>${esc((s.title||'').slice(0,40))}</option>`).join('');
+  const payOpts=(cur)=>['cash','upi','bbc-direct','account','unpaid','other'].map(v=>{
+    const l={cash:'Cash',upi:'UPI','bbc-direct':'BBC Direct',account:'On Account',unpaid:'Unpaid',other:'Other'}[v]||v;
+    return `<option value="${v}"${cur===v?' selected':''}>${l}</option>`;
+  }).join('');
+  const typeVal=ed.type||'';
+  // Dynamic fields based on type selection — rendered once, shown/hidden via JS
+  return`<div style="background:var(--surface2);border:1.5px solid var(--accent);border-radius:9px;padding:14px;margin-bottom:14px" onclick="event.stopPropagation()">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)">${editEntry?'✏ Edit Entry':'+ New Entry'}</div>
+    <div class="form-grid">
+      <div class="fgroup"><label class="flabel">Type *</label>
+        <select class="fselect" id="gt-type" onchange="(function(){const t=document.getElementById('gt-type').value;['gt-cab-fields','gt-flight-fields','gt-hotel-fields','gt-expense-fields'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});const show=document.getElementById('gt-'+t+'-fields');if(show)show.style.display='contents';})()">
+          <option value="">— select —</option>
+          <option value="cab"${typeVal==='cab'?' selected':''}>🚕 Cab</option>
+          <option value="flight"${typeVal==='flight'?' selected':''}>✈️ Flight</option>
+          <option value="hotel"${typeVal==='hotel'?' selected':''}>🏨 Hotel</option>
+          <option value="expense"${typeVal==='expense'?' selected':''}>💳 Expense</option>
+        </select>
+      </div>
+      <div class="fgroup"><label class="flabel">Trip / Reference</label><input class="finput" id="gt-trip" placeholder="e.g. Firozabad trip, Delhi recce" value="${esc(ed.tripName||'')}"></div>
+      <div class="fgroup full"><label class="flabel">Link to story <span class="flabel-hint">(optional)</span></label>
+        <select class="fselect" id="gt-story">
+          <option value="">— General / Unlinked —</option>
+          ${storyOptions}
+        </select>
+      </div>
+      <!-- Shared for-name -->
+      <div class="fgroup" id="gt-for-wrap" style="display:${typeVal&&typeVal!=='expense'?'flex':'none'};flex-direction:column;gap:4px"><label class="flabel">For (Employee)</label><input class="finput" list="dl-staff-all" id="gt-for" placeholder="Name" value="${esc(ed.forName||'')}" autocomplete="off"></div>
+      <!-- Cab fields -->
+      <div id="gt-cab-fields" style="display:${typeVal==='cab'?'contents':'none'}">
+        <div class="fgroup"><label class="flabel">From</label><input class="finput" id="gt-from" placeholder="Pickup" value="${esc(ed.from||'')}"></div>
+        <div class="fgroup"><label class="flabel">To</label><input class="finput" id="gt-to" placeholder="Drop-off" value="${esc(ed.to||'')}"></div>
+        <div class="fgroup"><label class="flabel">Pick-up time</label><input class="finput" type="datetime-local" id="gt-when" value="${esc(ed.when||'')}"></div>
+        <div class="fgroup"><label class="flabel">Drop-off time</label><input class="finput" type="datetime-local" id="gt-dropwhen" value="${esc(ed.dropWhen||'')}"></div>
+        <div class="fgroup"><label class="flabel">Driver</label><input class="finput" id="gt-driver" value="${esc(ed.driver||'')}"></div>
+        <div class="fgroup"><label class="flabel">Phone</label><input class="finput" id="gt-phone" value="${esc(ed.phone||'')}"></div>
+        <div class="fgroup"><label class="flabel">Cab No.</label><input class="finput" id="gt-cabnum" value="${esc(ed.cabNum||'')}"></div>
+        <div class="fgroup"><label class="flabel">Payment</label><select class="fselect" id="gt-payment">${payOpts(ed.payment)}</select></div>
+      </div>
+      <!-- Flight fields -->
+      <div id="gt-flight-fields" style="display:${typeVal==='flight'?'contents':'none'}">
+        <div class="fgroup"><label class="flabel">Direction</label><select class="fselect" id="gt-dir"><option value="outbound"${ed.direction!=='return'?' selected':''}>Outbound</option><option value="return"${ed.direction==='return'?' selected':''}>Return</option></select></div>
+        <div class="fgroup"><label class="flabel">From</label><input class="finput" id="gt-from" placeholder="Departure" value="${esc(ed.from||'')}"></div>
+        <div class="fgroup"><label class="flabel">To</label><input class="finput" id="gt-to" placeholder="Arrival" value="${esc(ed.to||'')}"></div>
+        <div class="fgroup"><label class="flabel">When</label><input class="finput" type="datetime-local" id="gt-when" value="${esc(ed.when||'')}"></div>
+        <div class="fgroup"><label class="flabel">Airline</label><input class="finput" id="gt-airline" value="${esc(ed.airline||'')}"></div>
+        <div class="fgroup"><label class="flabel">Flight No.</label><input class="finput" id="gt-flightnum" placeholder="e.g. AI202" value="${esc(ed.flightNum||'')}"></div>
+        <div class="fgroup"><label class="flabel">Payment</label><select class="fselect" id="gt-payment">${payOpts(ed.flightPayment)}</select></div>
+      </div>
+      <!-- Hotel fields -->
+      <div id="gt-hotel-fields" style="display:${typeVal==='hotel'?'contents':'none'}">
+        <div class="fgroup"><label class="flabel">Hotel Name</label><input class="finput" id="gt-hotel" value="${esc(ed.hotelName||'')}"></div>
+        <div class="fgroup"><label class="flabel">City / Location</label><input class="finput" id="gt-where" value="${esc(ed.where||'')}"></div>
+        <div class="fgroup"><label class="flabel">Check-in</label><input class="finput" type="date" id="gt-checkin" value="${esc(ed.checkIn||'')}"></div>
+        <div class="fgroup"><label class="flabel">Check-out</label><input class="finput" type="date" id="gt-checkout" value="${esc(ed.checkOut||'')}"></div>
+        <div class="fgroup"><label class="flabel">Price/day</label><input class="finput" id="gt-price" placeholder="₹ or £" value="${esc(ed.priceDay||'')}"></div>
+        <div class="fgroup"><label class="flabel">Payment</label><select class="fselect" id="gt-payment">${payOpts(ed.payment)}</select></div>
+      </div>
+      <!-- Expense fields -->
+      <div id="gt-expense-fields" style="display:${typeVal==='expense'?'contents':'none'}">
+        <div class="fgroup"><label class="flabel">What</label><input class="finput" id="gt-what" value="${esc(ed.what||'')}"></div>
+        <div class="fgroup"><label class="flabel">When</label><input class="finput" type="date" id="gt-when" value="${esc(ed.when||'')}"></div>
+        <div class="fgroup"><label class="flabel">Where</label><input class="finput" id="gt-where" placeholder="Vendor/location" value="${esc(ed.where||'')}"></div>
+        <div class="fgroup"><label class="flabel">Amount</label><input class="finput" id="gt-amount" placeholder="₹ or £" value="${esc(ed.amount||'')}"></div>
+        <div class="fgroup"><label class="flabel">Paid By</label><input class="finput" list="dl-staff-all" id="gt-paidby" placeholder="Name" value="${esc(ed.paidBy||'')}" autocomplete="off"></div>
+        <div class="fgroup"><label class="flabel">Paid Using</label><select class="fselect" id="gt-payment">${payOpts(ed.paidUsing)}</select></div>
+        <div class="fgroup"><label class="flabel">Expense Claimed</label><select class="fselect" id="gt-claimed"><option value="no"${(ed.claimed==='no'||!ed.claimed)?' selected':''}>Not claimed</option><option value="yes"${ed.claimed==='yes'?' selected':''}>Claimed</option></select></div>
+      </div>
+      <div class="fgroup full"><label class="flabel">Notes</label><textarea class="ftextarea" id="gt-notes" style="min-height:40px">${esc(ed.notes||'')}</textarea></div>
+    </div>
+    <div style="display:flex;gap:7px;margin-top:10px">
+      <button class="btn btn-accent btn-sm" onclick="submitGeneralTravelForm('${ed.id||''}')">Save</button>
+      <button class="btn btn-ghost btn-sm" onclick="ui_travelAddForm=false;const tb=document.getElementById('acc-body-travel');if(tb)tb.innerHTML=_renderTravelBody()">Cancel</button>
+    </div>
+  </div>`;
+}
+
+function _renderTravelBody(){
+  // Sort visible stories by deadline proximity
+  const stories=_getTravelStoriesVisible().sort((a,b)=>{
+    const da=a.s.deadline_date||'9999-99-99';
+    const db=b.s.deadline_date||'9999-99-99';
+    return da.localeCompare(db);
+  });
+  const dismissed=_getTravelStoriesDismissed();
+  const f=ui_travelFilter;
+  const today=todayStr();
+  const fmtDT=v=>{ if(!v) return '—'; try{ return new Date(v).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return v; } };
+  const fmtPay=v=>({cash:'Cash',upi:'UPI','bbc-direct':'BBC Direct',account:'On Account',unpaid:'Unpaid',paid:'Paid',other:'Other',counter:'At Counter'}[v]||v||'—');
+  const typeCol={cab:'#D97706',flight:'#2563EB',hotel:'#7C3AED',expense:'#DC2626'};
+  const typeBg={cab:'rgba(217,119,6,.09)',flight:'rgba(37,99,235,.07)',hotel:'rgba(124,58,237,.09)',expense:'rgba(220,38,38,.08)'};
+  const typeBd={cab:'rgba(217,119,6,.3)',flight:'rgba(37,99,235,.25)',hotel:'rgba(124,58,237,.3)',expense:'rgba(220,38,38,.25)'};
+  const ico={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳'};
+  const lbl={cab:'Cab',flight:'Flight',hotel:'Hotel',expense:'Expense'};
+
+  // Filter chips + toolbar
+  let html=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">`;
+  ['all','cab','flight','hotel','expense','unpaid','unclaimed'].forEach(v=>{
+    const label={all:'All',cab:'🚕 Cab',flight:'✈️ Flight',hotel:'🏨 Hotel',expense:'💳 Expense',unpaid:'⚠ Unpaid',unclaimed:'⏳ Not claimed'}[v];
+    const active=ui_travelFilter===v;
+    html+=`<button onclick="setTravelFilter('${v}')" style="padding:4px 11px;border-radius:20px;border:1px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent)':'transparent'};color:${active?'#fff':'var(--text2)'};font-size:11.5px;cursor:pointer;font-family:var(--font);transition:all .15s">${label}</button>`;
+  });
+  html+=`<button onclick="doEmailTravel()" style="margin-left:auto;padding:5px 10px;font-size:11.5px;border:1px solid var(--border);border-radius:7px;background:transparent;cursor:pointer;color:var(--text2);font-family:var(--font)">✉ Email</button>`;
+  html+=`<button onclick="doExportTravelTxt()" style="padding:5px 10px;font-size:11.5px;border:1px solid var(--border);border-radius:7px;background:transparent;cursor:pointer;color:var(--text2);font-family:var(--font)">⬇ Export</button>`;
+  html+=`<button onclick="ui_travelAddForm=!ui_travelAddForm;const tb=document.getElementById('acc-body-travel');if(tb)tb.innerHTML=_renderTravelBody()" class="btn btn-accent btn-sm">+ Add</button>`;
+  html+=`</div>`;
+
+  // Standalone add form
+  if(ui_travelAddForm) html+=_renderGeneralTravelForm(null);
+
+  let anyShown=false;
+  stories.forEach(({sec,s})=>{
+    const travel=(s.travel||[]);
+    const filtered=travel.filter(e=>{
+      if(f==='all') return true;
+      if(f==='unpaid') return e.data?.payment==='unpaid'||e.data?.paidUsing==='unpaid'||e.data?.flightPayment==='unpaid';
+      if(f==='unclaimed') return e.type==='expense'&&(_getClaimed(e)!=='yes');
+      return e.type===f;
+    });
+    // Show group if filter matches OR if filter is 'all' (show even empty for +Add buttons)
+    if(f!=='all'&&!filtered.length) return;
+    anyShown=true;
+    const isHighlight=ui_travelHighlight===s.id;
+    const secLabel={'ibu':'Stories','other':'Other Stories','requests':'Requests'}[sec]||sec;
+    const expenses=(s.travel||[]).filter(e=>e.type==='expense');
+    const unclaimedExp=expenses.filter(e=>(_getClaimed(e)!=='yes')).length;
+    const allExpClaimed=expenses.length>0&&unclaimedExp===0;
+    const deadlineStr=s.deadline_date?(()=>{
+      const diff=Math.round((new Date(s.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
+      const label=diff<0?'Overdue '+Math.abs(diff)+'d':diff===0?'Due today':diff===1?'Due tomorrow':'Due '+new Date(s.deadline_date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      const col=diff<0?'#B91C1C':diff<=2?'#B45309':'var(--text3)';
+      return `<span style="font-size:10.5px;color:${col};flex-shrink:0">⏰ ${label}</span>`;
+    })():'';
+    const claimBadge=allExpClaimed?`<span style="font-size:10.5px;color:var(--done);flex-shrink:0">✅ claimed</span>`:unclaimedExp?`<span style="font-size:10.5px;color:var(--progress);flex-shrink:0">⏳ ${unclaimedExp} unclaimed</span>`:'';
+    html+=`<div id="tgrp-${s.id}" style="margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;${isHighlight?'box-shadow:0 0 0 2px var(--accent);':''};transition:box-shadow .4s">`;
+    // Story header
+    html+=`<div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap">
+      <span style="font-size:13px">📡</span>
+      <span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:100px">${esc(s.title||'Untitled')}</span>
+      ${deadlineStr}
+      ${claimBadge}
+      <span style="font-size:10.5px;color:var(--text3);flex-shrink:0">${secLabel}${s.field_location?' · '+esc(s.field_location):''}</span>
+      <button onclick="dismissTravelStory('${s.id}')" title="Hide from Travel & Expenses" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0">✕ Hide</button>
+    </div>
+    <div style="padding:10px 13px">`;
+
+    // Travel entries
+    if(!filtered.length&&f==='all'){
+      html+=`<div style="font-size:12px;color:var(--text3);padding:4px 0 6px">No travel entries yet.</div>`;
+    } else {
+      filtered.forEach(e=>{
+        const d=e.data||{};
+        const ak='null';
+        let sum='';
+        if(e.type==='cab') sum=esc(d.from||'')+(d.to?' → '+esc(d.to):'')+(d.when?' · '+fmtDT(d.when):'');
+        else if(e.type==='flight') sum=(d.direction==='return'?'↩ ':'→ ')+esc(d.from||'')+(d.to?' → '+esc(d.to):'')+(d.when?' · '+fmtDT(d.when):'');
+        else if(e.type==='hotel') sum=esc(d.hotelName||d.where||'')+(d.checkIn?' · '+d.checkIn:'')+(d.checkOut?'–'+d.checkOut:'');
+        else if(e.type==='expense') sum=esc(d.what||'')+(d.amount?' · '+esc(d.amount):'')+(d.claimed==='yes'?' · ✅ Claimed':' · ⏳ Not claimed');
+        const isUnpaid=d.payment==='unpaid'||d.paidUsing==='unpaid'||d.flightPayment==='unpaid';
+        const isOpen=_storyTravelOpen[e.id];
+        // Detail fields
+        const fmtDTloc=v=>{ if(!v) return ''; try{ return new Date(v).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(ex){ return v; } };
+        let det='';
+        if(e.type==='cab') det=`${d.forName?'<b>For:</b> '+esc(d.forName)+'<br>':''}${d.from?'<b>From:</b> '+esc(d.from)+'<br>':''}${d.to?'<b>To:</b> '+esc(d.to)+'<br>':''}${d.when?'<b>Pick-up:</b> '+fmtDTloc(d.when)+'<br>':''}${d.dropWhen?'<b>Drop-off:</b> '+fmtDTloc(d.dropWhen)+'<br>':''}${d.driver?'<b>Driver:</b> '+esc(d.driver)+(d.phone?' ('+esc(d.phone)+')':'')+'<br>':''}${d.cabNum?'<b>Cab No.:</b> '+esc(d.cabNum)+'<br>':''}${d.payment?'<b>Payment:</b> '+fmtPay(d.payment)+'<br>':''}${d.notes?'<br><i>'+esc(d.notes)+'</i>':''}`;
+        else if(e.type==='flight') det=`${d.forName?'<b>For:</b> '+esc(d.forName)+'<br>':''}${d.direction?'<b>Direction:</b> '+(d.direction==='return'?'Return':'Outbound')+'<br>':''}${d.from?'<b>From:</b> '+esc(d.from)+'<br>':''}${d.to?'<b>To:</b> '+esc(d.to)+'<br>':''}${d.when?'<b>When:</b> '+fmtDTloc(d.when)+'<br>':''}${d.airline?'<b>Airline:</b> '+esc(d.airline)+'<br>':''}${d.flightNum?'<b>Flight No.:</b> '+esc(d.flightNum)+'<br>':''}${d.flightPayment?'<b>Payment:</b> '+fmtPay(d.flightPayment)+'<br>':''}${d.notes?'<br><i>'+esc(d.notes)+'</i>':''}`;
+        else if(e.type==='hotel') det=`${d.forName?'<b>For:</b> '+esc(d.forName)+'<br>':''}${d.hotelName?'<b>Hotel:</b> '+esc(d.hotelName)+'<br>':''}${d.where?'<b>Location:</b> '+esc(d.where)+'<br>':''}${d.checkIn?'<b>Check-in:</b> '+esc(d.checkIn)+'<br>':''}${d.checkOut?'<b>Check-out:</b> '+esc(d.checkOut)+'<br>':''}${d.priceDay?'<b>Price/day:</b> '+esc(d.priceDay)+'<br>':''}${d.payment?'<b>Payment:</b> '+fmtPay(d.payment)+'<br>':''}${d.notes?'<br><i>'+esc(d.notes)+'</i>':''}`;
+        else if(e.type==='expense') det=`${d.what?'<b>What:</b> '+esc(d.what)+'<br>':''}${d.when?'<b>When:</b> '+esc(d.when)+'<br>':''}${d.where?'<b>Where:</b> '+esc(d.where)+'<br>':''}${d.amount?'<b>Amount:</b> '+esc(d.amount)+'<br>':''}${d.paidBy?'<b>Paid by:</b> '+esc(d.paidBy)+'<br>':''}${d.paidUsing?'<b>Method:</b> '+fmtPay(d.paidUsing)+'<br>':''}${'<b>Claimed:</b> '+(d.claimed==='yes'?'✅ Yes':'⏳ Not yet')+'<br>'}${d.notes?'<br><i>'+esc(d.notes)+'</i>':''}`;
+
+        html+=`<div style="border:1px solid var(--border);border-left:3px solid ${typeCol[e.type]};border-radius:7px;margin-bottom:5px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer" onclick="toggleTravelSeg('${e.id}');event.stopPropagation()">
+            <span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:${typeBg[e.type]};color:${typeCol[e.type]};border:.5px solid ${typeBd[e.type]};flex-shrink:0">${ico[e.type]} ${lbl[e.type]}</span>
+            <span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sum||'(no details)'}</span>
+            ${isUnpaid?`<span style="font-size:10px;font-weight:600;color:#B91C1C;flex-shrink:0">UNPAID</span>`:''}
+            <div style="display:flex;gap:3px;flex-shrink:0" onclick="event.stopPropagation()">
+              <button class="btn btn-ghost btn-xs" onclick="openTravelEditForm('${s.id}','${e.type}','${e.id}');jumpToTravel('${s.id}');event.stopPropagation()">✏</button>
+              <button class="btn btn-ghost btn-xs btn-danger" onclick="deleteStoryTravel('${sec}','${s.id}','${e.id}',null);event.stopPropagation()">🗑</button>
+            </div>
+            <span id="tsa-${e.id}" style="font-size:11px;color:var(--text3);margin-left:2px">${isOpen?'▾':'▸'}</span>
+          </div>
+          <div id="tsd-${e.id}" style="display:${isOpen?'block':'none'};padding:8px 12px 10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.8">${det}</div>
+        </div>`;
+      });
+    }
+
+    // General entries linked to this story
+    const linkedGeneral=(state.generalTravel||[]).filter(e=>e.storyLink===s.id);
+    const filteredGen=linkedGeneral.filter(e=>{
+      if(f==='all') return true;
+      if(f==='unpaid') return e.data?.payment==='unpaid'||e.paidUsing==='unpaid'||e.flightPayment==='unpaid';
+      if(f==='unclaimed') return e.type==='expense'&&(_getClaimed(e)!=='yes');
+      return e.type===f;
+    });
+    filteredGen.forEach(e=>{ html+=_renderGenEntryRow(e); });
+
+    // Add buttons for this story
+    html+=`<div style="display:flex;gap:5px;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);margin-top:4px">
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','cab');jumpToTravel('${s.id}');event.stopPropagation()">🚕 +Cab</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','flight');jumpToTravel('${s.id}');event.stopPropagation()">✈️ +Flight</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','hotel');jumpToTravel('${s.id}');event.stopPropagation()">🏨 +Hotel</button>
+      <button class="btn btn-ghost btn-sm" onclick="openTravelForm('${s.id}','expense');jumpToTravel('${s.id}');event.stopPropagation()">💳 +Expense</button>
+    </div>`;
+
+    // Inline travel add/edit form (injected here when open)
+    ['cab','flight','hotel','expense'].forEach(t=>{
+      if(_storyTravelForms[s.id+t]==='new') html+=buildStoryTravelFormHTML(sec,s.id,t,null,null);
+    });
+    const trav=s.travel||[];
+    trav.forEach(e=>{
+      const ek=s.id+e.type+'_edit';
+      if(_storyTravelForms[ek]===e.id) html+=buildStoryTravelFormHTML(sec,s.id,e.type,e,null);
+    });
+
+    html+=`</div></div>`; // close padding div + group card
+  });
+
+  // General / Unlinked group
+  const generalEntries=(state.generalTravel||[]).filter(e=>!e.storyLink);
+  const filteredGeneral=generalEntries.filter(e=>{
+    if(f==='all') return true;
+    if(f==='unpaid') return e.payment==='unpaid'||e.paidUsing==='unpaid'||e.flightPayment==='unpaid';
+    if(f==='unclaimed') return e.type==='expense'&&(_getClaimed(e)!=='yes');
+    return e.type===f;
+  });
+  if(filteredGeneral.length||(f==='all'&&generalEntries.length===0&&!anyShown)||f==='all'){
+    const genUnclaimed=generalEntries.filter(e=>e.type==='expense'&&(_getClaimed(e)!=='yes')).length;
+    const genAllClaimed=generalEntries.filter(e=>e.type==='expense').length>0&&genUnclaimed===0;
+    const genClaimBadge=genAllClaimed?`<span style="font-size:10.5px;color:var(--done);flex-shrink:0">✅ claimed</span>`:genUnclaimed?`<span style="font-size:10.5px;color:var(--progress);flex-shrink:0">⏳ ${genUnclaimed} unclaimed</span>`:'';
+    if(f==='all'||filteredGeneral.length){
+      anyShown=true;
+      html+=`<div style="margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">`;
+      html+=`<div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12);flex-wrap:wrap">
+        <span style="font-size:13px">📋</span>
+        <span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General / Unlinked</span>
+        ${genClaimBadge}
+      </div>
+      <div style="padding:10px 13px">`;
+      if(!filteredGeneral.length) html+=`<div style="font-size:12px;color:var(--text3);padding:4px 0 6px">No unlinked entries yet.</div>`;
+      else filteredGeneral.forEach(e=>{ html+=_renderGenEntryRow(e); });
+      html+=`</div></div>`;
+    }
+  }
+
+  if(!anyShown&&!dismissed.length) html+=`<div class="empty-state"><div class="empty-icon">🗺</div><div class="empty-msg">No Field stories${f!=='all'?' matching this filter':''}</div></div>`;
+  else if(!anyShown) html+=`<div class="empty-state"><div class="empty-icon">🗺</div><div class="empty-msg">No entries matching this filter</div></div>`;
+
+  // Dismissed stories section
+  if(dismissed.length){
+    html+=`<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">
+      <div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Hidden (${dismissed.length})</div>`;
+    dismissed.forEach(({s})=>{
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;opacity:.7">
+        <span style="font-size:11.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span>
+        <button onclick="restoreTravelStory('${s.id}')" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer;flex-shrink:0">↩ Show</button>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  return html;
+}
+
+function _renderGenEntryRow(e){
+  // Render a general travel entry row (same style as story-linked entries)
+  const typeCol={cab:'#D97706',flight:'#2563EB',hotel:'#7C3AED',expense:'#DC2626'};
+  const typeBg={cab:'rgba(217,119,6,.09)',flight:'rgba(37,99,235,.07)',hotel:'rgba(124,58,237,.09)',expense:'rgba(220,38,38,.08)'};
+  const typeBd={cab:'rgba(217,119,6,.3)',flight:'rgba(37,99,235,.25)',hotel:'rgba(124,58,237,.3)',expense:'rgba(220,38,38,.25)'};
+  const ico={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳'};
+  const lbl={cab:'Cab',flight:'Flight',hotel:'Hotel',expense:'Expense'};
+  const fmtDT=v=>{ if(!v) return ''; try{ return new Date(v).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(ex){ return v; } };
+  const isUnpaid=e.payment==='unpaid'||e.paidUsing==='unpaid'||e.flightPayment==='unpaid';
+  const isOpen=_storyTravelOpen[e.id];
+  let sum='',det='';
+  const fmtPay=v=>({cash:'Cash',upi:'UPI','bbc-direct':'BBC Direct',account:'On Account',unpaid:'Unpaid',paid:'Paid',other:'Other',counter:'At Counter'}[v]||v||'');
+  if(e.type==='cab') sum=esc(e.from||'')+(e.to?' → '+esc(e.to):'')+(e.when?' · '+fmtDT(e.when):'');
+  else if(e.type==='flight') sum=(e.direction==='return'?'↩ ':'→ ')+esc(e.from||'')+(e.to?' → '+esc(e.to):'')+(e.when?' · '+fmtDT(e.when):'');
+  else if(e.type==='hotel') sum=esc(e.hotelName||e.where||'')+(e.checkIn?' · '+e.checkIn:'')+(e.checkOut?'–'+e.checkOut:'');
+  else if(e.type==='expense') sum=esc(e.what||'')+(e.amount?' · '+esc(e.amount):'')+(e.claimed==='yes'?' · ✅ Claimed':' · ⏳ Not claimed');
+  if(e.tripName) sum=(sum?esc(e.tripName)+' · '+sum:esc(e.tripName));
+  if(e.type==='cab') det=`${e.forName?'<b>For:</b> '+esc(e.forName)+'<br>':''}${e.from?'<b>From:</b> '+esc(e.from)+'<br>':''}${e.to?'<b>To:</b> '+esc(e.to)+'<br>':''}${e.when?'<b>Pick-up:</b> '+fmtDT(e.when)+'<br>':''}${e.dropWhen?'<b>Drop-off:</b> '+fmtDT(e.dropWhen)+'<br>':''}${e.driver?'<b>Driver:</b> '+esc(e.driver)+(e.phone?' ('+esc(e.phone)+')':'')+'<br>':''}${e.payment?'<b>Payment:</b> '+fmtPay(e.payment)+'<br>':''}${e.notes?'<br><i>'+esc(e.notes)+'</i>':''}`;
+  else if(e.type==='flight') det=`${e.forName?'<b>For:</b> '+esc(e.forName)+'<br>':''}${e.direction?'<b>Direction:</b> '+(e.direction==='return'?'Return':'Outbound')+'<br>':''}${e.from?'<b>From:</b> '+esc(e.from)+'<br>':''}${e.to?'<b>To:</b> '+esc(e.to)+'<br>':''}${e.when?'<b>When:</b> '+fmtDT(e.when)+'<br>':''}${e.airline?'<b>Airline:</b> '+esc(e.airline)+'<br>':''}${e.flightNum?'<b>Flight No.:</b> '+esc(e.flightNum)+'<br>':''}${e.flightPayment?'<b>Payment:</b> '+fmtPay(e.flightPayment)+'<br>':''}${e.notes?'<br><i>'+esc(e.notes)+'</i>':''}`;
+  else if(e.type==='hotel') det=`${e.forName?'<b>For:</b> '+esc(e.forName)+'<br>':''}${e.hotelName?'<b>Hotel:</b> '+esc(e.hotelName)+'<br>':''}${e.where?'<b>Location:</b> '+esc(e.where)+'<br>':''}${e.checkIn?'<b>Check-in:</b> '+esc(e.checkIn)+'<br>':''}${e.checkOut?'<b>Check-out:</b> '+esc(e.checkOut)+'<br>':''}${e.priceDay?'<b>Price/day:</b> '+esc(e.priceDay)+'<br>':''}${e.payment?'<b>Payment:</b> '+fmtPay(e.payment)+'<br>':''}${e.notes?'<br><i>'+esc(e.notes)+'</i>':''}`;
+  else if(e.type==='expense') det=`${e.what?'<b>What:</b> '+esc(e.what)+'<br>':''}${e.when?'<b>When:</b> '+esc(e.when)+'<br>':''}${e.where?'<b>Where:</b> '+esc(e.where)+'<br>':''}${e.amount?'<b>Amount:</b> '+esc(e.amount)+'<br>':''}${e.paidBy?'<b>Paid by:</b> '+esc(e.paidBy)+'<br>':''}${e.paidUsing?'<b>Method:</b> '+fmtPay(e.paidUsing)+'<br>':''}${'<b>Claimed:</b> '+(e.claimed==='yes'?'✅ Yes':'⏳ Not yet')+'<br>'}${e.notes?'<br><i>'+esc(e.notes)+'</i>':''}`;
+  return`<div style="border:1px solid var(--border);border-left:3px solid ${typeCol[e.type]||'var(--border)'};border-radius:7px;margin-bottom:5px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer" onclick="toggleTravelSeg('${e.id}');event.stopPropagation()">
+      <span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:${typeBg[e.type]||'var(--surface2)'};color:${typeCol[e.type]||'var(--text2)'};border:.5px solid ${typeBd[e.type]||'var(--border)'};flex-shrink:0">${ico[e.type]||''} ${lbl[e.type]||e.type}</span>
+      <span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sum||'(no details)'}</span>
+      ${isUnpaid?`<span style="font-size:10px;font-weight:600;color:#B91C1C;flex-shrink:0">UNPAID</span>`:''}
+      <div style="display:flex;gap:3px;flex-shrink:0" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();(function(){const ed=JSON.parse(atob('${btoa(JSON.stringify(e))}'));Object.assign(ed,{id:'${e.id}'});ui_travelAddForm=false;const tb=document.getElementById('acc-body-travel');if(tb){const fh=document.createElement('div');fh.innerHTML=_renderGeneralTravelForm(ed);tb.insertBefore(fh.firstChild,tb.firstChild);}})()">✏</button>
+        <button class="btn btn-ghost btn-xs btn-danger" onclick="deleteGeneralTravel('${e.id}');event.stopPropagation()">🗑</button>
+      </div>
+      <span id="tsa-${e.id}" style="font-size:11px;color:var(--text3);margin-left:2px">${isOpen?'▾':'▸'}</span>
+    </div>
+    <div id="tsd-${e.id}" style="display:${isOpen?'block':'none'};padding:8px 12px 10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.8">${det}</div>
+  </div>`;
+}
+
+function renderTravelSection(){
+  const isOpen=ui.openSections.has('travel');
+  const allStories=_getTravelStories();
+  const today=todayStr();
+
+  // Sort all stories by deadline proximity (soonest first, no deadline last)
+  const sorted=[...allStories].sort((a,b)=>{
+    const da=a.s.deadline_date||'9999-99-99';
+    const db=b.s.deadline_date||'9999-99-99';
+    return da.localeCompare(db);
+  });
+
+  const allEntries=allStories.flatMap(({s})=>s.travel||[]);
+  const genEntries=state.generalTravel||[];
+  const allExpenses=[...allEntries,...genEntries].filter(e=>e.type==='expense');
+  const claimedCount=allExpenses.filter(e=>(_getClaimed(e)==='yes')).length;
+  const notClaimedCount=allExpenses.filter(e=>(_getClaimed(e)!=='yes')).length;
+  const unpaidCount=[...allEntries,...genEntries].filter(e=>e.data?.payment==='unpaid'||e.data?.paidUsing==='unpaid'||e.data?.flightPayment==='unpaid'||e.payment==='unpaid'||e.paidUsing==='unpaid').length;
+
+  // Summary: closest-deadline story with its claimed/unclaimed status
+  const visibleSorted=sorted.filter(({s})=>!state.travelDismissed?.includes(s.id));
+  let summary='';
+  if(visibleSorted.length){
+    const {s}=visibleSorted[0];
+    const exp=(s.travel||[]).filter(e=>e.type==='expense');
+    const unclaimed=exp.filter(e=>(_getClaimed(e)!=='yes')).length;
+    const allClaimed=exp.length>0&&unclaimed===0;
+    const deadlineStr=s.deadline_date?new Date(s.deadline_date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+    summary=esc((s.title||'').slice(0,28))+(deadlineStr?' · '+deadlineStr:'')+(allClaimed?' · ✅':unclaimed?' · ⏳ '+unclaimed+' unclaimed':'');
+  }
+
+  return`<div class="accordion${isOpen?' acc-open':''}" id="acc-travel">
+    <div class="acc-header" onclick="toggleAccordion('travel')">
+      <span class="acc-icon">🗺</span>
+      <span class="acc-name">Travel &amp; Expenses</span>
+      <span class="acc-summary">${summary}</span>
+      <div class="acc-meta">
+        ${allEntries.length?`<span class="sbadge" style="background:rgba(13,148,136,.09);color:var(--working);border:.5px solid rgba(13,148,136,.3)">${allEntries.length} entr${allEntries.length===1?'y':'ies'}</span>`:''}
+        ${notClaimedCount?`<span class="sbadge" style="background:rgba(217,119,6,.09);color:var(--progress);border:.5px solid rgba(217,119,6,.3)">⏳ ${notClaimedCount} unclaimed</span>`:''}
+        ${claimedCount&&!notClaimedCount?`<span class="sbadge" style="background:rgba(22,163,74,.09);color:var(--done);border:.5px solid rgba(22,163,74,.3)">✅ all claimed</span>`:''}
+        ${unpaidCount?`<span class="sbadge sb-urgent">${unpaidCount} unpaid</span>`:''}
+      </div>
+      <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-travel">▾</span>
+    </div>
+    <div class="acc-body${isOpen?' open':''}" id="acc-body-travel">
+      ${isOpen?_renderTravelBody():''}
+    </div>
+  </div>`;
+}
+
+function doExportTravelTxt(){
+  const stories=_getTravelStories();
+  const allEntries=stories.flatMap(({sec,s})=>(s.travel||[]).map(e=>({sec,s,e})));
+  if(!allEntries.length){ toast('No travel entries to export'); return; }
+  const hr='─'.repeat(48);
+  const fmtDT=v=>{ if(!v) return '—'; try{ return new Date(v).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(ex){ return v; } };
+  const fmtPay=v=>({cash:'Cash',upi:'UPI','bbc-direct':'BBC Direct',account:'On Account',unpaid:'Unpaid',paid:'Paid',other:'Other'}[v]||v||'');
+  const pad=(l,v)=>v?(l+':').padEnd(18)+v:'';
+  const ln=['TRAVEL & EXPENSES',hr,pad('Exported',new Date().toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})),''];
+  stories.forEach(({sec,s})=>{
+    const travel=s.travel||[]; if(!travel.length) return;
+    ln.push(''); ln.push('STORY: '+(s.title||'Untitled').toUpperCase()); ln.push(pad('  Location',s.field_location||'')); ln.push(hr);
+    travel.forEach(e=>{
+      const d=e.data||{};
+      ln.push('');
+      const icons={cab:'CAB',flight:'FLIGHT',hotel:'HOTEL',expense:'EXPENSE'};
+      ln.push('  ['+icons[e.type]+']'+(d.forName?' — '+d.forName:''));
+      if(e.type==='cab'){ if(d.from||d.to) ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → '))); if(d.when) ln.push(pad('  Pick-up',fmtDT(d.when))); if(d.dropWhen) ln.push(pad('  Drop-off',fmtDT(d.dropWhen))); if(d.driver) ln.push(pad('  Driver',d.driver+(d.phone?' ('+d.phone+')':''))); if(d.cabNum) ln.push(pad('  Cab No.',d.cabNum)); if(d.payment) ln.push(pad('  Payment',fmtPay(d.payment))); if(d.notes) ln.push(pad('  Notes',d.notes)); }
+      else if(e.type==='flight'){ if(d.direction) ln.push(pad('  Direction',d.direction==='return'?'Return':'Outbound')); if(d.from||d.to) ln.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → '))); if(d.when) ln.push(pad('  When',fmtDT(d.when))); if(d.airline) ln.push(pad('  Airline',d.airline)); if(d.flightNum) ln.push(pad('  Flight No.',d.flightNum)); if(d.flightPayment) ln.push(pad('  Payment',fmtPay(d.flightPayment))); if(d.notes) ln.push(pad('  Notes',d.notes)); }
+      else if(e.type==='hotel'){ if(d.hotelName) ln.push(pad('  Hotel',d.hotelName)); if(d.where) ln.push(pad('  Location',d.where)); if(d.checkIn) ln.push(pad('  Check-in',d.checkIn)); if(d.checkOut) ln.push(pad('  Check-out',d.checkOut)); if(d.priceDay) ln.push(pad('  Price/day',d.priceDay)); if(d.payment) ln.push(pad('  Payment',fmtPay(d.payment))); if(d.notes) ln.push(pad('  Notes',d.notes)); }
+      else if(e.type==='expense'){ if(d.what) ln.push(pad('  What',d.what)); if(d.when) ln.push(pad('  Date',d.when)); if(d.where) ln.push(pad('  Where',d.where)); if(d.amount) ln.push(pad('  Amount',d.amount)); if(d.paidBy) ln.push(pad('  Paid by',d.paidBy)); if(d.paidUsing) ln.push(pad('  Method',fmtPay(d.paidUsing))); ln.push(pad('  Claimed',d.claimed==='yes'?'Yes':'No')); if(d.notes) ln.push(pad('  Notes',d.notes)); }
+    });
+    // Expense summary per story
+    const exp=travel.filter(e=>e.type==='expense');
+    if(exp.length){ ln.push(''); ln.push('  EXPENSES'); exp.forEach(e=>{ const d=e.data||{}; ln.push('  '+[d.what||'—',d.amount||'—',d.paidBy?'by '+d.paidBy:'',d.paidUsing?'via '+fmtPay(d.paidUsing):'',d.claimed==='yes'?'[Claimed]':'[Not claimed]'].filter(Boolean).join('  ')); }); }
+  });
+  ln.push(''); ln.push(hr); ln.push('Generated by Newsroom Dashboard');
+  const blob=new Blob([ln.join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='travel-expenses-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('Travel & Expenses exported ✓');
+}
+
+function doEmailTravel(){
+  const stories=_getTravelStories();
+  const allEntries=stories.flatMap(({s})=>s.travel||[]);
+  if(!allEntries.length){ toast('No travel entries to email'); return; }
+  const hr='─'.repeat(44);
+  const fmtDT=v=>{ if(!v) return '—'; try{ return new Date(v).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(ex){ return v; } };
+  const fmtPay=v=>({cash:'Cash',upi:'UPI','bbc-direct':'BBC Direct',account:'On Account',unpaid:'Unpaid',paid:'Paid',other:'Other'}[v]||v||'');
+  const ln=['TRAVEL & EXPENSES',hr,''];
+  stories.forEach(({s})=>{
+    const travel=s.travel||[]; if(!travel.length) return;
+    ln.push((s.title||'Untitled').toUpperCase()+(s.field_location?' — '+s.field_location:''));
+    travel.forEach(e=>{
+      const d=e.data||{};
+      const icons={cab:'🚕 Cab',flight:'✈️ Flight',hotel:'🏨 Hotel',expense:'💳 Expense'};
+      let line='  '+icons[e.type]+(d.forName?' ('+d.forName+')':'');
+      if(e.type==='cab') line+=(d.from?' · '+d.from:'')+(d.to?' → '+d.to:'')+(d.when?' · '+fmtDT(d.when):'');
+      else if(e.type==='flight') line+=(d.from?' · '+d.from:'')+(d.to?' → '+d.to:'')+(d.when?' · '+fmtDT(d.when):'');
+      else if(e.type==='hotel') line+=(d.hotelName?' · '+d.hotelName:'')+(d.checkIn?' · '+d.checkIn:'')+(d.checkOut?'–'+d.checkOut:'');
+      else if(e.type==='expense') line+=(d.what?' · '+d.what:'')+(d.amount?' · '+d.amount:'')+(d.claimed==='yes'?' · ✅ Claimed':' · ⏳ Not claimed');
+      ln.push(line);
+    });
+    ln.push('');
+  });
+  sendMailto('[BBC Dashboard] Travel & Expenses — '+new Date().toLocaleDateString('en-GB'), ln.join('\n'));
+}
+
 function renderLeaveCard(l,today,isPast){
   const isOpen=ui_openLeaves.has(l.id);
   const days=leaveDays(l.dateFrom,l.dateTo);
@@ -7828,6 +8501,18 @@ function renderStoryCard(sec,s,archKey){
       </div>
       <div class="card-tags">
         ${secObj.hasWW&&!archKey?`<span class="ww-badge ww-${mode}" id="wwbadge-${s.id}" onclick="toggleWWMode('${sec}','${s.id}',${archKeyJS});event.stopPropagation()" title="Click to cycle: None → Working → Watching">${wwLabel}</span>`:''}
+        ${s.story_type?s.story_type.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="sbadge sb-story-type">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):''}
+        ${(s.location==='Field'||s.location==='field')&&!archKey&&!(state.travelDismissed||[]).includes(s.id)?(()=>{
+          const tc=(s.travel||[]).length;
+          const exp=(s.travel||[]).filter(e=>e.type==='expense');
+          const unclaimed=exp.filter(e=>(_getClaimed(e)!=='yes')).length;
+          const allClaimed=exp.length>0&&unclaimed===0;
+          const label=tc?(allClaimed?tc+' entr'+(tc===1?'y':'ies')+' · ✅':unclaimed?tc+' entr'+(tc===1?'y':'ies')+' · ⏳ '+unclaimed:tc+' entr'+(tc===1?'y':'ies')):'+ Travel';
+          const bg=allClaimed?'rgba(22,163,74,.09)':unclaimed?'rgba(217,119,6,.09)':'rgba(13,148,136,.09)';
+          const col=allClaimed?'var(--done)':unclaimed?'var(--progress)':'var(--working)';
+          const bd=allClaimed?'rgba(22,163,74,.3)':unclaimed?'rgba(217,119,6,.3)':'rgba(13,148,136,.3)';
+          return`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;background:${bg};color:${col};border:.5px solid ${bd}" onclick="jumpToTravel('${s.id}');event.stopPropagation()" title="Travel & Expenses">🗺 ${label}</span>`;
+        })():''}
         ${s.migratedAt?`<span class="migrated-tag">⇄ Migrated</span>`:''}
         ${s.autoMigratedOn?`<span class="migrated-tag">🗓 Auto-migrated ${s.autoMigratedOn}</span>`:''}
         ${(()=>{
@@ -7842,7 +8527,6 @@ function renderStoryCard(sec,s,archKey){
     <div class="card-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:80px;">
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${deadlineBadge(s)}
-      ${s.story_type?s.story_type.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="sbadge sb-story-type">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):''}
       ${(s.carriedForward&&s.status!=='completed'&&!s.deadline_date)?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
     </div>
 
@@ -7858,24 +8542,24 @@ function renderStoryCard(sec,s,archKey){
           ? s.broadcast_times.map((t,i)=>{
               const platLabel=t.plat||t.lbl||('Slot '+(i+1));
               const progStr=t.prog?` · ${t.prog}`:'';
-              const timeStr=[t.uk?`GMT ${t.uk}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
+              const timeStr=[t.uk?`${ukLabel()} ${t.uk}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
               const slotVal=[timeStr||'–',
-                t.dl_date?`⏱ ${t.dl_date}${t.dl_uk?' '+t.dl_uk+' GMT':''}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:null,
+                t.dl_date?`⏱ ${fmtDate(t.dl_date)}${t.dl_uk?' '+t.dl_uk+' '+ukLabel():''}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:null,
                 t.com_name?`👤 ${[t.com_name,t.com_team,t.com_loc].filter(Boolean).join(' · ')}`:null,
               ].filter(Boolean).join(' · ');
               return field(platLabel+progStr, slotVal);
             }).join('')
-          : (s.time_uk||s.time_ist)?field('GMT',s.time_uk)+field('IST',s.time_ist):''
+          : (s.time_uk||s.time_ist)?field(ukLabel(),s.time_uk)+field('IST',s.time_ist):''
         }
         ${s.req_name||s.req_team?field('Requested By',[s.req_name,s.req_team,s.req_location].filter(Boolean).join(' · ')):''}
       
-      ${s.deadline_date?`<div><div class="cfield-label">Deadline</div><div class="cfield-value">${esc(s.deadline_date)}${s.deadline_uk?' · '+esc(s.deadline_uk)+' '+ukLabel():''}${s.deadline_ist?' / '+esc(s.deadline_ist)+' IST':''}</div></div>`:''}
+      ${s.deadline_date?`<div><div class="cfield-label">Deadline</div><div class="cfield-value">${fmtDate(s.deadline_date)}${s.deadline_uk?' · '+esc(s.deadline_uk)+' '+ukLabel():''}${s.deadline_ist?' / '+esc(s.deadline_ist)+' IST':''}</div></div>`:''}
       ${reqTime?field('Logged At',reqTime):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
     ${s.remarks?`<div class="card-remarks" onclick="event.stopPropagation()" style="font-size:12px;color:var(--text3);font-style:italic;padding:6px 0">💬 ${esc(s.remarks)} <span style="font-size:10px;font-family:var(--mono)"></span></div>`:''}
     ${buildStoryRemarksHTML(sec,s,archKey)}
-    ${s.location==='Field'?buildStoryTravelHTML(sec,s,archKey):''}
+    ${(s.location==='Field'||s.location==='field')?buildStoryTravelHTML(sec,s,archKey):''}
     ${linksHtml}
     ${s.completion_note||s.completion_links?`<div class="completion-box"><div class="completion-label">✅ Completion Notes</div>${s.completion_note?`<div class="completion-note">${esc(s.completion_note)}</div>`:''} ${clHtml}</div>`:''}
     <div id="compl-form-${s.id}" style="display:${isComplOpen?'block':'none'}">
@@ -7911,7 +8595,9 @@ function renderStoryCard(sec,s,archKey){
           ${SECTIONS.filter(ss=>ss.key!==sec&&!ss.isUpcoming).map(ss=>`<option value="${ss.key}">${esc(secName(ss.key))}</option>`).join('')}
         </select>
       </div>
-      <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
+      <div class="card-delete-row" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
+      </div>
     </div>
   </div>
 </div>`;
@@ -7932,96 +8618,126 @@ function renderForm(sec,archKey){
   // For edit, load existing broadcast_times; for new, start with one empty slot
   const existingSlots=editStoryObj?.broadcast_times||[];
 
+  const locPlaceholder=editStoryObj?.location==='Studio'?'Which bureau or studio?':editStoryObj?.location==='Remote'?'Platform / dial-in':'City, country or address';
   return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}">
   <div class="form-title">${isEdit?'✏ Edit Story':'+ New Story'}</div>
   <div class="form-grid">
-    <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off" value="${esc(editStoryObj?.title||'')}"></div>
-    <div class="fgroup full"><label class="flabel">Description <span class="flabel-hint">(optional — shown as subtitle on card)</span></label><textarea class="ftextarea" id="f-description${sfx}" placeholder="Brief description of the story…" style="min-height:60px;resize:vertical;">${esc(editStoryObj?.description||'')}</textarea></div>
-    <div class="fgroup full">
-      <label class="flabel">Story Type <span class="flabel-hint">(select all that apply)</span></label>
-      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-        ${['TV','Radio','Social','Text'].map(t=>{
-          const vals=(editStoryObj?.story_type||'').split(',').map(x=>x.trim().toLowerCase());
-          return`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
-            <input type="checkbox" class="story-type-cb${sfx}" value="${t.toLowerCase()}" ${vals.includes(t.toLowerCase())?'checked':''} style="accent-color:var(--accent);width:14px;height:14px"> <span>${t}</span>
-          </label>`;
-        }).join('')}
+
+    <!-- ── STORY ── -->
+    <div class="fsec fs-story">
+      <div class="form-divider">Story</div>
+      <div class="fgroup full"><label class="flabel">Title / Slug *</label><input class="finput" id="f-title${sfx}" placeholder="Working title or slug…" autocomplete="off" value="${esc(editStoryObj?.title||'')}"></div>
+      <div class="fgroup full"><label class="flabel">Description <span class="flabel-hint">(optional)</span></label><textarea class="ftextarea" id="f-description${sfx}" placeholder="Brief description of the story…" style="min-height:60px;resize:vertical;">${esc(editStoryObj?.description||'')}</textarea></div>
+      <div class="fgroup full">
+        <label class="flabel">Type</label>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          ${['TV','Radio','Social','Text'].map(t=>{
+            const vals=(editStoryObj?.story_type||'').split(',').map(x=>x.trim().toLowerCase());
+            return`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)">
+              <input type="checkbox" class="story-type-cb${sfx}" value="${t.toLowerCase()}" ${vals.includes(t.toLowerCase())?'checked':''} style="accent-color:var(--accent);width:14px;height:14px"> <span>${t}</span>
+            </label>`;
+          }).join('')}
+        </div>
       </div>
     </div>
-    <div class="form-divider">People</div>
-    <div class="fgroup"><label class="flabel">Correspondent</label>
-      <div style="display:flex;gap:5px;align-items:center">
-        <input class="finput" id="f-correspondent${sfx}" placeholder="Name or leave blank" list="dl-correspondents" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.correspondent||'')}">
-        <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-correspondent${sfx}').value=''" title="Clear">✕</button>
+
+    <!-- ── PEOPLE ── -->
+    <div class="fsec fs-people">
+      <div class="form-divider">People</div>
+      <div class="fgroup"><label class="flabel">Correspondent</label>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input class="finput" id="f-correspondent${sfx}" placeholder="Name or leave blank" list="dl-correspondents" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.correspondent||'')}">
+          <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-correspondent${sfx}').value=''" title="Clear">✕</button>
+        </div>
+      </div>
+      <div class="fgroup"><label class="flabel">Producer</label>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input class="finput" id="f-producer${sfx}" placeholder="Name or leave blank" list="dl-producers" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.producer||'')}">
+          <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-producer${sfx}').value=''" title="Clear">✕</button>
+        </div>
+      </div>
+      <div class="fgroup"><label class="flabel">Shoot-Edit</label>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input class="finput" id="f-shoot-edit${sfx}" placeholder="Person or team or leave blank" list="dl-shoot" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.shoot_edit||'')}">
+          <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-shoot-edit${sfx}').value=''" title="Clear">✕</button>
+        </div>
       </div>
     </div>
-    <div class="fgroup"><label class="flabel">Producer</label>
-      <div style="display:flex;gap:5px;align-items:center">
-        <input class="finput" id="f-producer${sfx}" placeholder="Name or leave blank" list="dl-producers" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.producer||'')}">
-        <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-producer${sfx}').value=''" title="Clear">✕</button>
+
+    <!-- ── REQUEST DETAILS ── -->
+    <div class="fsec fs-req">
+      <div class="form-divider">Request Details</div>
+      <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
+      <div class="fgroup"><label class="flabel">Team</label><input class="finput" id="f-req-team${sfx}" placeholder="Team" value="${esc(editStoryObj?.req_team||'')}"></div>
+      <div class="fgroup"><label class="flabel">Location</label><input class="finput" id="f-req-location${sfx}" placeholder="City / office" value="${esc(editStoryObj?.req_location||'')}"></div>
+    </div>
+
+    <!-- ── DEADLINE ── -->
+    <div class="fsec fs-dead">
+      <div class="form-divider">Deadline</div>
+      <div class="deadline-split">
+        <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
+        <div class="fgroup dl-times-row"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+        <div class="fgroup dl-times-row"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
       </div>
     </div>
-    <div class="fgroup"><label class="flabel">Shoot-Edit</label>
-      <div style="display:flex;gap:5px;align-items:center">
-        <input class="finput" id="f-shoot-edit${sfx}" placeholder="Person or team or leave blank" list="dl-shoot" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.shoot_edit||'')}">
-        <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-shoot-edit${sfx}').value=''" title="Clear">✕</button>
+
+    <!-- ── LOCATION ── -->
+    <div class="fsec fs-loc">
+      <div class="form-divider">Location</div>
+      <div class="fgroup"><label class="flabel">Type</label>
+        <select class="fselect" id="f-location${sfx}" onchange="updateLocationPlaceholder('${sec}',${archKeyJS})">
+          <option value="">– Select –</option><option value="Studio"${editStoryObj?.location==='Studio'?' selected':''}>Studio</option><option value="Field"${editStoryObj?.location==='Field'?' selected':''}>Field</option><option value="Remote"${editStoryObj?.location==='Remote'?' selected':''}>Remote</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label class="flabel">Detail</label>
+        <input class="finput" id="f-field-location${sfx}" placeholder="${locPlaceholder}" value="${esc(editStoryObj?.field_location||'')}">
       </div>
     </div>
-    <div class="form-divider">Location</div>
-    <div class="fgroup"><label class="flabel">Location Type</label>
-      <select class="fselect" id="f-location${sfx}" onchange="showFieldRow('${sec}',${archKeyJS})">
-        <option value="">– Select –</option><option value="Studio"${editStoryObj?.location==='Studio'?' selected':''}>Studio</option><option value="Field"${editStoryObj?.location==='Field'?' selected':''}>Field</option><option value="Remote"${editStoryObj?.location==='Remote'?' selected':''}>Remote</option>
-      </select>
+
+    <!-- ── BROADCAST TIMES ── -->
+    <div class="fsec fs-bcast">
+      <div class="form-divider">Broadcast Times</div>
+      <div class="fgroup full" style="margin-bottom:0">
+        <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
+      </div>
     </div>
-    <div class="fgroup">
-      <label class="flabel">Location Detail</label>
-      <input class="finput" id="f-field-location${sfx}" placeholder="" value="${esc(editStoryObj?.field_location||'')}">
+
+    <!-- ── STATUS & REMINDER ── -->
+    <div class="fsec fs-status">
+      <div class="form-divider">Status &amp; Reminder</div>
+      <div class="fgroup"><label class="flabel">Status</label>
+        <select class="fselect" id="f-status${sfx}">
+          <option value="">– Select –</option>
+          <option value="urgent"${editStoryObj?.status==='urgent'?' selected':''}>🔴 Urgent</option>
+          <option value="in-progress"${editStoryObj?.status==='in-progress'?' selected':''}>🟡 In Progress</option>
+          <option value="completed"${editStoryObj?.status==='completed'?' selected':''}>🟢 Completed</option>
+          <option value="not-done"${editStoryObj?.status==='not-done'?' selected':''}>⚫ Not Done</option>
+          <option value="postponed"${editStoryObj?.status==='postponed'?' selected':''}>🔵 Postponed</option>
+          <option value="on-hold"${editStoryObj?.status==='on-hold'?' selected':''}>🟣 On Hold</option>
+          <option value="shelved"${editStoryObj?.status==='shelved'?' selected':''}>🗄 Shelved</option>
+        </select>
+      </div>
+      <div class="fgroup"><label class="flabel">Reminder</label>
+        <select class="fselect" id="f-reminder${sfx}">
+          <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
+        </select>
+      </div>
+      <div class="fgroup full">
+        <label class="flabel">Remarks</label>
+        ${isEdit&&editStoryObj
+          ? renderFormRemarksList(sec,editStoryObj,archKey)
+          : `<textarea class="ftextarea" id="f-remarks-new${sfx}" placeholder="Context, contacts, logistics, previous coverage…" style="min-height:72px;resize:vertical;white-space:pre-wrap"></textarea>`}
+      </div>
     </div>
-    <div id="travel-wrap${sfx}" class="fgroup full" style="display:${editStoryObj?.location==='Field'?'block':'none'}">
-      <div class="form-divider" style="margin-top:0">🗺 Travel Details</div>
-      ${editStoryObj?buildStoryTravelHTML(sec,editStoryObj,archKey):`<div style="font-size:12px;color:var(--text3);padding:4px 0">Save the story first, then reopen to add travel details.</div>`}
+
+    <!-- ── LINKS ── -->
+    <div class="fsec fs-links">
+      <div class="fgroup full"><label class="flabel">Reference Links <span class="flabel-hint">(comma-separated)</span></label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
     </div>
-    <div class="form-divider">Broadcast Times</div>
-    <div class="fgroup full" style="margin-bottom:4px">
-      <div style="font-size:10.5px;color:var(--text3);font-family:var(--font);margin-bottom:8px">Select platform and enter GMT time — IST auto-fills. Add a slot for each scheduled broadcast.</div>
-      <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
-    </div>
-    <div class="form-divider">Deadline</div>
-    <div class="deadline-split">
-      <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline time (${ukLabel()})</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline time (IST)</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
-    </div>
-    <div class="form-divider">Request Details</div>
-    <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
-    <div class="fgroup"><label class="flabel">Their Team</label><input class="finput" id="f-req-team${sfx}" placeholder="Team" value="${esc(editStoryObj?.req_team||'')}"></div>
-    <div class="fgroup"><label class="flabel">Their Location</label><input class="finput" id="f-req-location${sfx}" placeholder="City / office" value="${esc(editStoryObj?.req_location||'')}"></div>
-    <div class="form-divider">Status &amp; Reminder</div>
-    <div class="fgroup"><label class="flabel">Status</label>
-      <select class="fselect" id="f-status${sfx}">
-        <option value="">– Select –</option>
-        <option value="urgent"${editStoryObj?.status==='urgent'?' selected':''}>🔴 Urgent</option>
-        <option value="in-progress"${editStoryObj?.status==='in-progress'?' selected':''}>🟡 In Progress</option>
-        <option value="completed"${editStoryObj?.status==='completed'?' selected':''}>🟢 Completed</option>
-        <option value="not-done"${editStoryObj?.status==='not-done'?' selected':''}>⚫ Not Done</option>
-        <option value="postponed"${editStoryObj?.status==='postponed'?' selected':''}>🔵 Postponed</option>
-        <option value="on-hold"${editStoryObj?.status==='on-hold'?' selected':''}>🟣 On Hold</option>
-        <option value="shelved"${editStoryObj?.status==='shelved'?' selected':''}>🗄 Shelved</option>
-      </select>
-    </div>
-    <div class="fgroup"><label class="flabel">Reminder</label>
-      <select class="fselect" id="f-reminder${sfx}">
-        <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
-      </select>
-    </div>
-    <div class="fgroup full">
-      <label class="flabel">Remarks</label>
-      ${isEdit&&editStoryObj
-        ? renderFormRemarksList(sec,editStoryObj,archKey)
-        : `<div style="font-size:11.5px;color:var(--text3);padding:6px 0;font-family:var(--font)">Save the story first, then reopen to add remarks.</div>`}
-    </div>
-    <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
+
   </div>
   <div class="form-footer">
     <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add'}</button>
