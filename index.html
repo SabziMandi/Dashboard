@@ -868,6 +868,33 @@ body {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 7px; padding: 10px 12px; margin-bottom: 8px;
 }
+/* Option A: slot rows in expanded card body */
+.slot-rows-wrap { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.slot-row-item {
+  display:flex; align-items:center; gap:0;
+  border:.5px solid var(--border); border-radius:7px; overflow:hidden;
+  background:var(--surface);
+}
+.slot-row-accent { width:3px; align-self:stretch; flex-shrink:0; }
+.slot-row-inner { display:flex; align-items:center; gap:10px; padding:8px 12px; flex:1; flex-wrap:wrap; min-width:0; }
+.slot-row-tag { font-size:10.5px; font-weight:500; padding:2px 8px; border-radius:20px; flex-shrink:0; white-space:nowrap; }
+.slot-tag-tv     { background:rgba(22,163,74,.09);  color:#15803D; border:.5px solid rgba(22,163,74,.3); }
+.slot-tag-radio  { background:rgba(37,99,235,.09);  color:#1D4ED8; border:.5px solid rgba(37,99,235,.3); }
+.slot-tag-social { background:rgba(124,58,237,.09); color:#6D28D9; border:.5px solid rgba(124,58,237,.3); }
+.slot-tag-text   { background:rgba(180,83,9,.09);   color:#92400E; border:.5px solid rgba(180,83,9,.3); }
+.slot-tag-ip     { background:rgba(207,102,64,.09); color:#9A3412; border:.5px solid rgba(207,102,64,.3); }
+.slot-tag-other  { background:var(--surface2); color:var(--text2); border:.5px solid var(--border2); }
+.slot-row-time { font-size:12.5px; color:var(--text); font-family:var(--mono); flex-shrink:0; }
+.slot-row-prog { font-size:11.5px; color:var(--text2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.slot-row-dl   { font-size:11px; color:var(--text3); flex-shrink:0; white-space:nowrap; }
+.slot-section-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:var(--text3); margin-bottom:7px; }
+.staff-meta-row { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--text2); margin-top:5px; }
+.staff-meta-chip { display:flex; align-items:center; gap:4px; }
+@media(max-width:720px){
+  .slot-row-inner { gap:7px; padding:8px 10px; }
+  .slot-row-prog  { display:none; }
+  .slot-row-dl    { font-size:10.5px; }
+}
 
 /* Story inline remarks list */
 .story-remarks-list { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 9px; }
@@ -3933,15 +3960,12 @@ function toggleAccordion(key){
   if(opening) ui.openSections.add(key); else ui.openSections.delete(key);
   if(opening&&key==='tasks') ui_taskPage=1;
   if(opening&&(key==='ibu'||key==='upcoming')) ui_upcomingPage=1;
-  if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
+  if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]};
   const b=document.getElementById('acc-body-'+key);
   const cv=document.getElementById('acc-chev-'+key);
   const a=document.getElementById('acc-'+key);
   if(b) b.classList.toggle('open',ui.openSections.has(key));
-  if(cv){
-    if(key==='travel') cv.textContent=ui.openSections.has(key)?'▲':'▼';
-    else cv.classList.toggle('open',ui.openSections.has(key));
-  }
+  if(cv) cv.classList.toggle('open',ui.openSections.has(key));
   if(a) a.classList.toggle('acc-open',ui.openSections.has(key));
   if(key==='travel'&&opening&&b&&!b.innerHTML.trim()) b.innerHTML=_teRenderBody();
 }
@@ -7357,7 +7381,7 @@ function saveStaffNames(){
 ═══════════════════════════════════════════════════════════ */
 
 // ── UI state ──────────────────────────────────────────────
-let _te={open:false,type:'cab',storyId:null,storySec:null,editId:null}; // form state
+let _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]}; // form state
 let _teOpen={};   // entryId → expanded bool
 let _teDismissed=null; // mirror of state.travelDismissed for quick access
 
@@ -7375,7 +7399,7 @@ function _teGetStories(){
   const out=[];
   ['ibu','other','requests'].forEach(sec=>{
     (state.sections[sec]||[]).forEach(s=>{
-      if(s.location==='Field'||s.location==='field') out.push({sec,s});
+      out.push({sec,s});
     });
   });
   return out;
@@ -7419,14 +7443,16 @@ function _teRefresh(){
 
 // ── Form ──────────────────────────────────────────────────
 function _teOpenForm(opts){
-  _te={open:true,type:opts.type||'cab',storyId:opts.storyId||null,storySec:opts.storySec||null,editId:opts.editId||null};
+  const editEntry=opts.editId?(state.travelEntries||[]).find(e=>e.id===opts.editId):null;
+  const _pr=editEntry?JSON.parse(JSON.stringify(editEntry.remarks||[])):[];
+  _te={open:true,type:opts.type||'cab',storyId:opts.storyId||null,storySec:opts.storySec||null,editId:opts.editId||null,pendingRemarks:_pr};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
   else { ui.openSections.add('travel'); render(); setTimeout(()=>{ const t=document.getElementById('acc-body-travel'); if(t){ t.innerHTML=_teRenderBody(); t.classList.add('open'); } },50); }
   setTimeout(()=>document.getElementById('te-story')?.focus(),80);
 }
 function _teCloseForm(){
-  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
+  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
 }
@@ -7443,9 +7469,10 @@ function _teSubmit(){
   let storySec=null;
   if(storyId){ for(const s of SECTIONS){ if((state.sections[s.key]||[]).find(x=>x.id===storyId)){storySec=s.key;break;} } }
 
-  // Collect remarks
-  const remarkEls=document.querySelectorAll('#te-remark-list .te-rem-text');
-  const remarks=Array.from(remarkEls).map(el=>({id:el.dataset.rid||genId(),text:el.textContent||'',ts:parseInt(el.dataset.ts)||Date.now()}));
+  // Use _te.pendingRemarks directly — it is kept up to date by _teAddRemark and delete buttons.
+  // Do NOT flush from DOM; that path is unreliable and redundant.
+  if(!Array.isArray(_te.pendingRemarks)) _te.pendingRemarks=[];
+  const remarks=_te.pendingRemarks.slice(); // snapshot
 
   let data={};
   if(type==='cab') data={from:g('from'),pickDate:g('pickdate'),pickTime:g('picktime'),to:g('to'),dropDate:g('dropdate'),dropTime:g('droptime'),driver:g('driver'),phone:g('phone'),cabNum:g('cabnum'),payment:g('payment'),paidBy:g('paidby')};
@@ -7456,22 +7483,33 @@ function _teSubmit(){
   const entry={type,storyId,storySec,data,remarks};
   if(_te.editId) _teUpdate(_te.editId,entry);
   else _teAdd(entry);
-  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
+  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
 }
+
+// _te.pendingRemarks is the single source of truth for remarks during form editing.
+// DOM rows are a view only. This function is kept as a safety no-op.
+function _teFlushDOMRemarks(){ if(!Array.isArray(_te.pendingRemarks)) _te.pendingRemarks=[]; }
 
 function _teAddRemark(){
   const inp=document.getElementById('te-remark-input');
   if(!inp||!inp.value.trim()) return;
   const list=document.getElementById('te-remark-list');
   if(!list) return;
-  const rid=genId(), ts=Date.now();
+  // Safety: ensure pendingRemarks is always an array
+  if(!Array.isArray(_te.pendingRemarks)) _te.pendingRemarks=[];
+  // Remove the "No remarks yet." placeholder if present
+  const placeholder=list.querySelector('.te-rem-placeholder');
+  if(placeholder) placeholder.remove();
+  const rid=genId(), ts=Date.now(), rawText=inp.value.trim();
   const now=new Date(ts).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  // Persist to _te.pendingRemarks immediately — this is the source of truth
+  _te.pendingRemarks.push({id:rid,text:rawText,ts});
   const div=document.createElement('div');
   div.className='te-rem-row';
   div.style.cssText='display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:5px;font-size:12px';
-  div.innerHTML=`<span style="font-size:10.5px;color:var(--text3);flex-shrink:0;min-width:80px">${now}</span><span class="te-rem-text" data-rid="${rid}" data-ts="${ts}" style="flex:1;color:var(--text2);line-height:1.5">${esc(inp.value.trim())}</span><button onclick="this.closest('.te-rem-row').remove()" style="font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer">✕</button>`;
+  div.innerHTML=`<span style="font-size:10.5px;color:var(--text3);flex-shrink:0;min-width:80px">${now}</span><span class="te-rem-text" data-rid="${rid}" data-ts="${ts}" data-raw-text="${esc(rawText)}" style="flex:1;color:var(--text2);line-height:1.5">${esc(rawText)}</span><button onclick="this.closest('.te-rem-row').remove();_te.pendingRemarks=_te.pendingRemarks.filter(r=>r.id==='${rid}'?false:true)" style="font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer">✕</button>`;
   list.appendChild(div);
   inp.value=''; inp.focus();
 }
@@ -7489,7 +7527,7 @@ function _teBuildForm(){
   const type=_te.type;
   const editEntry=_te.editId?(state.travelEntries||[]).find(e=>e.id===_te.editId):null;
   const ed=editEntry?.data||{};
-  const existingRemarks=editEntry?.remarks||[];
+  const existingRemarks=Array.isArray(_te.pendingRemarks)?_te.pendingRemarks:[];
   const curStory=_te.storyId||editEntry?.storyId||'';
 
   const stories=_teGetStories();
@@ -7507,7 +7545,7 @@ function _teBuildForm(){
 
   const typBtn=(t,ico,lbl)=>`<button type="button" onclick="_teSetType('${t}')" style="flex:1;padding:8px 4px;border:1px solid ${type===t?'var(--accent)':'var(--border)'};border-radius:7px;background:${type===t?'var(--accent)':'transparent'};color:${type===t?'#fff':'var(--text2)'};font-size:12px;cursor:pointer;font-family:var(--font)">${ico} ${lbl}</button>`;
 
-  const remarkRows=existingRemarks.map(r=>`<div class="te-rem-row" style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:5px;font-size:12px"><span style="font-size:10.5px;color:var(--text3);flex-shrink:0;min-width:80px">${_fmtDShort(new Date(r.ts).toISOString().slice(0,10))}, ${new Date(r.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span><span class="te-rem-text" data-rid="${r.id}" data-ts="${r.ts}" style="flex:1;color:var(--text2);line-height:1.5">${esc(r.text)}</span><button onclick="this.closest('.te-rem-row').remove()" style="font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer">✕</button></div>`).join('');
+  const remarkRows=existingRemarks.map(r=>`<div class="te-rem-row" style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:5px;font-size:12px"><span style="font-size:10.5px;color:var(--text3);flex-shrink:0;min-width:80px">${_fmtDShort(new Date(r.ts).toISOString().slice(0,10))}, ${new Date(r.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span><span class="te-rem-text" data-rid="${r.id}" data-ts="${r.ts}" data-raw-text="${esc(r.text)}" style="flex:1;color:var(--text2);line-height:1.5">${esc(r.text)}</span><button onclick="this.closest('.te-rem-row').remove();_te.pendingRemarks=_te.pendingRemarks.filter(x=>x.id!=='${r.id}')" style="font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer">✕</button></div>`).join('');
 
   return`<div class="note-add-form" style="border-color:var(--accent);margin-bottom:16px" onclick="event.stopPropagation()">
     <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:14px">${_te.editId?'Edit':'New'} Travel / Expense Entry</div>
@@ -7528,7 +7566,7 @@ function _teBuildForm(){
     <div class="form-grid">${fields}</div>
     <div style="border-top:1px solid var(--border);margin:12px 0 8px"></div>
     <div class="flabel" style="margin-bottom:6px">Remarks</div>
-    <div id="te-remark-list">${remarkRows||'<div style="font-size:12px;color:var(--text3);padding:2px 0 6px">No remarks yet.</div>'}</div>
+    <div id="te-remark-list">${remarkRows||'<div class="te-rem-placeholder" style="font-size:12px;color:var(--text3);padding:2px 0 6px">No remarks yet.</div>'}</div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <input class="finput" id="te-remark-input" placeholder="Add a remark…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_teAddRemark()}">
       <button class="btn btn-ghost btn-sm" onclick="_teAddRemark()">+ Add</button>
@@ -7669,12 +7707,13 @@ function _teRenderBody(){
     </div>`;
   });
 
-  // General group
+  // General group — only show if it has entries, or if there are no story groups at all
   const genEntries=_teEntriesGeneral();
   const genExp=genEntries.filter(e=>e.type==='expense');
   const genUnclaimed=genExp.filter(e=>_teGetClaimed(e)!=='yes').length;
   const genBadge=genUnclaimed?`<span style="font-size:10.5px;color:var(--progress);flex-shrink:0">⏳ ${genUnclaimed} unclaimed</span>`:(genExp.length?`<span style="font-size:10.5px;color:var(--done);flex-shrink:0">✅ claimed</span>`:'');
-  html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+  if(genEntries.length||stories.length===0){
+    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
     <div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)">
       <span style="font-size:13px">📋</span>
       <span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General</span>
@@ -7690,8 +7729,12 @@ function _teRenderBody(){
       </div>
     </div>
   </div>`;
+  }
 
-  // Dismissed stories
+  // Empty state — no stories and no general entries
+  if(stories.length===0&&genEntries.length===0&&!_te.open){
+    html+=`<div style="text-align:center;padding:22px 16px;color:var(--text3);font-size:13px">No travel or expenses yet. Use <strong style="color:var(--accent)">+ Add</strong> to log a cab, flight, hotel or expense — you can link it to a story or leave it as General.</div>`;
+  }
   const dismissedStories=_teGetStories().filter(({s})=>dismissed.includes(s.id));
   if(dismissedStories.length){
     html+=`<div style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--border)"><div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Hidden (${dismissedStories.length})</div>`;
@@ -7730,7 +7773,7 @@ function renderTravelSection(){
         ${notClaimedCount?`<span class="sbadge" style="background:rgba(217,119,6,.09);color:var(--progress);border:.5px solid rgba(217,119,6,.3)">⏳ ${notClaimedCount} unclaimed</span>`:''}
         ${allClaimed?`<span class="sbadge" style="background:rgba(22,163,74,.09);color:var(--done);border:.5px solid rgba(22,163,74,.3)">✅ all claimed</span>`:''}
       </div>
-      <span id="acc-chev-travel" style="font-size:12px;color:var(--text3);margin-left:6px;flex-shrink:0">${isOpen?'▲':'▼'}</span>
+      <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-travel">▾</span>
     </div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-travel">
       ${isOpen?_teRenderBody():''}
@@ -8198,27 +8241,72 @@ function renderStoryCard(sec,s,archKey){
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}">▾</span>
   </div>
   <div class="card-body${isOpen?' open':''}" id="cb-${s.id}">
-    <div class="card-fields">
-      ${s.description?`<div style="grid-column:1/-1"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
-      ${field('Producer',s.producer)}
-        ${field('Shoot-Edit',s.shoot_edit)}
-        ${field('Location',loc||'–')}
-        ${(s.broadcast_times&&s.broadcast_times.length)
-          ? s.broadcast_times.map((t,i)=>{
-              const platLabel=t.plat||t.lbl||('Slot '+(i+1));
-              const progStr=t.prog?` · ${t.prog}`:'';
-              const timeStr=[t.uk?`${ukLabel()} ${t.uk}`:'', t.ist?`IST ${t.ist}`:''].filter(Boolean).join(' / ');
-              const slotVal=[timeStr||'–',
-                t.dl_date?`⏱ ${fmtDate(t.dl_date)}${t.dl_uk?' '+t.dl_uk+' '+ukLabel():''}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:null,
-                t.com_name?`👤 ${[t.com_name,t.com_team,t.com_loc].filter(Boolean).join(' · ')}`:null,
-              ].filter(Boolean).join(' · ');
-              return field(platLabel+progStr, slotVal);
-            }).join('')
-          : (s.time_uk||s.time_ist)?field(ukLabel(),s.time_uk)+field('IST',s.time_ist):''
-        }
-        ${s.req_name||s.req_team?field('Requested By',[s.req_name,s.req_team,s.req_location].filter(Boolean).join(' · ')):''}
-      
-      ${s.deadline_date?`<div><div class="cfield-label">Deadline</div><div class="cfield-value">${fmtDate(s.deadline_date)}${s.deadline_uk?' · '+esc(s.deadline_uk)+' '+ukLabel():''}${s.deadline_ist?' / '+esc(s.deadline_ist)+' IST':''}</div></div>`:''}
+    ${s.description?`<div style="margin-bottom:12px"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
+    ${(()=>{
+      const staffParts=[];
+      if(s.correspondent) staffParts.push(`<span class="staff-meta-chip">👤 ${esc(s.correspondent)}</span>`);
+      if(s.producer) staffParts.push(`<span class="staff-meta-chip" style="color:var(--text3)">Producer: ${esc(s.producer)}</span>`);
+      if(s.shoot_edit) staffParts.push(`<span class="staff-meta-chip" style="color:var(--text3)">Shoot-Edit: ${esc(s.shoot_edit)}</span>`);
+      if(loc) staffParts.push(`<span class="staff-meta-chip" style="color:var(--text3)">📍 ${esc(loc)}</span>`);
+      return staffParts.length?`<div class="staff-meta-row" style="margin-bottom:12px">${staffParts.join('')}</div>`:'';
+    })()}
+    ${(s.broadcast_times&&s.broadcast_times.length)||(s.time_uk||s.time_ist)?(()=>{
+      const _slotTagCls=(plat)=>{
+        const p=(plat||'').toLowerCase();
+        if(p.includes('tv')) return 'slot-tag-tv';
+        if(p.includes('radio')) return 'slot-tag-radio';
+        if(p.includes('social')) return 'slot-tag-social';
+        if(p.includes('text')||p.includes('online')) return 'slot-tag-text';
+        if(p.includes('ip')||p.includes('in-person')) return 'slot-tag-ip';
+        return 'slot-tag-other';
+      };
+      const _slotAccentCol=(plat)=>{
+        const p=(plat||'').toLowerCase();
+        if(p.includes('tv')) return '#16A34A';
+        if(p.includes('radio')) return '#2563EB';
+        if(p.includes('social')) return '#7C3AED';
+        if(p.includes('text')||p.includes('online')) return '#B45309';
+        if(p.includes('ip')||p.includes('in-person')) return '#CF6640';
+        return 'var(--border2)';
+      };
+      let slotsHTML='<div class="slot-section-label">Broadcast slots</div><div class="slot-rows-wrap">';
+      if(s.broadcast_times&&s.broadcast_times.length){
+        s.broadcast_times.forEach((t,i)=>{
+          const plat=t.plat||t.lbl||('Slot '+(i+1));
+          const tagCls=_slotTagCls(plat);
+          const accentCol=_slotAccentCol(plat);
+          const timeStr=[t.uk?`${t.uk} ${ukLabel()}`:'',t.ist?`${t.ist} IST`:''].filter(Boolean).join(' / ')||'–';
+          const dlStr=t.dl_date?`Deadline: ${fmtDate(t.dl_date)}${t.dl_uk?' · '+t.dl_uk+' '+ukLabel():''}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:
+                      t.dl_uk?`Deadline: ${t.dl_uk} ${ukLabel()}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:
+                      t.dl_ist?`Deadline: ${t.dl_ist} IST`:'';
+          const commStr=t.com_name?`<span style="font-size:11px;color:var(--text3);flex-shrink:0">👤 ${esc([t.com_name,t.com_team,t.com_loc].filter(Boolean).join(' · '))}</span>`:'';
+          slotsHTML+=`<div class="slot-row-item">
+            <div class="slot-row-accent" style="background:${accentCol}"></div>
+            <div class="slot-row-inner">
+              <span class="slot-row-tag ${tagCls}">${esc(plat)}</span>
+              <span class="slot-row-time">${esc(timeStr)}</span>
+              ${t.prog?`<span class="slot-row-prog">${esc(t.prog)}</span>`:'<span class="slot-row-prog"></span>'}
+              ${dlStr?`<span class="slot-row-dl">${esc(dlStr)}</span>`:''}
+              ${commStr}
+            </div>
+          </div>`;
+        });
+      } else {
+        const timeStr=[s.time_uk?`${s.time_uk} ${ukLabel()}`:'',s.time_ist?`${s.time_ist} IST`:''].filter(Boolean).join(' / ');
+        slotsHTML+=`<div class="slot-row-item">
+          <div class="slot-row-accent" style="background:var(--border2)"></div>
+          <div class="slot-row-inner">
+            <span class="slot-row-tag slot-tag-other">TX</span>
+            <span class="slot-row-time">${esc(timeStr)}</span>
+          </div>
+        </div>`;
+      }
+      slotsHTML+='</div>';
+      return slotsHTML;
+    })():''}
+    <div class="card-fields" style="margin-top:4px">
+      ${s.req_name||s.req_team?field('Requested By',[s.req_name,s.req_team,s.req_location].filter(Boolean).join(' · ')):''}
+      ${s.deadline_date?`<div><div class="cfield-label">Story Deadline</div><div class="cfield-value">${fmtDate(s.deadline_date)}${s.deadline_uk?' · '+esc(s.deadline_uk)+' '+ukLabel():''}${s.deadline_ist?' / '+esc(s.deadline_ist)+' IST':''}</div></div>`:''}
       ${reqTime?field('Logged At',reqTime):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
     </div>
