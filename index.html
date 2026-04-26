@@ -1521,6 +1521,15 @@ function fmtDateTime(ts){
 function yesterdayStr(){ const d=new Date(); d.setDate(d.getDate()-1); return dateStr(d); }
 function tomorrowStr() { const d=new Date(); d.setDate(d.getDate()+1); return dateStr(d); }
 function addDays(s,n)  { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dateStr(d); }
+// ── Shared helper for accordion strip date labels ──────────────────────────
+// Returns "today" / "tomorrow" / "yesterday" / "Mon, 27 Apr" (no "Due" prefix — caller adds it)
+function _stripDateWord(dateS, today){
+  if(!dateS) return '';
+  if(dateS===today)                return 'today';
+  if(dateS===addDays(today,1))     return 'tomorrow';
+  if(dateS===addDays(today,-1))    return 'yesterday';
+  return new Date(dateS+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
 // UK time helpers — auto-detect BST (UTC+1 in summer) vs GMT (UTC+0 in winter)
 // Uses the browser's own Intl engine so daylight saving transitions are always correct.
 function _londonOffsetMin(){
@@ -5128,7 +5137,8 @@ function renderAccordion(sec,archKey){
       const countdown=diff===0?'today':diff===1?'tomorrow':'in '+diff+'d';
       const shortDate=new Date(s.expected_date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
       const dotCol=diff<=7?'#0D9488':'#2563EB';
-      return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(s.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${shortDate} · ${countdown}</span></div>`;
+      const stripMeta=diff===0?'today':diff===1?'tomorrow':diff===-1?'yesterday':shortDate;
+      return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(s.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${stripMeta}</span></div>`;
     }
 
     return '';
@@ -5936,7 +5946,7 @@ function renderTasksSection(){
       const t=_sorted[0]; if(!t) return '';
       const d=_effDate(t);
       const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-_todayMs)/86400000):null;
-      const lbl=diff===null?'No deadline':diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
+      const lbl=diff===null?'No deadline':diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due '+_stripDateWord(d,_today);
       const dotCol=diff!==null&&diff<=0?'#DC2626':diff===1?'#D97706':'#2563EB';
       return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(t.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${lbl}</span></div>`;
     })()}
@@ -6381,12 +6391,18 @@ function renderCombinedAccordion(archKey){
   const _storiesStrip=(()=>{
     const candidates=[...allActive].filter(s=>!['completed','not-done','on-hold','shelved'].includes(s.status));
     if(!candidates.length) return '';
-    // Newest addition first
     candidates.sort((a,b)=>(b.created||0)-(a.created||0));
     const s=candidates[0];
     const dotCol=s.status==='urgent'?'#DC2626':s.status==='in-progress'?'#D97706':'#94a3b8';
-    const statusLbl=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In progress':s.status==='postponed'?'Postponed':'';
-    const meta=[statusLbl,s.correspondent?esc(s.correspondent):''].filter(Boolean).join(' · ');
+    const _today=todayStr();
+    let meta='';
+    if(s.deadline_date){
+      const diff=Math.round((new Date(s.deadline_date+'T00:00:00').getTime()-new Date(_today+'T00:00:00').getTime())/86400000);
+      meta=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due '+_stripDateWord(s.deadline_date,_today);
+    } else {
+      const statusLbl=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In progress':s.status==='postponed'?'Postponed':'';
+      meta=[statusLbl,s.correspondent?esc(s.correspondent):''].filter(Boolean).join(' · ');
+    }
     return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(s.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
   })();
 
@@ -7261,7 +7277,7 @@ function renderRemarksAccordion(){
       let meta='';
       if(n.deadline_date){
         const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000);
-        meta=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due in '+diff+'d';
+        meta=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due '+_stripDateWord(n.deadline_date,_today);
       }
       const dotCol=n.deadline_date&&Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-_todayMs)/86400000)<=3?'#D97706':'#2563EB';
       return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(title.slice(0,80))}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
@@ -7888,9 +7904,9 @@ function renderTravelSection(){
     if(firstStory?.deadline_date){
       const dl=firstStory.deadline_date;
       const isOverdue=dl<today;
-      const d=new Date(dl+'T00:00:00');
-      const fmtDl=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-      meta=`<span style="font-size:10px;color:${isOverdue?'#B91C1C':'#888'};font-family:var(--font);flex-shrink:0;margin-left:4px">${isOverdue?'⚠ overdue':'Due'} ${fmtDl}</span>`;
+      const dlWord=_stripDateWord(dl,today);
+      const dlLabel=isOverdue?'Overdue':'Due';
+      meta=`<span style="font-size:10px;color:${isOverdue?'#B91C1C':'#888'};font-family:var(--font);flex-shrink:0;margin-left:4px">${dlLabel} ${dlWord}</span>`;
     } else if(stories.length>1){
       meta=`<span style="font-size:10px;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">+${stories.length-1} more</span>`;
     }
@@ -8017,7 +8033,7 @@ function renderLeavesSection(){
         const _nx=_ul[0];
         _name=esc(_nx.employeeName||'');
         const _diff=Math.round((new Date(_nx.dateFrom+'T00:00:00').getTime()-new Date(todayStr()+'T00:00:00').getTime())/86400000);
-        _meta=_diff===0?'today':_diff===1?'tomorrow':'from '+new Date(_nx.dateFrom+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+        _meta=_diff===0?'today':_diff===1?'tomorrow':'from '+new Date(_nx.dateFrom+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
       }
       const _dotCol=_ol.length?'#DC2626':'#0D9488';
       return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${_dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${_name}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${_meta}</span></div>`;
