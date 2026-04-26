@@ -978,6 +978,7 @@ body {
   .slot-row-dl-date { font-size:11px; }
   .slot-row-dl-time { font-size:10px; }
   .slot-row-prog { display:none; }
+  .slot-row-airtime { display:none; }
 }
 
 /* Story inline remarks list */
@@ -1701,6 +1702,7 @@ function loadLocal(){
   if(!state.notes) state.notes=[];
   if(!state.travelEntries) state.travelEntries=[];
   if(!state.travelDismissed) state.travelDismissed=[];
+  if(!state.travelRestored) state.travelRestored=[];
   // Migrate old s.travel[] and generalTravel[] into travelEntries (one-time, silent)
   if(!state._travelMigrated){
     const migrated=[];
@@ -1892,11 +1894,17 @@ function startRealtimeSync(){
       const localMonthlyBackup=state.lastMonthlyBackup;
       const localYearlyBackup=state.lastYearlyBackup;
       // Capture travel state BEFORE Object.assign wipes it — mergedArrays handles travelEntries
-      // but travelDismissed is a plain array not in mergedArrays, so capture it now
+      // but travelDismissed and travelRestored are plain arrays not in mergedArrays, so capture them now
       const localTravelDismissed=[...(state.travelDismissed||[])];
+      const localTravelRestored=[...(state.travelRestored||[])];
       Object.assign(state, incoming, mergedArrays, {archive:mergedArchive, sections:mergedSections});
-      // Restore travel dismissed as a union — Object.assign above may have set it to the stale cloud value
-      state.travelDismissed=[...new Set([...localTravelDismissed,...(incoming.travelDismissed||[])])];
+      // travelDismissed: union of both sides, but veto any IDs that were explicitly restored
+      // (recorded in travelRestored on either device) — restore always beats dismiss.
+      const localRestored=new Set([...localTravelRestored,...(incoming.travelRestored||[])]);
+      // Prune travelRestored of IDs that no longer exist on any section — keeps it from growing forever
+      const allStoryIds=new Set(SECTIONS.flatMap(sec=>(state.sections[sec.key]||[]).map(s=>s.id)));
+      state.travelRestored=[...localRestored].filter(id=>allStoryIds.has(id));
+      state.travelDismissed=[...new Set([...localTravelDismissed,...(incoming.travelDismissed||[])])].filter(sid=>!localRestored.has(sid));
       state.backupSnapshots=localBackups; // restore local backups after merge
       state.deletedIds=mergedDeletedIds;  // merged so all devices honour all deletions
       // Keep whichever lastActiveDate is more recent — prevents Firebase from re-triggering checkDateChange
@@ -1914,10 +1922,34 @@ function startRealtimeSync(){
         state.lastYearlyBackup=localYearlyBackup;
       if(!state.archive) state.archive={};
       saveLocal();
+      // Push merged state back to Firebase so all devices get the authoritative merged result.
+      // This is critical: without this push, Firebase only holds one device's partial view.
+      // Use a short debounce to avoid hammering Firebase if onSnapshot fires rapidly.
+      if(fireDb){
+        clearTimeout(window._mergeBackPushTimer);
+        window._mergeBackPushTimer=setTimeout(()=>pushToCloud(), 1500);
+      }
       // Clean up any stuck not-done entries that remote data may have restored,
       // then push the cleaned state back so all devices stay in sync.
       const cleaned=cleanupStuckNotDone();
-      if(!cleaned) { render(); renderDateStrip(); setSyncUI('live'); }
+      if(!cleaned) {
+        // Auto-restore any dismissed story that has entries added after it was hidden
+        // (e.g. a mobile entry synced in for a story the desktop had hidden)
+        if(state.travelDismissed&&state.travelDismissed.length){
+          const prevDismissed=[...state.travelDismissed];
+          state.travelDismissed=state.travelDismissed.filter(sid=>{
+            const entries=(state.travelEntries||[]).filter(e=>e.storyId===sid);
+            if(!entries.length) return true; // keep hidden if no entries
+            const latestEntry=Math.max(...entries.map(e=>e.updated||e.created||0));
+            // If an entry was updated/created more recently than this sync started, restore
+            const syncedRecently=(Date.now()-latestEntry)<300000; // within last 5 min
+            if(syncedRecently){ return false; } // un-hide
+            return true;
+          });
+          if(state.travelDismissed.length!==prevDismissed.length) saveLocal();
+        }
+        render(); renderDateStrip(); setSyncUI('live'); _teRefresh();
+      }
     }
     else pushToCloud();
   }, ()=>setSyncUI('offline'));
@@ -2849,16 +2881,11 @@ function openMoveCopyDialog(fromSec, id, toSec, archKey){
   d.id='move-copy-dlg';
   d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
   d.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:20px;width:100%;max-width:360px;box-shadow:var(--shadow-lg)">
-    <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text)">Move or Copy?</div>
-    <div style="font-size:12.5px;color:var(--text2);margin-bottom:6px">"${esc(story.title||'Untitled')}"</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">${esc(fromName)} → ${esc(toName)}</div>
-    <div style="background:var(--surface2);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--text2)">
-      <div style="margin-bottom:6px"><strong>Move</strong> — removes from ${esc(fromName)}, appears only in ${esc(toName)}</div>
-      <div><strong>Copy</strong> — stays in ${esc(fromName)} and also appears in ${esc(toName)}</div>
-    </div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:var(--text)">Move to ${esc(toName)}?</div>
+    <div style="font-size:12.5px;color:var(--text2);margin-bottom:12px">"${esc(story.title||'Untitled')}"</div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;margin-bottom:8px;font-size:13px;padding:9px 14px" onclick="moveStoryToSection('${fromSec}','${id}','${toSec}',${archKey?`'${archKey}'`:'null'},'move');document.getElementById('move-copy-dlg').remove()">→ Move — remove from ${esc(fromName)}</button>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-accent btn-sm" onclick="moveStoryToSection('${fromSec}','${id}','${toSec}',${archKey?`'${archKey}'`:'null'},'move');document.getElementById('move-copy-dlg').remove()">→ Move</button>
-      <button class="btn btn-ghost btn-sm" onclick="moveStoryToSection('${fromSec}','${id}','${toSec}',${archKey?`'${archKey}'`:'null'},'copy');document.getElementById('move-copy-dlg').remove()">⎘ Copy</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;font-size:11.5px;color:var(--text3)" onclick="moveStoryToSection('${fromSec}','${id}','${toSec}',${archKey?`'${archKey}'`:'null'},'copy');document.getElementById('move-copy-dlg').remove()">⎘ Keep a copy in ${esc(fromName)}</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('move-copy-dlg').remove()">Cancel</button>
     </div>
   </div>`;
@@ -7516,9 +7543,10 @@ function _teGetClaimed(e){ return e.data?.claimed||'no'; }
 
 function _teGetStories(){
   const out=[];
+  const seen=new Set();
   ['ibu','other','requests'].forEach(sec=>{
     (state.sections[sec]||[]).forEach(s=>{
-      out.push({sec,s});
+      if(!seen.has(s.id)){ seen.add(s.id); out.push({sec,s}); }
     });
   });
   return out;
@@ -7541,6 +7569,9 @@ function _teUpdate(id,entry){
 }
 function _teDelete(id){
   state.travelEntries=(state.travelEntries||[]).filter(e=>e.id!==id);
+  if(!state.deletedIds) state.deletedIds={};
+  if(!state.deletedIds.travelEntries) state.deletedIds.travelEntries=[];
+  if(!state.deletedIds.travelEntries.includes(id)) state.deletedIds.travelEntries.push(id);
   _teSave();
 }
 function _teDismissStory(sid){
@@ -7550,6 +7581,9 @@ function _teDismissStory(sid){
 }
 function _teRestoreStory(sid){
   state.travelDismissed=(state.travelDismissed||[]).filter(x=>x!==sid);
+  // Record this restore as a tombstone so sync cannot re-dismiss it from another device
+  if(!state.travelRestored) state.travelRestored=[];
+  if(!state.travelRestored.includes(sid)) state.travelRestored.push(sid);
   _teSave();
 }
 function _teRefresh(){
@@ -7899,9 +7933,12 @@ function _teRenderBody(){
   }
   const dismissedStories=_teGetStories().filter(({s})=>dismissed.includes(s.id));
   if(dismissedStories.length){
-    html+=`<div style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--border)"><div style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Hidden (${dismissedStories.length})</div>`;
+    const hiddenEntryCount=dismissedStories.reduce((n,{s})=>n+_teEntriesForStory(s.id).length,0);
+    const hiddenBadge=hiddenEntryCount?`<span style="font-size:10.5px;font-weight:500;color:#B45309;background:rgba(217,119,6,.09);border:0.5px solid rgba(217,119,6,.3);padding:2px 8px;border-radius:20px">⏳ ${hiddenEntryCount} entr${hiddenEntryCount===1?'y':'ies'} hidden</span>`:'';
+    html+=`<div style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--border)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px">Hidden (${dismissedStories.length})</span>${hiddenBadge}</div>`;
     dismissedStories.forEach(({s})=>{
-      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;opacity:.7"><span style="font-size:11.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span><button onclick="_teRestoreStory('${s.id}')" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer;flex-shrink:0">↩ Show</button></div>`;
+      const eCount=_teEntriesForStory(s.id).length;
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;opacity:.85"><span style="font-size:11.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span>${eCount?`<span style="font-size:10.5px;color:var(--text3)">${eCount} entr${eCount===1?'y':'ies'}</span>`:''}<button onclick="_teRestoreStory('${s.id}')" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer;flex-shrink:0">↩ Show</button></div>`;
     });
     html+=`</div>`;
   }
@@ -8779,7 +8816,7 @@ function init(){
 
   scheduleAllReminders();
   const cfg=getFireConfig(); if(cfg) initFirebase(cfg, true);
-  window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); pushToCloud(); } });
+  window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); /* onSnapshot will fire automatically on reconnect and merge before we push */ } });
   window.addEventListener('offline', ()=>{ if(fireDb) setSyncUI('offline'); });
   updateDateHeader(); renderDateStrip(); render();
   renderOnLeavePill();
