@@ -712,14 +712,34 @@ body {
 }
 .form-slot-card.fsc-odd  { background: var(--surface); border: 1px solid var(--border); }
 .form-slot-card.fsc-even { background: var(--surface2); border: 1px solid var(--border); }
-.form-slot-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-.form-slot-plat-badge { font-size: 11px; font-weight: 500; padding: 3px 12px; border-radius: 20px; }
+.form-slot-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+/* Coloured pill badge + invisible select overlay */
+.form-slot-plat-picker { position: relative; display: inline-flex; flex-shrink: 0; }
+.form-slot-plat-badge {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  font-size: 12px; font-weight: 500; padding: 4px 14px; border-radius: 20px;
+  white-space: nowrap; cursor: pointer; user-select: none; min-width: 110px;
+}
+.form-slot-plat-badge::after { content: '▾'; font-size: 10px; opacity: 0.6; }
+.form-slot-plat-select {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
 .fspb-tv     { background:rgba(22,163,74,.09); color:#15803D; border:.5px solid rgba(22,163,74,.3); }
 .fspb-radio  { background:rgba(37,99,235,.09); color:#1D4ED8; border:.5px solid rgba(37,99,235,.3); }
 .fspb-social { background:rgba(124,58,237,.09); color:#6D28D9; border:.5px solid rgba(124,58,237,.3); }
 .fspb-text   { background:rgba(180,83,9,.09); color:#92400E; border:.5px solid rgba(180,83,9,.3); }
 .fspb-other  { background:var(--surface2); color:var(--text2); border:.5px solid var(--border2); }
 .form-slot-controls { display: flex; gap: 3px; }
+@media(max-width:720px){
+  .form-slot-plat-badge { min-width: 90px; font-size: 11px; padding: 3px 10px; }
+  .form-slot-header .btn-xs { padding: 3px 7px !important; font-size: 10px !important; }
+}
 .form-slot-grid {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
   gap: 8px 14px; align-items: start;
@@ -734,7 +754,14 @@ body {
 @media(max-width:720px){
   .form-master-grid { grid-template-columns: 1fr !important; }
   .form-slot-grid   { grid-template-columns: 1fr 1fr !important; }
-  .form-slot-sub-label { grid-column: 1 / -1; }
+  .form-slot-grid .form-slot-sub-label { grid-column: 1 / -1; }
+  .form-slot-grid > .fgroup:nth-child(1)  { grid-column: 1 / -1; } /* Programme full width */
+  .form-slot-grid > .fgroup:nth-child(5)  { grid-column: 1 / -1; } /* Slot deadline Date full width */
+  .form-slot-grid > .fgroup:nth-child(9)  { grid-column: 1 / -1; } /* Commissioner Name full width */
+  .form-slot-grid > .fgroup:nth-child(10) { grid-column: 1 / -1; } /* Commissioner Team full width */
+  .form-slot-grid > .fgroup:nth-child(11) { grid-column: 1 / -1; } /* Commissioner Location full width */
+  .form-slot-plat-badge { min-width: 90px; font-size: 11px; padding: 3px 10px; }
+  .form-slot-header .btn-xs { padding: 3px 7px !important; font-size: 10px !important; }
   .form-field-empty { display: none; }
 }
 .finput:focus, .fselect:focus, .ftextarea:focus { border-color: var(--accent); background: #fff; }
@@ -2658,36 +2685,30 @@ function onPlatformLabelChange(idx){
       sel.insertBefore(opt,sel.querySelector('option[value="__custom"]')); sel.value=v.trim();
     } else sel.value='';
   }
-  // Update the platform badge
   const badge=document.getElementById('bt-plat-badge-'+idx);
   if(badge){
     const lp=(sel.value||'').toLowerCase();
     const cls=lp.includes('tv')?'fspb-tv':lp.includes('radio')?'fspb-radio':lp.includes('social')?'fspb-social':(lp.includes('text')||lp.includes('online'))?'fspb-text':'fspb-other';
     badge.className='form-slot-plat-badge '+cls;
-    badge.textContent=sel.value||'— select platform —';
+    badge.textContent=sel.value||'— select —';
   }
 }
 function buildSlotRowHTML(idx,slot){
   const platSel=getPlatformLabels().map(l=>`<option value="${esc(l)}"${l===(slot.plat||'')?' selected':''}>${esc(l)}</option>`).join('');
-  // Derive badge colour class from platform name
   const _platBadgeCls=(p)=>{ const lp=(p||'').toLowerCase(); if(lp.includes('tv')) return 'fspb-tv'; if(lp.includes('radio')) return 'fspb-radio'; if(lp.includes('social')) return 'fspb-social'; if(lp.includes('text')||lp.includes('online')) return 'fspb-text'; return 'fspb-other'; };
   const badgeCls=_platBadgeCls(slot.plat||'');
-  const badgeLabel=slot.plat||'— select platform —';
+  const badgeLabel=slot.plat||'— select —';
   return`
     <div class="form-slot-header">
-      <span class="form-slot-plat-badge ${badgeCls}" id="bt-plat-badge-${idx}">${esc(badgeLabel)}</span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="fgroup" style="margin:0;min-width:130px"><label class="flabel" style="font-size:10px">Platform</label>
-          <select class="fselect" id="bt-plat-${idx}" style="height:28px;font-size:11.5px;padding:3px 24px 3px 8px" onchange="onPlatformLabelChange(${idx})">
-            <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
-          </select>
-        </div>
-        <div class="form-slot-controls">
-          <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
-          <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
-          <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 8px">✕</button>
-        </div>
+      <div class="form-slot-plat-picker">
+        <div class="form-slot-plat-badge ${badgeCls}" id="bt-plat-badge-${idx}">${esc(badgeLabel)}</div>
+        <select class="form-slot-plat-select" id="bt-plat-${idx}" onchange="onPlatformLabelChange(${idx})">
+          <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
+        </select>
       </div>
+      <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
+      <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
+      <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 8px">✕</button>
     </div>
     <div class="form-slot-grid">
       <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
@@ -7882,8 +7903,8 @@ function renderTravelSection(){
       <span class="acc-name">Travel &amp; Expenses</span>
       <span class="acc-summary">${summary}</span>
       <div class="acc-meta">
-        ${notClaimedCount?`<span class="sbadge" style="background:rgba(217,119,6,.09);color:var(--progress);border:.5px solid rgba(217,119,6,.3)">⏳ ${notClaimedCount} unclaimed</span>`:''}
-        ${allClaimed?`<span class="sbadge" style="background:rgba(22,163,74,.09);color:var(--done);border:.5px solid rgba(22,163,74,.3)">✅ all claimed</span>`:''}
+        ${notClaimedCount?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${notClaimedCount} unclaimed</span>`:''}
+        ${allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>All claimed</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-travel">▾</span>
     </div>
