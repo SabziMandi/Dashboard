@@ -140,8 +140,8 @@ body {
   display: none;
   align-items: center;
   gap: 5px;
-  padding: 0 13px 9px;
-  margin-top: -3px;
+  padding: 6px 13px 9px;
+  margin-top: 0;
 }
 .acc-open .acc-info-strip { display: none !important; }
 @media(max-width:720px){ .header-slim-bar { display: none !important; } }
@@ -411,8 +411,9 @@ body {
 .accordion.acc-open { border-color: rgba(207,102,64,.4); box-shadow: var(--shadow); }
 .acc-header {
   display: flex; align-items: center; gap: 10px;
-  padding: 13px 17px; cursor: pointer; user-select: none;
+  padding: 11px 17px; cursor: pointer; user-select: none;
   background: var(--surface);
+  border-radius: 10px 10px 0 0;
 }
 .acc-header:hover { background: var(--surface2); }
 .acc-icon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
@@ -635,7 +636,7 @@ body {
 
 .chevron { color: var(--text3); font-size: 14px; transition: transform .2s; flex-shrink: 0; margin-top: 2px; }
 .chevron.open { transform: rotate(180deg); }
-.card-body { display: none; padding: 4px 13px 13px; border-top: 1px solid var(--border); }
+.card-body { display: none; padding: 8px 13px 11px; border-top: 1px solid var(--border); }
 .card-body.open { display: block; }
 .card-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px,1fr)); gap: 9px; margin-top: 11px; }
 .cfield-label { font-size: 10.5px; color: var(--text3); font-family: var(--font); font-weight: 500; margin-bottom: 2px; }
@@ -685,6 +686,56 @@ body {
   border-radius: 7px; padding: 7px 10px; color: var(--text);
   font-size: 13px; outline: none; width: 100%;
   font-family: var(--font); transition: border-color .15s;
+  height: 36px;
+}
+.ftextarea { height: auto; min-height: 72px; }
+/* ── Master 3-col form grid (People onwards) ── */
+.form-master-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px 16px;
+  align-items: start;
+}
+.form-row-label {
+  grid-column: 1 / -1;
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .8px; font-family: var(--mono);
+  padding-top: 12px; margin-bottom: -2px;
+  border-top: 1px solid var(--border);
+}
+.form-row-label:first-child { padding-top: 0; border-top: none; }
+.form-field-empty { visibility: hidden; pointer-events: none; }
+/* slot card inside master grid */
+.form-slot-wrap { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; }
+.form-slot-card {
+  border-radius: 8px; padding: 11px 13px 12px;
+}
+.form-slot-card.fsc-odd  { background: var(--surface); border: 1px solid var(--border); }
+.form-slot-card.fsc-even { background: var(--surface2); border: 1px solid var(--border); }
+.form-slot-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+.form-slot-plat-badge { font-size: 11px; font-weight: 500; padding: 3px 12px; border-radius: 20px; }
+.fspb-tv     { background:rgba(22,163,74,.09); color:#15803D; border:.5px solid rgba(22,163,74,.3); }
+.fspb-radio  { background:rgba(37,99,235,.09); color:#1D4ED8; border:.5px solid rgba(37,99,235,.3); }
+.fspb-social { background:rgba(124,58,237,.09); color:#6D28D9; border:.5px solid rgba(124,58,237,.3); }
+.fspb-text   { background:rgba(180,83,9,.09); color:#92400E; border:.5px solid rgba(180,83,9,.3); }
+.fspb-other  { background:var(--surface2); color:var(--text2); border:.5px solid var(--border2); }
+.form-slot-controls { display: flex; gap: 3px; }
+.form-slot-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px 14px; align-items: start;
+}
+.form-slot-sub-label {
+  grid-column: 1 / -1;
+  font-size: 9.5px; color: var(--text3); text-transform: uppercase;
+  letter-spacing: .7px; font-family: var(--mono);
+  padding-top: 8px; margin-bottom: -2px;
+  border-top: 1px dashed var(--border);
+}
+@media(max-width:720px){
+  .form-master-grid { grid-template-columns: 1fr !important; }
+  .form-slot-grid   { grid-template-columns: 1fr 1fr !important; }
+  .form-slot-sub-label { grid-column: 1 / -1; }
+  .form-field-empty { display: none; }
 }
 .finput:focus, .fselect:focus, .ftextarea:focus { border-color: var(--accent); background: #fff; }
 .finput::placeholder, .ftextarea::placeholder { color: var(--text3); }
@@ -705,23 +756,18 @@ body {
   .deadline-split { grid-template-columns: 1fr; }
   .deadline-split .dl-times-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 }
-/* Form section blocks */
+/* Form section blocks — now flat, unified inside master grid */
 .fsec { border-radius: 8px; padding: 12px 14px; margin-bottom: 2px; grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .fsec.fs-story  { background: var(--surface2); border: 1px solid var(--border); }
-.fsec.fs-people { background: rgba(124,58,237,.03); border: 1px solid rgba(124,58,237,.15); border-left: 3px solid var(--onhold); }
-.fsec.fs-req    { background: rgba(217,119,6,.03); border: 1px solid rgba(217,119,6,.15); border-left: 3px solid var(--progress); }
-.fsec.fs-dead   { background: rgba(207,102,64,.03); border: 1px solid rgba(207,102,64,.18); border-left: 3px solid var(--accent); }
-.fsec.fs-bcast  { background: rgba(79,70,229,.03); border: 1px solid rgba(79,70,229,.15); border-left: 3px solid var(--week); }
-.fsec.fs-loc    { background: rgba(13,148,136,.03); border: 1px solid rgba(13,148,136,.15); border-left: 3px solid var(--working); }
-.fsec.fs-status { background: rgba(22,163,74,.03); border: 1px solid rgba(22,163,74,.15); border-left: 3px solid var(--done); }
+.fsec.fs-people, .fsec.fs-req, .fsec.fs-dead, .fsec.fs-bcast, .fsec.fs-loc, .fsec.fs-status { background: transparent; border: none; padding: 0; margin-bottom: 0; border-radius: 0; }
 .fsec.fs-links  { background: var(--surface2); border: 1px solid var(--border); }
 .fsec .form-divider { border-top: none; padding-top: 0; margin-top: 0; }
-.fsec.fs-people .form-divider { color: var(--onhold); }
-.fsec.fs-req    .form-divider { color: var(--progress); }
-.fsec.fs-dead   .form-divider { color: var(--accent); }
-.fsec.fs-bcast  .form-divider { color: var(--week); }
-.fsec.fs-loc    .form-divider { color: var(--working); }
-.fsec.fs-status .form-divider { color: var(--done); }
+.fsec.fs-people .form-divider { color: var(--text3); }
+.fsec.fs-req    .form-divider { color: var(--text3); }
+.fsec.fs-dead   .form-divider { color: var(--text3); }
+.fsec.fs-bcast  .form-divider { color: var(--text3); }
+.fsec.fs-loc    .form-divider { color: var(--text3); }
+.fsec.fs-status .form-divider { color: var(--text3); }
 /* Upcoming expected row */
 .expected-row { display: flex; gap: 7px; align-items: flex-end; }
 .expected-row .fselect { width: 110px; flex-shrink: 0; }
@@ -868,32 +914,43 @@ body {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 7px; padding: 10px 12px; margin-bottom: 8px;
 }
-/* Option A: slot rows in expanded card body */
-.slot-rows-wrap { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+/* Slot rows in expanded card body — simplified 3-col grid */
+.slot-rows-wrap { display:flex; flex-direction:column; gap:0; margin-bottom:10px; }
 .slot-row-item {
-  display:flex; align-items:center; gap:0;
-  border:.5px solid var(--border); border-radius:7px; overflow:hidden;
+  display:grid;
+  grid-template-columns: 3px 90px 1fr auto;
+  align-items:start;
+  border-bottom:.5px solid var(--border);
   background:var(--surface);
+  min-width:0;
 }
-.slot-row-accent { width:3px; align-self:stretch; flex-shrink:0; }
-.slot-row-inner { display:flex; align-items:center; gap:10px; padding:8px 12px; flex:1; flex-wrap:wrap; min-width:0; }
-.slot-row-tag { font-size:10.5px; font-weight:500; padding:2px 8px; border-radius:20px; flex-shrink:0; white-space:nowrap; }
+.slot-row-item:last-child { border-bottom:none; }
+.slot-row-accent { width:3px; align-self:stretch; flex-shrink:0; border-radius:0; }
+.slot-row-inner { display:contents; }
+.slot-row-tag-cell { padding:6px 0 6px 8px; display:flex; align-items:flex-start; }
+.slot-row-tag { font-size:10px; font-weight:500; padding:2px 0; border-radius:4px; white-space:nowrap; width:76px; text-align:center; display:inline-block; }
 .slot-tag-tv     { background:rgba(22,163,74,.09);  color:#15803D; border:.5px solid rgba(22,163,74,.3); }
 .slot-tag-radio  { background:rgba(37,99,235,.09);  color:#1D4ED8; border:.5px solid rgba(37,99,235,.3); }
 .slot-tag-social { background:rgba(124,58,237,.09); color:#6D28D9; border:.5px solid rgba(124,58,237,.3); }
 .slot-tag-text   { background:rgba(180,83,9,.09);   color:#92400E; border:.5px solid rgba(180,83,9,.3); }
 .slot-tag-ip     { background:rgba(207,102,64,.09); color:#9A3412; border:.5px solid rgba(207,102,64,.3); }
 .slot-tag-other  { background:var(--surface2); color:var(--text2); border:.5px solid var(--border2); }
-.slot-row-time { font-size:12.5px; color:var(--text); font-family:var(--mono); flex-shrink:0; }
-.slot-row-prog { font-size:11.5px; color:var(--text2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.slot-row-dl   { font-size:11px; color:var(--text3); flex-shrink:0; white-space:nowrap; }
-.slot-section-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:var(--text3); margin-bottom:7px; }
-.staff-meta-row { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--text2); margin-top:5px; }
+.slot-row-centre { padding:6px 6px; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.slot-row-time { font-size:12px; color:var(--text2); font-family:var(--mono); white-space:nowrap; }
+.slot-row-prog { font-size:11.5px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.slot-row-airtime { font-size:10.5px; color:var(--text3); font-family:var(--mono); white-space:nowrap; }
+.slot-row-dl-cell { padding:6px 12px 6px 6px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
+.slot-row-dl-date { font-size:11.5px; color:var(--text2); white-space:nowrap; }
+.slot-row-dl-time { font-size:10.5px; color:var(--text3); font-family:var(--mono); white-space:nowrap; }
+.slot-section-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:var(--text3); }
+.staff-meta-row { display:flex; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text2); margin-bottom:8px; align-items:center; }
 .staff-meta-chip { display:flex; align-items:center; gap:4px; }
 @media(max-width:720px){
-  .slot-row-inner { gap:7px; padding:8px 10px; }
-  .slot-row-prog  { display:none; }
-  .slot-row-dl    { font-size:10.5px; }
+  .slot-row-item { grid-template-columns: 3px 86px 1fr auto; }
+  .slot-row-tag { width:72px; font-size:9.5px; }
+  .slot-row-dl-date { font-size:11px; }
+  .slot-row-dl-time { font-size:10px; }
+  .slot-row-prog { display:none; }
 }
 
 /* Story inline remarks list */
@@ -2601,40 +2658,51 @@ function onPlatformLabelChange(idx){
       sel.insertBefore(opt,sel.querySelector('option[value="__custom"]')); sel.value=v.trim();
     } else sel.value='';
   }
+  // Update the platform badge
+  const badge=document.getElementById('bt-plat-badge-'+idx);
+  if(badge){
+    const lp=(sel.value||'').toLowerCase();
+    const cls=lp.includes('tv')?'fspb-tv':lp.includes('radio')?'fspb-radio':lp.includes('social')?'fspb-social':(lp.includes('text')||lp.includes('online'))?'fspb-text':'fspb-other';
+    badge.className='form-slot-plat-badge '+cls;
+    badge.textContent=sel.value||'— select platform —';
+  }
 }
 function buildSlotRowHTML(idx,slot){
   const platSel=getPlatformLabels().map(l=>`<option value="${esc(l)}"${l===(slot.plat||'')?' selected':''}>${esc(l)}</option>`).join('');
-  // Responsive: top 4+action row wraps on narrow screens; per-slot 3-col also wraps
+  // Derive badge colour class from platform name
+  const _platBadgeCls=(p)=>{ const lp=(p||'').toLowerCase(); if(lp.includes('tv')) return 'fspb-tv'; if(lp.includes('radio')) return 'fspb-radio'; if(lp.includes('social')) return 'fspb-social'; if(lp.includes('text')||lp.includes('online')) return 'fspb-text'; return 'fspb-other'; };
+  const badgeCls=_platBadgeCls(slot.plat||'');
+  const badgeLabel=slot.plat||'— select platform —';
   return`
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;align-items:end;margin-bottom:6px">
-      <div class="fgroup" style="margin:0"><label class="flabel">Platform</label>
-        <select class="fselect" id="bt-plat-${idx}" onchange="onPlatformLabelChange(${idx})">
-          <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
-        </select>
+    <div class="form-slot-header">
+      <span class="form-slot-plat-badge ${badgeCls}" id="bt-plat-badge-${idx}">${esc(badgeLabel)}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="fgroup" style="margin:0;min-width:130px"><label class="flabel" style="font-size:10px">Platform</label>
+          <select class="fselect" id="bt-plat-${idx}" style="height:28px;font-size:11.5px;padding:3px 24px 3px 8px" onchange="onPlatformLabelChange(${idx})">
+            <option value="">— select —</option>${platSel}<option value="__custom">+ Custom…</option>
+          </select>
+        </div>
+        <div class="form-slot-controls">
+          <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
+          <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
+          <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 8px">✕</button>
+        </div>
       </div>
+    </div>
+    <div class="form-slot-grid">
       <div class="fgroup" style="margin:0"><label class="flabel">Programme</label>
         <input class="finput" id="bt-prog-${idx}" placeholder="e.g. World News, Business" value="${esc(slot.prog||'')}">
       </div>
       <div class="fgroup" style="margin:0"><label class="flabel">${ukLabel()}</label><input class="finput" id="bt-uk-${idx}" placeholder="14:30 or 1430" value="${esc(slot.uk||'')}" oninput="btUKChange(${idx})" onblur="btUKBlur(${idx})"></div>
       <div class="fgroup" style="margin:0"><label class="flabel">IST</label><input class="finput" id="bt-ist-${idx}" placeholder="20:00 or 2000" value="${esc(slot.ist||'')}" oninput="btISTChange(${idx})" onblur="btISTBlur(${idx})"></div>
-      <div style="display:flex;flex-direction:row;gap:4px;align-self:flex-end;padding-bottom:1px;flex-wrap:nowrap">
-        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'up')" title="Move up" style="padding:3px 8px">↑</button>
-        <button class="btn btn-ghost btn-xs" onclick="moveBroadcastSlot(${idx},'down')" title="Move down" style="padding:3px 8px">↓</button>
-        <button class="btn btn-ghost btn-xs btn-danger" onclick="removeBroadcastSlot(${idx})" title="Remove" style="padding:3px 8px">✕</button>
-      </div>
-    </div>
-    <div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:2px">
-      <div class="fi-hint">Per-slot details (optional)</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:6px">
-        <div class="fgroup" style="margin:0"><label class="flabel">Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">${ukLabel()}</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
-        <div class="fgroup" style="margin:0"><label class="flabel">Commissioner</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
-        <div class="fgroup" style="margin:0"><label class="flabel">Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
-      </div>
+      <div class="form-slot-sub-label">Slot deadline</div>
+      <div class="fgroup" style="margin:0"><label class="flabel">Date</label><input class="finput" type="date" id="bt-dl-date-${idx}" value="${esc(slot.dl_date||'')}"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">${ukLabel()}</label><input class="finput" id="bt-dl-uk-${idx}" placeholder="17:00 or 1700" value="${esc(slot.dl_uk||'')}" oninput="btSlotDLUKChange(${idx})" onblur="btSlotDLUKBlur(${idx})"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">IST</label><input class="finput" id="bt-dl-ist-${idx}" placeholder="22:30 or 2230" value="${esc(slot.dl_ist||'')}" oninput="btSlotDLISTChange(${idx})" onblur="btSlotDLISTBlur(${idx})"></div>
+      <div class="form-slot-sub-label">Commissioner</div>
+      <div class="fgroup" style="margin:0"><label class="flabel">Name</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
+      <div class="fgroup" style="margin:0"><label class="flabel">Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
     </div>`;
 }
 function buildBroadcastSlotsHTML(existingSlots){
@@ -2642,10 +2710,10 @@ function buildBroadcastSlotsHTML(existingSlots){
   if(!existingSlots||!existingSlots.length) existingSlots=[{plat:'',prog:'',uk:'',ist:''}];
   let html='';
   existingSlots.forEach((slot,i)=>{
-    // backward compat: old slots used lbl, new use plat
     const normSlot={...slot, plat:slot.plat||slot.lbl||'', prog:slot.prog||''};
     _btSlotCounter=i;
-    html+=`<div class="bt-row" data-idx="${i}">${buildSlotRowHTML(i,normSlot)}</div>`;
+    const cardCls=i%2===0?'fsc-odd':'fsc-even';
+    html+=`<div class="bt-row form-slot-card ${cardCls}" data-idx="${i}">${buildSlotRowHTML(i,normSlot)}</div>`;
   });
   return html;
 }
@@ -3965,7 +4033,7 @@ function toggleAccordion(key){
   if(opening) ui.openSections.add(key); else ui.openSections.delete(key);
   if(opening&&key==='tasks') ui_taskPage=1;
   if(opening&&(key==='ibu'||key==='upcoming')) ui_upcomingPage=1;
-  if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]};
+  if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const b=document.getElementById('acc-body-'+key);
   const cv=document.getElementById('acc-chev-'+key);
   const a=document.getElementById('acc-'+key);
@@ -7386,7 +7454,7 @@ function saveStaffNames(){
 ═══════════════════════════════════════════════════════════ */
 
 // ── UI state ──────────────────────────────────────────────
-let _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]}; // form state
+let _te={open:false,type:'cab',storyId:null,storySec:null,editId:null}; // form state
 let _teOpen={};   // entryId → expanded bool
 let _teDismissed=null; // mirror of state.travelDismissed for quick access
 
@@ -7448,16 +7516,14 @@ function _teRefresh(){
 
 // ── Form ──────────────────────────────────────────────────
 function _teOpenForm(opts){
-  const editEntry=opts.editId?(state.travelEntries||[]).find(e=>e.id===opts.editId):null;
-  const _pr=editEntry?JSON.parse(JSON.stringify(editEntry.remarks||[])):[];
-  _te={open:true,type:opts.type||'cab',storyId:opts.storyId||null,storySec:opts.storySec||null,editId:opts.editId||null,pendingRemarks:_pr};
+  _te={open:true,type:opts.type||'cab',storyId:opts.storyId||null,storySec:opts.storySec||null,editId:opts.editId||null};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
   else { ui.openSections.add('travel'); render(); setTimeout(()=>{ const t=document.getElementById('acc-body-travel'); if(t){ t.innerHTML=_teRenderBody(); t.classList.add('open'); } },50); }
   setTimeout(()=>document.getElementById('te-story')?.focus(),80);
 }
 function _teCloseForm(){
-  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]};
+  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
 }
@@ -7474,50 +7540,20 @@ function _teSubmit(){
   let storySec=null;
   if(storyId){ for(const s of SECTIONS){ if((state.sections[s.key]||[]).find(x=>x.id===storyId)){storySec=s.key;break;} } }
 
-  // Use _te.pendingRemarks directly — it is kept up to date by _teAddRemark and delete buttons.
-  // Do NOT flush from DOM; that path is unreliable and redundant.
-  if(!Array.isArray(_te.pendingRemarks)) _te.pendingRemarks=[];
-  const remarks=_te.pendingRemarks.slice(); // snapshot
-
   let data={};
   if(type==='cab') data={from:g('from'),pickDate:g('pickdate'),pickTime:g('picktime'),to:g('to'),dropDate:g('dropdate'),dropTime:g('droptime'),driver:g('driver'),phone:g('phone'),cabNum:g('cabnum'),payment:g('payment'),paidBy:g('paidby')};
   else if(type==='flight') data={direction:g('direction'),airline:g('airline'),flightNum:g('flightnum'),from:g('from'),to:g('to'),flightDate:g('flightdate'),flightTime:g('flighttime'),payment:g('payment'),paidBy:g('paidby')};
   else if(type==='hotel') data={hotelName:g('hotel'),where:g('where'),checkIn:g('checkin'),checkOut:g('checkout'),priceDay:g('priceday'),priceTotal:g('pricetotal'),payment:g('payment'),paidBy:g('paidby')};
   else if(type==='expense') data={what:g('what'),when:g('when'),where:g('where'),amount:g('amount'),paidBy:g('paidby'),payment:g('payment'),claimed:g('claimed')};
 
-  const entry={type,storyId,storySec,data,remarks};
+  const entry={type,storyId,storySec,data};
   if(_te.editId) _teUpdate(_te.editId,entry);
   else _teAdd(entry);
-  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null,pendingRemarks:[]};
+  _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
 }
 
-// _te.pendingRemarks is the single source of truth for remarks during form editing.
-// DOM rows are a view only. This function is kept as a safety no-op.
-function _teFlushDOMRemarks(){ if(!Array.isArray(_te.pendingRemarks)) _te.pendingRemarks=[]; }
-
-function _teAddRemark(){
-  const inp=document.getElementById('te-remark-input');
-  if(!inp||!inp.value.trim()) return;
-  const list=document.getElementById('te-remark-list');
-  if(!list) return;
-  // Safety: ensure pendingRemarks is always an array
-  if(!Array.isArray(_te.pendingRemarks)) _te.pendingRemarks=[];
-  // Remove the "No remarks yet." placeholder if present
-  const placeholder=list.querySelector('.te-rem-placeholder');
-  if(placeholder) placeholder.remove();
-  const rid=genId(), ts=Date.now(), rawText=inp.value.trim();
-  const now=new Date(ts).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-  // Persist to _te.pendingRemarks immediately — this is the source of truth
-  _te.pendingRemarks.push({id:rid,text:rawText,ts});
-  const div=document.createElement('div');
-  div.className='te-rem-row';
-  div.style.cssText='display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:5px;font-size:12px';
-  div.innerHTML=`<span style="font-size:10.5px;color:var(--text3);flex-shrink:0;min-width:80px">${now}</span><span class="te-rem-text" data-rid="${rid}" data-ts="${ts}" data-raw-text="${esc(rawText)}" style="flex:1;color:var(--text2);line-height:1.5">${esc(rawText)}</span><button onclick="this.closest('.te-rem-row').remove();_te.pendingRemarks=_te.pendingRemarks.filter(r=>r.id==='${rid}'?false:true)" style="font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer">✕</button>`;
-  list.appendChild(div);
-  inp.value=''; inp.focus();
-}
 
 function _teUpdateHotelTotal(){
   const pd=parseFloat(document.getElementById('te-priceday')?.value)||0;
@@ -7532,7 +7568,6 @@ function _teBuildForm(){
   const type=_te.type;
   const editEntry=_te.editId?(state.travelEntries||[]).find(e=>e.id===_te.editId):null;
   const ed=editEntry?.data||{};
-  const existingRemarks=Array.isArray(_te.pendingRemarks)?_te.pendingRemarks:[];
   const curStory=_te.storyId||editEntry?.storyId||'';
 
   const stories=_teGetStories();
@@ -7549,8 +7584,6 @@ function _teBuildForm(){
   else if(type==='expense') fields=fi('what','What',ed.what,'','Description of expense')+fi('when','Date',ed.when,'date','')+fi('where','Location / vendor',ed.where,'','Where was this spent?')+fi('amount','Amount',ed.amount,'','₹ or £')+fi('paidby','Paid by',ed.paidBy,'','Employee name')+fs('payment','Payment mode',payOpts(ed.payment))+fs('claimed','Expense claimed',`<option value="no"${(_teGetClaimed(editEntry||{}))!=='yes'?' selected':''}>Not claimed</option><option value="yes"${_teGetClaimed(editEntry||{})==='yes'?' selected':''}>Claimed</option>`)+`<div class="fgroup full"><div style="font-size:11px;color:var(--progress);background:rgba(217,119,6,.08);padding:5px 10px;border-radius:6px">⏳ "Not claimed" adds to unclaimed count in accordion header</div></div>`;
 
   const typBtn=(t,ico,lbl)=>`<button type="button" onclick="_teSetType('${t}')" style="flex:1;padding:8px 4px;border:1px solid ${type===t?'var(--accent)':'var(--border)'};border-radius:7px;background:${type===t?'var(--accent)':'transparent'};color:${type===t?'#fff':'var(--text2)'};font-size:12px;cursor:pointer;font-family:var(--font)">${ico} ${lbl}</button>`;
-
-  const remarkRows=existingRemarks.map(r=>`<div class="te-rem-row" style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--surface2);border-radius:7px;margin-bottom:5px;font-size:12px"><span style="font-size:10.5px;color:var(--text3);flex-shrink:0;min-width:80px">${_fmtDShort(new Date(r.ts).toISOString().slice(0,10))}, ${new Date(r.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span><span class="te-rem-text" data-rid="${r.id}" data-ts="${r.ts}" data-raw-text="${esc(r.text)}" style="flex:1;color:var(--text2);line-height:1.5">${esc(r.text)}</span><button onclick="this.closest('.te-rem-row').remove();_te.pendingRemarks=_te.pendingRemarks.filter(x=>x.id!=='${r.id}')" style="font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer">✕</button></div>`).join('');
 
   return`<div class="note-add-form" style="border-color:var(--accent);margin-bottom:16px" onclick="event.stopPropagation()">
     <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:14px">${_te.editId?'Edit':'New'} Travel / Expense Entry</div>
@@ -7569,18 +7602,78 @@ function _teBuildForm(){
     </div>
     <div style="border-top:1px solid var(--border);margin:4px 0 12px"></div>
     <div class="form-grid">${fields}</div>
-    <div style="border-top:1px solid var(--border);margin:12px 0 8px"></div>
-    <div class="flabel" style="margin-bottom:6px">Remarks</div>
-    <div id="te-remark-list">${remarkRows||'<div class="te-rem-placeholder" style="font-size:12px;color:var(--text3);padding:2px 0 6px">No remarks yet.</div>'}</div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <input class="finput" id="te-remark-input" placeholder="Add a remark…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();_teAddRemark()}">
-      <button class="btn btn-ghost btn-sm" onclick="_teAddRemark()">+ Add</button>
-    </div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn btn-accent btn-sm" onclick="_teSubmit()">Save entry</button>
       <button class="btn btn-ghost btn-sm" onclick="_teCloseForm()">Cancel</button>
     </div>
   </div>`;
+}
+
+// ── Travel entry remarks CRUD ─────────────────────────────
+let _teRemarkEditId={};  // entryId → remarkId currently being edited
+
+function _teAddEntryRemark(eid){
+  const el=document.getElementById('ter-input-'+eid); if(!el) return;
+  const text=el.value.trim(); if(!text){ toast('Enter a remark'); return; }
+  const entry=(state.travelEntries||[]).find(e=>e.id===eid); if(!entry) return;
+  if(!Array.isArray(entry.remarks)) entry.remarks=[];
+  entry.remarks.push({id:genId(),text,ts:Date.now()});
+  entry.updated=Date.now();
+  _teSave();
+}
+function _teUpdateEntryRemark(eid,rid){
+  const el=document.getElementById('ter-edit-'+eid+'-'+rid); if(!el) return;
+  const text=el.value.trim(); if(!text){ toast('Enter remark text'); return; }
+  const entry=(state.travelEntries||[]).find(e=>e.id===eid); if(!entry) return;
+  const r=(entry.remarks||[]).find(r=>r.id===rid); if(!r) return;
+  r.text=text; r.edited=Date.now();
+  entry.updated=Date.now();
+  delete _teRemarkEditId[eid];
+  _teSave();
+}
+function _teDeleteEntryRemark(eid,rid){
+  const entry=(state.travelEntries||[]).find(e=>e.id===eid); if(!entry) return;
+  entry.remarks=(entry.remarks||[]).filter(r=>r.id!==rid);
+  entry.updated=Date.now();
+  _teSave();
+}
+
+function _teBuildEntryRemarksHTML(e){
+  const list=e.remarks||[];
+  const editingId=_teRemarkEditId[e.id];
+  let html=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:7px">🗒 Remarks${list.length?' ('+list.length+')':''}</div>`;
+  list.forEach(r=>{
+    const dt=new Date(r.ts).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    if(editingId===r.id){
+      html+=`<div class="sremark" onclick="event.stopPropagation()">
+        <div class="sremark-body" style="width:100%">
+          <textarea class="ftextarea" id="ter-edit-${e.id}-${r.id}" style="min-height:52px;white-space:pre-wrap;width:100%">${esc(r.text)}</textarea>
+          <div style="display:flex;gap:6px;margin-top:5px">
+            <button class="btn btn-accent btn-sm" onclick="event.stopPropagation();_teUpdateEntryRemark('${e.id}','${r.id}')">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();delete _teRemarkEditId['${e.id}'];_teRefresh()">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      html+=`<div class="sremark" onclick="event.stopPropagation()">
+        <div class="sremark-body">
+          <div class="sremark-text">${esc(r.text)}</div>
+          <div class="sremark-meta">${dt}${r.edited?' · edited '+new Date(r.edited).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''}</div>
+        </div>
+        <div style="display:flex;gap:3px;flex-shrink:0">
+          <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();_teRemarkEditId['${e.id}']='${r.id}';_teRefresh()" title="Edit">✏</button>
+          <button class="btn btn-ghost btn-xs btn-danger" onclick="event.stopPropagation();if(confirm('Delete this remark?'))_teDeleteEntryRemark('${e.id}','${r.id}')" title="Delete">🗑</button>
+        </div>
+      </div>`;
+    }
+  });
+  html+=`<div class="sremark-add" onclick="event.stopPropagation()">
+    <textarea class="ftextarea" id="ter-input-${e.id}" placeholder="Add a remark… (Enter for new line)" style="flex:1;font-size:12px;min-height:44px;resize:vertical;white-space:pre-wrap"></textarea>
+    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();_teAddEntryRemark('${e.id}')">+ Add</button>
+  </div>`;
+  html+=`</div>`;
+  return html;
 }
 
 // ── Entry row rendering ───────────────────────────────────
@@ -7618,8 +7711,8 @@ function _teRenderEntry(e){
   else if(e.type==='hotel') det=fld('Hotel',d.hotelName)+fld('Location',d.where)+fld('Check-in',_fmtD(d.checkIn))+fld('Check-out',_fmtD(d.checkOut))+fld('Price/day',d.priceDay)+fld('Total',d.priceTotal)+fld('Payment',_payLabel(d.payment))+fld('Paid by',d.paidBy);
   else if(e.type==='expense') det=fld('What',d.what)+fld('Date',_fmtD(d.when))+fld('Location',d.where)+fld('Amount',d.amount)+fld('Paid by',d.paidBy)+fld('Payment',_payLabel(d.payment))+fld('Claimed',_teGetClaimed(e)==='yes'?'✅ Yes':'⏳ Not yet');
 
-  // Remarks in detail
-  const remHTML=(e.remarks||[]).map(r=>`<div style="font-size:11.5px;color:var(--text2);padding:4px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--text3);font-size:10.5px;margin-right:8px">${_fmtDShort(new Date(r.ts).toISOString().slice(0,10))}</span>${esc(r.text)}</div>`).join('');
+  // Remarks — full inline CRUD panel
+  const remHTML=_teBuildEntryRemarksHTML(e);
 
   return`<div style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:7px;margin-bottom:6px">
     <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;${isOpen?'background:var(--surface2)':''}" onclick="_teToggle('${e.id}');event.stopPropagation()">
@@ -7631,10 +7724,7 @@ function _teRenderEntry(e){
     <div id="te-det-${e.id}" style="display:${isOpen?'block':'none'};padding:10px 13px;border-top:1px solid var(--border)">
       <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">${_typeName[e.type]}</div>
       ${det}
-      <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Remarks</div>
-        ${remHTML||'<div style="font-size:12px;color:var(--text3)">No remarks.</div>'}
-      </div>
+      ${remHTML}
       <div style="display:flex;gap:7px;justify-content:flex-end;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">
         <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'${e.type}',storyId:${e.storyId?`'${e.storyId}'`:'null'},storySec:${e.storySec?`'${e.storySec}'`:'null'},editId:'${e.id}'});event.stopPropagation()">✏ Edit</button>
         <button class="btn btn-ghost btn-sm btn-danger" onclick="_teDelete('${e.id}');event.stopPropagation()">🗑 Delete</button>
@@ -7770,10 +7860,20 @@ function renderTravelSection(){
   const summary=stories.length?esc((stories[0].s.title||'').slice(0,32)):'';
 
   const travelStrip=(()=>{
-    if(!summary&&!notClaimedCount&&!allClaimed) return '';
+    if(!summary) return '';
     const dotCol=notClaimedCount?'#D97706':allClaimed?'#16A34A':'#94a3b8';
-    const meta=notClaimedCount?`⏳ ${notClaimedCount} unclaimed`:allClaimed?'✅ all claimed':'';
-    return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${summary}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
+    const firstStory=stories[0]?.s;
+    let meta='';
+    if(firstStory?.deadline_date){
+      const dl=firstStory.deadline_date;
+      const isOverdue=dl<today;
+      const d=new Date(dl+'T00:00:00');
+      const fmtDl=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      meta=`<span style="font-size:10px;color:${isOverdue?'#B91C1C':'#888'};font-family:var(--font);flex-shrink:0;margin-left:4px">${isOverdue?'⚠ overdue':'Due'} ${fmtDl}</span>`;
+    } else if(stories.length>1){
+      meta=`<span style="font-size:10px;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">+${stories.length-1} more</span>`;
+    }
+    return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${summary}</span>${meta}</div>`;
   })();
 
   return`<div class="accordion${isOpen?' acc-open':''}" id="acc-travel">
@@ -8212,16 +8312,14 @@ function renderStoryCard(sec,s,archKey){
   <div class="card-top" onclick="toggleCard('${s.id}')">
     <div class="card-title-wrap">
       <div class="card-title">${esc(s.title||'Untitled')} ${subsecBadge}</div>
-      ${s.description?`<div style="font-size:11.5px;color:var(--text3);margin:2px 0 3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:52ch;line-height:1.45;">${esc(s.description)}</div>`:''}
       <div class="card-subtitle">
         ${s.correspondent?`<span class="cs-chip">👤 ${esc(s.correspondent)}</span>`:''}
         ${loc?`<span class="cs-chip">📍 ${esc(loc)}</span>`:''}
-        ${s.time_uk||(s.broadcast_times&&s.broadcast_times[0]?.uk)?`<span class="cs-chip">🕐 ${esc((s.broadcast_times&&s.broadcast_times[0]?.uk)||s.time_uk||'')} ${ukLabel()}${s.broadcast_times&&s.broadcast_times[0]?.plat?' · '+esc(s.broadcast_times[0].plat):''}${s.broadcast_times&&s.broadcast_times[0]?.prog?' · '+esc(s.broadcast_times[0].prog):''}</span>`:''}
-        ${reqTime?`<span class="cs-chip">🗓 ${reqTime}</span>`:''}
+        ${s.story_type?s.story_type.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="cs-chip">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):''}
+        ${s.created?`<span class="cs-chip" style="color:var(--text3)">Logged ${new Date(s.created).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`:''}
       </div>
       <div class="card-tags">
         ${secObj.hasWW&&!archKey?`<span class="ww-badge ww-${mode}" id="wwbadge-${s.id}" onclick="toggleWWMode('${sec}','${s.id}',${archKeyJS});event.stopPropagation()" title="Click to cycle: None → Working → Watching">${wwLabel}</span>`:''}
-        ${s.story_type?s.story_type.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="sbadge sb-story-type">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):''}
         ${(s.location==='Field'||s.location==='field')&&!archKey&&!(state.travelDismissed||[]).includes(s.id)?(()=>{
           const entries=(state.travelEntries||[]).filter(e=>e.storyId===s.id);
           const tc=entries.length;
@@ -8254,14 +8352,17 @@ function renderStoryCard(sec,s,archKey){
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}">▾</span>
   </div>
   <div class="card-body${isOpen?' open':''}" id="cb-${s.id}">
-    ${s.description?`<div style="margin-bottom:12px"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
     ${(()=>{
-      const staffParts=[];
-      if(s.correspondent) staffParts.push(`<span class="staff-meta-chip">👤 ${esc(s.correspondent)}</span>`);
-      if(s.producer) staffParts.push(`<span class="staff-meta-chip" style="color:var(--text3)">Producer: ${esc(s.producer)}</span>`);
-      if(s.shoot_edit) staffParts.push(`<span class="staff-meta-chip" style="color:var(--text3)">Shoot-Edit: ${esc(s.shoot_edit)}</span>`);
-      if(loc) staffParts.push(`<span class="staff-meta-chip" style="color:var(--text3)">📍 ${esc(loc)}</span>`);
-      return staffParts.length?`<div class="staff-meta-row" style="margin-bottom:12px">${staffParts.join('')}</div>`:'';
+      // Meta line first, description below
+      const metaParts=[];
+      if(s.producer)    metaParts.push(`Producer: ${esc(s.producer)}`);
+      if(s.shoot_edit)  metaParts.push(`Shoot-Edit: ${esc(s.shoot_edit)}`);
+      if(s.req_name||s.req_team) metaParts.push(`By ${esc([s.req_name,s.req_team].filter(Boolean).join('/'))}`)
+      if(reqTime)       metaParts.push(`Logged ${new Date(s.created).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`);
+      const metaLine=metaParts.length?`<div style="font-size:11px;color:var(--text3);margin-bottom:4px;line-height:1.6;font-family:var(--font)">${metaParts.join(' · ')}</div>`:'';
+      const descLine=s.description?`<div style="font-size:12px;color:var(--text2);line-height:1.55;white-space:pre-wrap">${esc(s.description)}</div>`:'';
+      if(!descLine&&!metaLine) return '';
+      return `<div style="margin-bottom:8px">${metaLine}${descLine}</div>`;
     })()}
     ${(s.broadcast_times&&s.broadcast_times.length)||(s.time_uk||s.time_ist)?(()=>{
       const _slotTagCls=(plat)=>{
@@ -8282,25 +8383,30 @@ function renderStoryCard(sec,s,archKey){
         if(p.includes('ip')||p.includes('in-person')) return '#CF6640';
         return 'var(--border2)';
       };
-      let slotsHTML='<div class="slot-section-label">Broadcast slots</div><div class="slot-rows-wrap">';
+      const editSlotsBtn=!archKey?`<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:2px 8px;margin-left:auto" onclick="editStory('${sec}','${s.id}',null);event.stopPropagation()" title="Edit broadcast slots">✏ Edit slots</button>`:'';
+      let slotsHTML=`<div style="display:flex;align-items:center;margin-bottom:4px">${'<span class="slot-section-label">Broadcast slots</span>'}${editSlotsBtn}</div><div class="slot-rows-wrap">`;
       if(s.broadcast_times&&s.broadcast_times.length){
         s.broadcast_times.forEach((t,i)=>{
           const plat=t.plat||t.lbl||('Slot '+(i+1));
           const tagCls=_slotTagCls(plat);
           const accentCol=_slotAccentCol(plat);
-          const timeStr=[t.uk?`${t.uk} ${ukLabel()}`:'',t.ist?`${t.ist} IST`:''].filter(Boolean).join(' / ')||'–';
-          const dlStr=t.dl_date?`Deadline: ${fmtDate(t.dl_date)}${t.dl_uk?' · '+t.dl_uk+' '+ukLabel():''}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:
-                      t.dl_uk?`Deadline: ${t.dl_uk} ${ukLabel()}${t.dl_ist?' / '+t.dl_ist+' IST':''}`:
-                      t.dl_ist?`Deadline: ${t.dl_ist} IST`:'';
-          const commStr=t.com_name?`<span style="font-size:11px;color:var(--text3);flex-shrink:0">👤 ${esc([t.com_name,t.com_team,t.com_loc].filter(Boolean).join(' · '))}</span>`:'';
+          // Air time (centre column — broadcast time, not deadline)
+          const airTimeStr=[t.uk?`${t.uk} ${ukLabel()}`:'',t.ist?`${t.ist} IST`:''].filter(Boolean).join(' / ')||'';
+          // Deadline — date on line 1, BST/IST on line 2
+          const dlDateStr=t.dl_date?fmtDate(t.dl_date):'';
+          const dlTimeStr=[t.dl_uk?`${t.dl_uk} ${ukLabel()}`:'',t.dl_ist?`${t.dl_ist} IST`:''].filter(Boolean).join(' / ');
+          // Centre: prog name or channel, then airtime below it
+          const centreTop=esc(t.prog||'');
           slotsHTML+=`<div class="slot-row-item">
             <div class="slot-row-accent" style="background:${accentCol}"></div>
-            <div class="slot-row-inner">
-              <span class="slot-row-tag ${tagCls}">${esc(plat)}</span>
-              <span class="slot-row-time">${esc(timeStr)}</span>
-              ${t.prog?`<span class="slot-row-prog">${esc(t.prog)}</span>`:'<span class="slot-row-prog"></span>'}
-              ${dlStr?`<span class="slot-row-dl">${esc(dlStr)}</span>`:''}
-              ${commStr}
+            <div class="slot-row-tag-cell"><span class="slot-row-tag ${tagCls}">${esc(plat)}</span></div>
+            <div class="slot-row-centre">
+              ${centreTop?`<span class="slot-row-prog">${centreTop}</span>`:''}
+              ${airTimeStr?`<span class="slot-row-airtime">${esc(airTimeStr)}</span>`:''}
+            </div>
+            <div class="slot-row-dl-cell">
+              ${dlDateStr?`<span class="slot-row-dl-date">${esc(dlDateStr)}</span>`:''}
+              ${dlTimeStr?`<span class="slot-row-dl-time">${esc(dlTimeStr)}</span>`:''}
             </div>
           </div>`;
         });
@@ -8308,21 +8414,18 @@ function renderStoryCard(sec,s,archKey){
         const timeStr=[s.time_uk?`${s.time_uk} ${ukLabel()}`:'',s.time_ist?`${s.time_ist} IST`:''].filter(Boolean).join(' / ');
         slotsHTML+=`<div class="slot-row-item">
           <div class="slot-row-accent" style="background:var(--border2)"></div>
-          <div class="slot-row-inner">
-            <span class="slot-row-tag slot-tag-other">TX</span>
-            <span class="slot-row-time">${esc(timeStr)}</span>
-          </div>
+          <div class="slot-row-tag-cell"><span class="slot-row-tag slot-tag-other">TX</span></div>
+          <div class="slot-row-centre">${timeStr?`<span class="slot-row-airtime">${esc(timeStr)}</span>`:''}</div>
+          <div class="slot-row-dl-cell"></div>
         </div>`;
       }
       slotsHTML+='</div>';
       return slotsHTML;
     })():''}
-    <div class="card-fields" style="margin-top:4px">
-      ${s.req_name||s.req_team?field('Requested By',[s.req_name,s.req_team,s.req_location].filter(Boolean).join(' · ')):''}
+    ${s.deadline_date||s.reminder&&s.reminder!=='off'?`<div class="card-fields" style="margin-top:4px">
       ${s.deadline_date?`<div><div class="cfield-label">Story Deadline</div><div class="cfield-value">${fmtDate(s.deadline_date)}${s.deadline_uk?' · '+esc(s.deadline_uk)+' '+ukLabel():''}${s.deadline_ist?' / '+esc(s.deadline_ist)+' IST':''}</div></div>`:''}
-      ${reqTime?field('Logged At',reqTime):''}
       ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
-    </div>
+    </div>`:''}
     ${s.remarks?`<div class="card-remarks" onclick="event.stopPropagation()" style="font-size:12px;color:var(--text3);font-style:italic;padding:6px 0">💬 ${esc(s.remarks)} <span style="font-size:10px;font-family:var(--mono)"></span></div>`:''}
     ${buildStoryRemarksHTML(sec,s,archKey)}
     ${(s.location==='Field'||s.location==='field')&&!archKey?`<div style="font-size:12px;color:var(--text3);padding:6px 0">🗺 Travel & expenses for this story are managed in the <b>Travel &amp; Expenses</b> accordion below.</div>`:''}
@@ -8407,9 +8510,10 @@ function renderForm(sec,archKey){
       </div>
     </div>
 
-    <!-- ── PEOPLE ── -->
-    <div class="fsec fs-people">
-      <div class="form-divider">People</div>
+    <!-- ── PEOPLE → LINKS: unified master 3-col grid ── -->
+    <div class="form-master-grid" style="grid-column:1/-1">
+
+      <div class="form-row-label">People</div>
       <div class="fgroup"><label class="flabel">Correspondent</label>
         <div style="display:flex;gap:5px;align-items:center">
           <input class="finput" id="f-correspondent${sfx}" placeholder="Name or leave blank" list="dl-correspondents" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.correspondent||'')}">
@@ -8428,52 +8532,27 @@ function renderForm(sec,archKey){
           <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-shoot-edit${sfx}').value=''" title="Clear">✕</button>
         </div>
       </div>
-    </div>
 
-    <!-- ── REQUEST DETAILS ── -->
-    <div class="fsec fs-req">
-      <div class="form-divider">Request Details</div>
+      <div class="form-row-label">Request Details</div>
       <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
       <div class="fgroup"><label class="flabel">Team</label><input class="finput" id="f-req-team${sfx}" placeholder="Team" value="${esc(editStoryObj?.req_team||'')}"></div>
       <div class="fgroup"><label class="flabel">Location</label><input class="finput" id="f-req-location${sfx}" placeholder="City / office" value="${esc(editStoryObj?.req_location||'')}"></div>
-    </div>
 
-    <!-- ── DEADLINE ── -->
-    <div class="fsec fs-dead">
-      <div class="form-divider">Deadline</div>
-      <div class="deadline-split">
-        <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-        <div class="fgroup dl-times-row"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
-        <div class="fgroup dl-times-row"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
-      </div>
-    </div>
+      <div class="form-row-label">Deadline</div>
+      <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
+      <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
 
-    <!-- ── LOCATION ── -->
-    <div class="fsec fs-loc">
-      <div class="form-divider">Location</div>
+      <div class="form-row-label">Location</div>
       <div class="fgroup"><label class="flabel">Type</label>
         <select class="fselect" id="f-location${sfx}" onchange="updateLocationPlaceholder('${sec}',${archKeyJS})">
           <option value="">– Select –</option><option value="Studio"${editStoryObj?.location==='Studio'?' selected':''}>Studio</option><option value="Field"${editStoryObj?.location==='Field'?' selected':''}>Field</option><option value="Remote"${editStoryObj?.location==='Remote'?' selected':''}>Remote</option>
         </select>
       </div>
-      <div class="fgroup">
-        <label class="flabel">Detail</label>
-        <input class="finput" id="f-field-location${sfx}" placeholder="${locPlaceholder}" value="${esc(editStoryObj?.field_location||'')}">
-      </div>
-    </div>
+      <div class="fgroup"><label class="flabel">Detail</label><input class="finput" id="f-field-location${sfx}" placeholder="${locPlaceholder}" value="${esc(editStoryObj?.field_location||'')}"></div>
+      <div class="form-field-empty fgroup"><label class="flabel">&nbsp;</label><input class="finput" tabindex="-1"></div>
 
-    <!-- ── BROADCAST TIMES ── -->
-    <div class="fsec fs-bcast">
-      <div class="form-divider">Broadcast Times</div>
-      <div class="fgroup full" style="margin-bottom:0">
-        <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
-      </div>
-    </div>
-
-    <!-- ── STATUS & REMINDER ── -->
-    <div class="fsec fs-status">
-      <div class="form-divider">Status &amp; Reminder</div>
+      <div class="form-row-label">Status &amp; Reminder</div>
       <div class="fgroup"><label class="flabel">Status</label>
         <select class="fselect" id="f-status${sfx}">
           <option value="">– Select –</option>
@@ -8491,17 +8570,24 @@ function renderForm(sec,archKey){
           <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
         </select>
       </div>
-      <div class="fgroup full">
-        <label class="flabel">Remarks</label>
+      <div class="form-field-empty fgroup"><label class="flabel">&nbsp;</label><input class="finput" tabindex="-1"></div>
+
+      <div class="form-row-label">Broadcast Times</div>
+      <div class="form-slot-wrap">
+        <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
+        <button class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
+      </div>
+
+      <div class="form-row-label">Remarks</div>
+      <div style="grid-column:1/-1">
         ${isEdit&&editStoryObj
           ? renderFormRemarksList(sec,editStoryObj,archKey)
           : `<textarea class="ftextarea" id="f-remarks-new${sfx}" placeholder="Context, contacts, logistics, previous coverage…" style="min-height:72px;resize:vertical;white-space:pre-wrap"></textarea>`}
       </div>
-    </div>
 
-    <!-- ── LINKS ── -->
-    <div class="fsec fs-links">
-      <div class="fgroup full"><label class="flabel">Reference Links <span class="flabel-hint">(comma-separated)</span></label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(editStoryObj?.links||'')}"></div>
+      <div class="form-row-label">Reference Links</div>
+      <div style="grid-column:1/-1"><label class="flabel" style="display:none">URLs</label><input class="finput" id="f-links${sfx}" placeholder="https://… (comma-separated)" value="${esc(editStoryObj?.links||'')}"></div>
+
     </div>
 
   </div>
