@@ -1267,12 +1267,14 @@ button.tasks-tab-btn {
 .travel-segment.ts-flight{border-left:3px solid #8b5cf6;}
 .travel-segment.ts-hotel{border-left:3px solid #10b981;}
 .travel-segment.ts-expense{border-left:3px solid #f59e0b;}
+.travel-segment.ts-fixer{border-left:3px solid #0D9488;}
 .travel-seg-head{display:flex;align-items:center;gap:8px;cursor:pointer;}
 .travel-type-badge{font-size:11px;font-family:var(--font);font-weight:500;padding:3px 9px;border-radius:20px;flex-shrink:0;}
 .ttb-cab{background:rgba(14,165,233,.09);color:#0369a1;border:0.5px solid rgba(14,165,233,.3);}
 .ttb-flight{background:rgba(139,92,246,.09);color:#7c3aed;border:0.5px solid rgba(139,92,246,.3);}
 .ttb-hotel{background:rgba(16,185,129,.09);color:#047857;border:0.5px solid rgba(16,185,129,.3);}
 .ttb-expense{background:rgba(245,158,11,.09);color:#b45309;border:0.5px solid rgba(245,158,11,.3);}
+.ttb-fixer{background:rgba(13,148,136,.09);color:#0D9488;border:0.5px solid rgba(13,148,136,.35);}
 .travel-add-bar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 6px;}
 .travel-wrap{display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;}
 /* ── Meetings ── */
@@ -2883,6 +2885,12 @@ function moveStoryToSection(fromSec, id, toSec, archKey, mode){
   saveAndPush();
   toast(mode==='copy'?`Copied to ${secName(toSec)} ✓`:`Moved to ${secName(toSec)} ✓`);
   render();
+  if(mode!=='copy'&&!archKey&&(toSec==='ibu'||toSec==='other')){
+    setTimeout(()=>{
+      const el=document.getElementById('acc-ibu')||document.getElementById('acc-other');
+      if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+    },80);
+  }
 }
 function markNotDone(sec,id,archKey){
   updateStory(sec,id,{status:'in-progress',completion_note:'',completion_links:'',carriedForward:false},archKey);
@@ -3376,12 +3384,13 @@ function storyToText(s){
     ln.push('  Travel:');
     storyTravel.forEach(e=>{
       const d=e.data||{};
-      const icons={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳'};
+      const icons={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳',fixer:'🤝'};
       ln.push('    '+(icons[e.type]||'')+' '+(_typeName[e.type]||e.type).toUpperCase());
       if(e.type==='cab'&&d.from) ln.push('      '+(d.from||'')+(d.to?' → '+d.to:'')+(d.when?' @ '+_fmtDT(d.when):'')+(d.driver?' Driver: '+d.driver+(d.phone?' '+d.phone:''):''));
       if(e.type==='flight') ln.push('      '+(d.direction||'outbound')+' '+(d.from||'')+(d.to?' → '+d.to:'')+(d.when?' @ '+_fmtDT(d.when):''));
       if(e.type==='hotel') ln.push('      '+(d.hotelName||'')+(d.where?', '+d.where:'')+(d.checkIn?' In:'+_fmtD(d.checkIn):'')+(d.checkOut?' Out:'+_fmtD(d.checkOut):''));
       if(e.type==='expense') ln.push('      '+(d.what||'')+(d.amount?' '+d.amount:'')+(d.paidBy?' by '+d.paidBy:''));
+      if(e.type==='fixer') ln.push('      '+(d.fixerName||'')+(d.where?', '+d.where:'')+(d.startDate?' '+_fmtD(d.startDate):'')+(d.endDate?' – '+_fmtD(d.endDate):'')+(d.fixerTotal?' Total:'+d.fixerTotal:'')+(d.paidBy?' by '+d.paidBy:''));
     });
   }
   return ln.join('\n');
@@ -6411,7 +6420,7 @@ function renderCombinedAccordion(archKey){
       <span class="acc-icon">📡</span>
       <span class="acc-name">Stories</span>
       <span class="acc-summary">${(()=>{ if(!allActive.length)return ''; const c=[...allActive].filter(s=>!['completed','not-done','on-hold','shelved'].includes(s.status)); if(!c.length)return ''; c.sort((a,b)=>(b.created||0)-(a.created||0)); return esc(c[0].title||''); })()}</span>
-      <div class="acc-meta">${_urgentBadge}${_progressBadge}${_carryBadge}${_typeBadge}${_filterChip}</div>
+      <div class="acc-meta">${_urgentBadge}${_progressBadge}${_carryBadge}${_filterChip}</div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-ibu">▾</span>
     </div>
     ${_storiesStrip}
@@ -7497,9 +7506,9 @@ let _teDismissed=null; // mirror of state.travelDismissed for quick access
 
 // ── Helpers ───────────────────────────────────────────────
 const _payLabel=v=>({account:'Account','bbc-direct':'BBC Direct',card:'Card',cash:'Cash',unpaid:'Unpaid',upi:'UPI'}[v]||v||'—');
-const _typeIco={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳'};
-const _typeName={cab:'Cab',flight:'Flight',hotel:'Hotel',expense:'Expense'};
-const _typeCol={cab:'#D97706',flight:'#2563EB',hotel:'#7C3AED',expense:'#DC2626'};
+const _typeIco={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳',fixer:'🤝'};
+const _typeName={cab:'Cab',flight:'Flight',hotel:'Hotel',expense:'Expense',fixer:'Fixer'};
+const _typeCol={cab:'#D97706',flight:'#2563EB',hotel:'#7C3AED',expense:'#DC2626',fixer:'#0D9488'};
 const _fmtDT=v=>{ if(!v) return ''; try{ const d=new Date(v); if(isNaN(d)) return v; return d.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){return v;} };
 const _fmtD=v=>{ if(!v) return ''; try{ const d=new Date(v+'T00:00:00'); if(isNaN(d)) return v; return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }catch(e){return v;} };
 const _fmtDShort=v=>{ if(!v) return ''; try{ const d=new Date(v+'T00:00:00'); if(isNaN(d)) return v; return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); }catch(e){return v;} };
@@ -7582,6 +7591,7 @@ function _teSubmit(){
   else if(type==='flight') data={direction:g('direction'),airline:g('airline'),flightNum:g('flightnum'),from:g('from'),to:g('to'),flightDate:g('flightdate'),flightTime:g('flighttime'),payment:g('payment'),paidBy:g('paidby')};
   else if(type==='hotel') data={hotelName:g('hotel'),where:g('where'),checkIn:g('checkin'),checkOut:g('checkout'),priceDay:g('priceday'),priceTotal:g('pricetotal'),payment:g('payment'),paidBy:g('paidby')};
   else if(type==='expense') data={what:g('what'),when:g('when'),where:g('where'),amount:g('amount'),paidBy:g('paidby'),payment:g('payment'),claimed:g('claimed')};
+  else if(type==='fixer') data={fixerName:g('fixername'),where:g('where'),phone:g('phone'),email:g('email'),startDate:g('startdate'),endDate:g('enddate'),fixerDays:g('fixerdays'),rateDay:g('rateday'),fixerTotal:g('fixertotal'),payment:g('payment'),paidBy:g('paidby'),claimed:g('claimed'),status:g('status'),fixerNotes:(document.getElementById('te-fixernotes')?.value||'').trim()};
 
   const entry={type,storyId,storySec,data};
   if(_te.editId) _teUpdate(_te.editId,entry);
@@ -7599,6 +7609,21 @@ function _teUpdateHotelTotal(){
   const tot=document.getElementById('te-pricetotal');
   if(!tot||tot._edited) return;
   if(pd&&ci&&co){ const n=Math.round((new Date(co)-new Date(ci))/86400000); if(n>0) tot.value=Math.round(pd*n); }
+}
+
+function _teUpdateFixerTotal(){
+  const sd=document.getElementById('te-startdate')?.value;
+  const ed=document.getElementById('te-enddate')?.value;
+  const daysEl=document.getElementById('te-fixerdays');
+  const totEl=document.getElementById('te-fixertotal');
+  if(sd&&ed){
+    const n=Math.round((new Date(ed)-new Date(sd))/86400000)+1;
+    if(n>0&&daysEl) daysEl.value=n;
+    if(totEl&&!totEl._edited){
+      const rate=parseFloat(document.getElementById('te-rateday')?.value)||0;
+      if(rate&&n>0) totEl.value=Math.round(rate*n);
+    }
+  }
 }
 
 function _teBuildForm(){
@@ -7619,6 +7644,7 @@ function _teBuildForm(){
   else if(type==='flight') fields=fs('direction','Direction',`<option value="outbound"${(ed.direction||'outbound')==='outbound'?' selected':''}>Outbound</option><option value="inbound"${ed.direction==='inbound'?' selected':''}>Inbound / Return</option>`)+fi('airline','Airline',ed.airline,'','e.g. Air India')+fi('flightnum','Flight number',ed.flightNum,'','e.g. AI202')+fi('from','From',ed.from,'','Departure airport')+fi('to','To',ed.to,'','Arrival airport')+fi('flightdate','Date',ed.flightDate||ed.when?.slice(0,10),'date','')+fi('flighttime','Time',ed.flightTime||ed.when?.slice(11,16),'time','')+fs('payment','Payment mode',payOpts(ed.payment))+fi('paidby','Paid by',ed.paidBy,'','Employee name');
   else if(type==='hotel') fields=fi('hotel','Hotel name',ed.hotelName,'','')+fi('where','Location',ed.where,'','City / address')+fi('checkin','Check-in',ed.checkIn,'date','','onchange="_teUpdateHotelTotal()"')+fi('checkout','Check-out',ed.checkOut,'date','','onchange="_teUpdateHotelTotal()"')+fi('priceday','Price per day',ed.priceDay,'','₹ or £','oninput="_teUpdateHotelTotal()"')+`<div class="fgroup"><label class="flabel">Price total <span style="font-size:10px;color:var(--text3)">(auto)</span></label><input class="finput" id="te-pricetotal" value="${esc(ed.priceTotal||'')}" placeholder="₹ or £" oninput="this._edited=true"></div>`+fs('payment','Payment mode',payOpts(ed.payment))+fi('paidby','Paid by',ed.paidBy,'','Employee name');
   else if(type==='expense') fields=fi('what','What',ed.what,'','Description of expense')+fi('when','Date',ed.when,'date','')+fi('where','Location / vendor',ed.where,'','Where was this spent?')+fi('amount','Amount',ed.amount,'','₹ or £')+fi('paidby','Paid by',ed.paidBy,'','Employee name')+fs('payment','Payment mode',payOpts(ed.payment))+fs('claimed','Expense claimed',`<option value="no"${(_teGetClaimed(editEntry||{}))!=='yes'?' selected':''}>Not claimed</option><option value="yes"${_teGetClaimed(editEntry||{})==='yes'?' selected':''}>Claimed</option>`)+`<div class="fgroup full"><div style="font-size:11px;color:var(--progress);background:rgba(217,119,6,.08);padding:5px 10px;border-radius:6px">⏳ "Not claimed" adds to unclaimed count in accordion header</div></div>`;
+  else if(type==='fixer') fields=fi('fixername','Name',ed.fixerName,'','Full name')+fi('where','Location / city',ed.where,'','City or area')+fi('phone','Phone',ed.phone,'','Phone number')+fi('email','Email',ed.email,'','email@ (optional)')+fi('startdate','Start date',ed.startDate,'date','')+fi('enddate','End date',ed.endDate,'date','','oninput="_teUpdateFixerTotal()"')+`<div class="fgroup"><label class="flabel">Days <span style="font-size:10px;color:var(--text3)">(auto)</span></label><input class="finput" id="te-fixerdays" value="${esc(ed.fixerDays||'')}" placeholder="—" readonly style="color:var(--text3)"></div>`+fi('rateday','Rate per day',ed.rateDay,'','e.g. 150 INR','oninput="_teUpdateFixerTotal()"')+`<div class="fgroup"><label class="flabel">Total <span style="font-size:10px;color:var(--text3)">(auto)</span></label><input class="finput" id="te-fixertotal" value="${esc(ed.fixerTotal||'')}" placeholder="—" oninput="this._edited=true"></div>`+fs('payment','Payment mode',payOpts(ed.payment))+fi('paidby','Paid by',ed.paidBy,'','Employee name')+fs('claimed','Payment status',`<option value="no"${(_teGetClaimed(editEntry||{}))!=='yes'?' selected':''}>Unpaid / pending</option><option value="yes"${_teGetClaimed(editEntry||{})==='yes'?' selected':''}>Paid</option>`)+`<div class="fgroup full"><div style="font-size:11px;color:var(--progress);background:rgba(217,119,6,.08);padding:5px 10px;border-radius:6px">⏳ "Unpaid / pending" adds to unclaimed count in accordion header</div></div>`+fi('status','Status',ed.status,'','Active / Pending / Completed')+`<div class="fgroup full"><label class="flabel">Notes / other relevant details</label><textarea class="ftextarea" id="te-fixernotes" placeholder="Languages, specialisation, previous assignments, local contacts, security info…" style="min-height:72px;white-space:pre-wrap">${esc(ed.fixerNotes||'')}</textarea></div>`;
 
   const typBtn=(t,ico,lbl)=>`<button type="button" onclick="_teSetType('${t}')" style="flex:1;padding:8px 4px;border:1px solid ${type===t?'var(--accent)':'var(--border)'};border-radius:7px;background:${type===t?'var(--accent)':'transparent'};color:${type===t?'#fff':'var(--text2)'};font-size:12px;cursor:pointer;font-family:var(--font)">${ico} ${lbl}</button>`;
 
@@ -7634,7 +7660,7 @@ function _teBuildForm(){
     <div class="fgroup full" style="margin-bottom:14px">
       <label class="flabel">Type</label>
       <div style="display:flex;gap:7px;margin-top:4px">
-        ${typBtn('cab','🚕','Cab')}${typBtn('flight','✈️','Flight')}${typBtn('hotel','🏨','Hotel')}${typBtn('expense','💳','Expense')}
+        ${typBtn('cab','🚕','Cab')}${typBtn('flight','✈️','Flight')}${typBtn('hotel','🏨','Hotel')}${typBtn('expense','💳','Expense')}${typBtn('fixer','🤝','Fixer')}
       </div>
     </div>
     <div style="border-top:1px solid var(--border);margin:4px 0 12px"></div>
@@ -7732,6 +7758,7 @@ function _teRenderEntry(e){
   }
   else if(e.type==='hotel') sum=esc(d.hotelName||d.where||'')+( d.checkIn?' · '+_fmtDShort(d.checkIn):'')+( d.checkOut?' – '+_fmtDShort(d.checkOut):'');
   else if(e.type==='expense') sum=esc(d.what||'')+( d.amount?' · '+esc(d.amount):'')+(_teGetClaimed(e)==='yes'?' · ✅':' · ⏳');
+  else if(e.type==='fixer') sum=esc(d.fixerName||d.where||'')+(d.where&&d.fixerName?' · '+esc(d.where):'')+(d.startDate?' · '+_fmtDShort(d.startDate):'')+( d.endDate?' – '+_fmtDShort(d.endDate):'')+(d.fixerTotal?' · '+esc(d.fixerTotal):'')+(_teGetClaimed(e)==='yes'?' · ✅':' · ⏳');
 
   // Detail block (expanded)
   const fld=(l,v)=>v?`<div style="display:grid;grid-template-columns:110px 1fr;gap:4px;margin-bottom:3px"><span style="font-size:11.5px;color:var(--text3)">${l}</span><span style="font-size:12px;color:var(--text)">${esc(String(v))}</span></div>`:'';
@@ -7747,6 +7774,7 @@ function _teRenderEntry(e){
   }
   else if(e.type==='hotel') det=fld('Hotel',d.hotelName)+fld('Location',d.where)+fld('Check-in',_fmtD(d.checkIn))+fld('Check-out',_fmtD(d.checkOut))+fld('Price/day',d.priceDay)+fld('Total',d.priceTotal)+fld('Payment',_payLabel(d.payment))+fld('Paid by',d.paidBy);
   else if(e.type==='expense') det=fld('What',d.what)+fld('Date',_fmtD(d.when))+fld('Location',d.where)+fld('Amount',d.amount)+fld('Paid by',d.paidBy)+fld('Payment',_payLabel(d.payment))+fld('Claimed',_teGetClaimed(e)==='yes'?'✅ Yes':'⏳ Not yet');
+  else if(e.type==='fixer') det=fld('Name',d.fixerName)+fld('Location',d.where)+fld('Phone',d.phone)+fld('Email',d.email)+fld('Start date',_fmtD(d.startDate))+fld('End date',_fmtD(d.endDate))+fld('Days',d.fixerDays)+fld('Rate / day',d.rateDay)+fld('Total',d.fixerTotal)+fld('Payment',_payLabel(d.payment))+fld('Paid by',d.paidBy)+fld('Status',d.status)+fld('Payment status',_teGetClaimed(e)==='yes'?'✅ Paid':'⏳ Unpaid / pending')+(d.fixerNotes?fld('Notes',d.fixerNotes):'');
 
   // Remarks — full inline CRUD panel
   const remHTML=_teBuildEntryRemarksHTML(e);
@@ -7807,7 +7835,7 @@ function _teRenderBody(){
   // Story groups
   stories.forEach(({sec,s})=>{
     const entries=_teEntriesForStory(s.id);
-    const expenses=entries.filter(e=>e.type==='expense');
+    const expenses=entries.filter(e=>e.type==='expense'||e.type==='fixer');
     const unclaimed=expenses.filter(e=>_teGetClaimed(e)!=='yes').length;
     const allClaimed=expenses.length>0&&unclaimed===0;
     const deadlineStr=s.deadline_date?(()=>{
@@ -7816,7 +7844,7 @@ function _teRenderBody(){
       const col=diff<0?'#B91C1C':diff<=2?'#B45309':'var(--text3)';
       return `<span style="font-size:10.5px;color:${col};flex-shrink:0">⏰ ${lbl}</span>`;
     })():'';
-    const claimBadge=allClaimed?`<span style="font-size:10.5px;color:var(--done);flex-shrink:0">✅ claimed</span>`:unclaimed?`<span style="font-size:10.5px;color:var(--progress);flex-shrink:0">⏳ ${unclaimed} unclaimed</span>`:'';
+    const claimBadge=allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>All claimed</span>`:unclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${unclaimed} unclaimed</span>`:'';
     const secLabel={ibu:'Stories',other:'Other Stories',requests:'Requests'}[sec]||sec;
 
     html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
@@ -7833,6 +7861,7 @@ function _teRenderBody(){
           <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${s.id}',storySec:'${sec}',type:'cab'})" title="Add Cab">🚕</button>
           <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${s.id}',storySec:'${sec}',type:'flight'})" title="Add Flight">✈️</button>
           <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${s.id}',storySec:'${sec}',type:'hotel'})" title="Add Hotel">🏨</button>
+          <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${s.id}',storySec:'${sec}',type:'fixer'})" title="Add Fixer" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)">🤝</button>
           <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${s.id}',storySec:'${sec}',type:'expense'})" title="Add Expense">💳</button>
         </div>
       </div>
@@ -7841,9 +7870,9 @@ function _teRenderBody(){
 
   // General group — only show if it has entries, or if there are no story groups at all
   const genEntries=_teEntriesGeneral();
-  const genExp=genEntries.filter(e=>e.type==='expense');
+  const genExp=genEntries.filter(e=>e.type==='expense'||e.type==='fixer');
   const genUnclaimed=genExp.filter(e=>_teGetClaimed(e)!=='yes').length;
-  const genBadge=genUnclaimed?`<span style="font-size:10.5px;color:var(--progress);flex-shrink:0">⏳ ${genUnclaimed} unclaimed</span>`:(genExp.length?`<span style="font-size:10.5px;color:var(--done);flex-shrink:0">✅ claimed</span>`:'');
+  const genBadge=genUnclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${genUnclaimed} unclaimed</span>`:(genExp.length?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>All claimed</span>`:'');
   if(genEntries.length||stories.length===0){
     html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
     <div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)">
@@ -7857,6 +7886,7 @@ function _teRenderBody(){
         <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'cab'})" title="Add Cab">🚕</button>
         <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'flight'})" title="Add Flight">✈️</button>
         <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'hotel'})" title="Add Hotel">🏨</button>
+        <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'fixer'})" title="Add Fixer" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)">🤝</button>
         <button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'expense'})" title="Add Expense">💳</button>
       </div>
     </div>
@@ -7883,7 +7913,7 @@ function renderTravelSection(){
   const isOpen=ui.openSections.has('travel');
   const today=todayStr();
   const allEntries=state.travelEntries||[];
-  const allExp=allEntries.filter(e=>e.type==='expense');
+  const allExp=allEntries.filter(e=>e.type==='expense'||e.type==='fixer');
   const notClaimedCount=allExp.filter(e=>_teGetClaimed(e)!=='yes').length;
   const allClaimed=allExp.length>0&&notClaimedCount===0;
 
@@ -7960,6 +7990,7 @@ function doExportTravelTxt(){
       else if(e.type==='flight'){ lines.push(pad('  Direction',d.direction==='inbound'?'Inbound / Return':'Outbound')); if(d.airline) lines.push(pad('  Airline',d.airline)); if(d.flightNum) lines.push(pad('  Flight no.',d.flightNum)); if(d.from||d.to) lines.push(pad('  Route',[d.from,d.to].filter(Boolean).join(' → '))); if(d.when) lines.push(pad('  When',_fmtDT(d.when))); if(d.payment) lines.push(pad('  Payment',_payLabel(d.payment))); if(d.paidBy) lines.push(pad('  Paid by',d.paidBy)); }
       else if(e.type==='hotel'){ if(d.hotelName) lines.push(pad('  Hotel',d.hotelName)); if(d.where) lines.push(pad('  Location',d.where)); if(d.checkIn) lines.push(pad('  Check-in',_fmtD(d.checkIn))); if(d.checkOut) lines.push(pad('  Check-out',_fmtD(d.checkOut))); if(d.priceDay) lines.push(pad('  Price/day',d.priceDay)); if(d.priceTotal) lines.push(pad('  Total',d.priceTotal)); if(d.payment) lines.push(pad('  Payment',_payLabel(d.payment))); if(d.paidBy) lines.push(pad('  Paid by',d.paidBy)); }
       else if(e.type==='expense'){ if(d.what) lines.push(pad('  What',d.what)); if(d.when) lines.push(pad('  Date',_fmtD(d.when))); if(d.where) lines.push(pad('  Location',d.where)); if(d.amount) lines.push(pad('  Amount',d.amount)); if(d.paidBy) lines.push(pad('  Paid by',d.paidBy)); if(d.payment) lines.push(pad('  Payment',_payLabel(d.payment))); lines.push(pad('  Claimed',_teGetClaimed(e)==='yes'?'Yes':'No')); }
+      else if(e.type==='fixer'){ if(d.fixerName) lines.push(pad('  Name',d.fixerName)); if(d.where) lines.push(pad('  Location',d.where)); if(d.phone) lines.push(pad('  Phone',d.phone)); if(d.startDate) lines.push(pad('  Start',_fmtD(d.startDate))); if(d.endDate) lines.push(pad('  End',_fmtD(d.endDate))); if(d.fixerDays) lines.push(pad('  Days',d.fixerDays)); if(d.rateDay) lines.push(pad('  Rate/day',d.rateDay)); if(d.fixerTotal) lines.push(pad('  Total',d.fixerTotal)); if(d.payment) lines.push(pad('  Payment',_payLabel(d.payment))); if(d.paidBy) lines.push(pad('  Paid by',d.paidBy)); lines.push(pad('  Paid',_teGetClaimed(e)==='yes'?'Yes':'No')); if(d.fixerNotes) lines.push(pad('  Notes',d.fixerNotes)); }
       (e.remarks||[]).forEach(r=>lines.push(pad('  Note',r.text)));
     });
   });
@@ -7983,7 +8014,7 @@ function doEmailTravel(){
   _teGetStories().forEach(({s})=>{
     const grp=byStory[s.id]; if(!grp) return;
     lines.push((s.title||'Untitled').toUpperCase());
-    grp.forEach(e=>{ const d=e.data||{}; let line='  '+(_typeIco[e.type]||''); if(e.type==='cab') line+=' '+[d.from,d.to].filter(Boolean).join(' → ')+(d.when?' · '+_fmtDShort(d.when.slice(0,10)):''); else if(e.type==='flight') line+=' '+(d.direction==='inbound'?'↩':' →')+' '+(d.from||'')+(d.to?' → '+d.to:''); else if(e.type==='hotel') line+=' '+(d.hotelName||d.where||'')+(d.checkIn?' · '+_fmtDShort(d.checkIn):''); else if(e.type==='expense') line+=' '+(d.what||'')+(d.amount?' · '+d.amount:'')+(_teGetClaimed(e)==='yes'?' · ✅':' · ⏳'); lines.push(line); });
+    grp.forEach(e=>{ const d=e.data||{}; let line='  '+(_typeIco[e.type]||''); if(e.type==='cab') line+=' '+[d.from,d.to].filter(Boolean).join(' → ')+(d.when?' · '+_fmtDShort(d.when.slice(0,10)):''); else if(e.type==='flight') line+=' '+(d.direction==='inbound'?'↩':' →')+' '+(d.from||'')+(d.to?' → '+d.to:''); else if(e.type==='hotel') line+=' '+(d.hotelName||d.where||'')+(d.checkIn?' · '+_fmtDShort(d.checkIn):''); else if(e.type==='expense') line+=' '+(d.what||'')+(d.amount?' · '+d.amount:'')+(_teGetClaimed(e)==='yes'?' · ✅':' · ⏳'); else if(e.type==='fixer') line+=' '+(d.fixerName||'')+(d.where?' · '+d.where:'')+(d.fixerTotal?' · '+d.fixerTotal:'')+(_teGetClaimed(e)==='yes'?' · ✅':' · ⏳'); lines.push(line); });
     lines.push('');
   });
   const gen=byStory['__general']; if(gen){ lines.push('GENERAL'); gen.forEach(e=>{ const d=e.data||{}; lines.push('  '+(_typeIco[e.type]||'')+' '+(d.what||d.from||d.hotelName||'')); }); }
@@ -8014,7 +8045,16 @@ function renderLeavesSection(){
   const accHeaderL=`<div class="accordion${isOpenL?' acc-open':''}" id="acc-leaves">
     <div class="acc-header" onclick="toggleAccordion('leaves')">
       <span class="acc-icon">🌴</span><span class="acc-name">Leaves</span>
-      <span class="acc-summary">${(()=>{const ol=getOnLeaveToday();return ol.slice(0,4).map(l=>(l.employeeName||'').split(' ')[0]).filter(Boolean).join(' · ');})()}</span>
+      <span class="acc-summary">${(()=>{
+        const ol=getOnLeaveToday();
+        if(ol.length) return ol.slice(0,4).map(l=>(l.employeeName||'').split(' ')[0]).filter(Boolean).join(' · ');
+        const ul=upcomingLeaves.slice().sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
+        if(!ul.length) return '';
+        const nx=ul[0];
+        const diff=Math.round((new Date(nx.dateFrom+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime())/86400000);
+        const when=diff===0?'today':diff===1?'tomorrow':'from '+new Date(nx.dateFrom+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+        return esc(nx.employeeName||'')+' · '+when;
+      })()}</span>
       <div class="acc-meta">
         ${onLeaveToday.length?`<span class="sbadge sb-urgent">${onLeaveToday.length} on leave</span>`:''}
         ${upcomingLeaves.length?`<span class="sbadge sb-in-progress">${upcomingLeaves.length} upcoming</span>`:''}
@@ -8325,9 +8365,7 @@ function renderStoryCard(sec,s,archKey){
   const mode=s.mode||'none';
   const wwLabel=mode==='working'?'▶ Working':mode==='watching'?'👁 Watching':'● Set mode';
   const subsecBadge=(sec==='ibu'||sec==='other')
-    ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'}" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch" style="cursor:pointer">${
-        s.story_type?s.story_type.toUpperCase():(sec==='ibu'?'Live':'Other')
-      } ⇄</span>`
+    ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'} hide-mobile" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch" style="cursor:pointer">${sec==='ibu'?'Live':'Other'} ⇄</span>`
     : '';
   const isIBU=sec==='ibu'&&!archKey;
   const cardBorderCls=carried?'c-carried':s.status?'c-'+s.status:'';
@@ -8352,7 +8390,6 @@ function renderStoryCard(sec,s,archKey){
       <div class="card-subtitle">
         ${s.correspondent?`<span class="cs-chip">👤 ${esc(s.correspondent)}</span>`:''}
         ${loc?`<span class="cs-chip">📍 ${esc(loc)}</span>`:''}
-        ${s.story_type?s.story_type.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="cs-chip">${t.charAt(0).toUpperCase()+t.slice(1).toLowerCase()}</span>`).join(''):''}
         ${s.created?`<span class="cs-chip" style="color:var(--text3)">Logged ${new Date(s.created).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>`:''}
       </div>
       <div class="card-tags">
@@ -8384,6 +8421,12 @@ function renderStoryCard(sec,s,archKey){
       ${sbL?`<span class="sbadge ${sbC}">${sbL}</span>`:''}
       ${deadlineBadge(s)}
       ${(s.carriedForward&&s.status!=='completed'&&!s.deadline_date)?`<span class="carry-badge">↻ +${s.carriedDays||1}d</span>`:''}
+      ${s.story_type?(()=>{
+        const _typeLabel=t=>{const v=t.trim().toLowerCase();if(v==='tv')return 'TV';return v.charAt(0).toUpperCase()+v.slice(1);};
+        const _types=s.story_type.split(',').map(t=>t.trim()).filter(Boolean);
+        if(!_types.length) return '';
+        return `<div class="hide-mobile" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;margin-top:1px">${_types.map(t=>`<span class="sbadge sb-story-type" style="font-size:10.5px;padding:2px 7px">${_typeLabel(t)}</span>`).join('')}</div>`;
+      })():''}
     </div>
 
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}">▾</span>
@@ -8495,12 +8538,15 @@ function renderStoryCard(sec,s,archKey){
            <button class="btn btn-postpone btn-sm" onclick="openStoryPostponeDialog('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">⏸ Postpone…</button>
            <button class="btn btn-shelve btn-sm" onclick="shelveStory('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗄 Shelve</button>`
       }
-      <div class="move-picker" onclick="event.stopPropagation()" title="Move to another section">
+      ${sec==='requests'&&!archKey
+        ? `<button class="btn btn-ghost btn-sm" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)" onclick="openMoveCopyDialog('requests','${s.id}','ibu',null);event.stopPropagation()">📡 Move to Stories</button>`
+        : `<div class="move-picker" onclick="event.stopPropagation()" title="Move to another section">
         <select class="fselect" style="padding:4px 24px 4px 8px;font-size:11.5px;height:29px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3)" id="move-sel-${s.id}" onchange="doMoveSelect('${sec}','${s.id}',${archKeyJS},this)">
           <option value="">Move to…</option>
-          ${SECTIONS.filter(ss=>ss.key!==sec&&!ss.isUpcoming).map(ss=>`<option value="${ss.key}">${esc(secName(ss.key))}</option>`).join('')}
+          ${SECTIONS.filter(ss=>ss.key!==sec&&!ss.isUpcoming&&!ss.hidden).map(ss=>`<option value="${ss.key}">${esc(secName(ss.key))}</option>`).join('')}
         </select>
-      </div>
+      </div>`
+      }
       <div class="card-delete-row" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
       </div>
