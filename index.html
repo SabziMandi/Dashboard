@@ -1759,15 +1759,25 @@ function startRealtimeSync(){
   firestoreUnsub=fireDb.collection('nd').doc('data').onSnapshot(snap=>{
     if(snap.exists){
       const incoming=snap.data();
-      // Compute merged deletedIds FIRST — needed by all subsequent merge loops
+      // Compute merged deletedIds — remote is authoritative base (we clean it intentionally via console/code)
+      // Local can only ADD new deletions, never override a remote removal
       const localDeletedIds=state.deletedIds||{};
       const remoteDeletedIds=incoming.deletedIds||{};
       const mergedDeletedIds={};
-      const _allDelKeys=new Set([...Object.keys(localDeletedIds),...Object.keys(remoteDeletedIds)]);
-      _allDelKeys.forEach(k=>{
-        const _loc=localDeletedIds[k]||[];
-        const _rem=remoteDeletedIds[k]||[];
-        mergedDeletedIds[k]=[...new Set([..._loc,..._rem])];
+      // Start with remote as the base — if we cleaned an ID from remote, it stays clean
+      Object.keys(remoteDeletedIds).forEach(k=>{
+        mergedDeletedIds[k]=[...(remoteDeletedIds[k]||[])];
+      });
+      // Add any local deletions that aren't already in remote (new local deletes not yet pushed)
+      Object.keys(localDeletedIds).forEach(k=>{
+        if(!mergedDeletedIds[k]) mergedDeletedIds[k]=[];
+        (localDeletedIds[k]||[]).forEach(id=>{
+          if(!(remoteDeletedIds[k]||[]).includes(id)&&!mergedDeletedIds[k].includes(id)){
+            // Only add if the item doesn't exist in remote sections (genuine delete, not a stale tombstone)
+            const existsInRemote=SECTIONS.some(sec=>(incoming.sections?.[sec.key]||[]).some(s=>s.id===id));
+            if(!existsInRemote) mergedDeletedIds[k].push(id);
+          }
+        });
       });
       // Smart merge: for arrays (leaves, tasks, notes, meetings, travelEntries), keep whichever is longer/newer
       // This prevents a device with stale data from wiping entries added on another device
