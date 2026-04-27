@@ -1583,7 +1583,7 @@ function openSettingsModal(){
       <label for="eod-workdays" style="font-size:13px;color:var(--text);cursor:pointer">Working days only (Mon–Fri)</label>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-accent btn-sm" onclick="state.eodSettings={enabled:document.getElementById('eod-enabled').checked,hour:parseInt(document.getElementById('eod-hour-sel').value),workDaysOnly:document.getElementById('eod-workdays').checked};saveLocal();document.getElementById('settings-modal').remove();toast('Settings saved');">Save</button>
+      <button class="btn btn-accent btn-sm" onclick="state.eodSettings={enabled:document.getElementById('eod-enabled').checked,hour:parseInt(document.getElementById('eod-hour-sel').value),workDaysOnly:document.getElementById('eod-workdays').checked};saveAndPush();document.getElementById('settings-modal').remove();toast('Settings saved ✓');">Save</button>
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('settings-modal').remove()">Cancel</button>
     </div>
   </div>`;
@@ -1830,7 +1830,7 @@ function startRealtimeSync(){
               if(existing){
                 const remoteTs=item.updated||item.deletedOn||item.created||0;
                 const localTs=existing.updated||existing.deletedOn||existing.created||0;
-                if(remoteTs>=localTs) logMap.set(item.id,item);
+                if(remoteTs>localTs) logMap.set(item.id,item);
               } else {
                 logMap.set(item.id,item);
               }
@@ -1877,10 +1877,10 @@ function startRealtimeSync(){
           if(!existing){
             secMap.set(s.id,s);
           } else {
-            // Remote wins only if it has a newer updated/created timestamp
+            // Remote wins only if strictly newer — local wins on tie (prevents own-echo from overwriting local move/delete)
             const remoteTs=s.updated||s.created||0;
             const localTs=existing.updated||existing.created||0;
-            if(remoteTs>=localTs) secMap.set(s.id,s); // remote is same age or newer
+            if(remoteTs>localTs) secMap.set(s.id,s);
           }
         });
         mergedSections[sec.key]=[...secMap.values()];
@@ -1923,9 +1923,11 @@ function startRealtimeSync(){
       if(!state.archive) state.archive={};
       saveLocal();
       // Push merged state back to Firebase so all devices get the authoritative merged result.
-      // This is critical: without this push, Firebase only holds one device's partial view.
-      // Use a short debounce to avoid hammering Firebase if onSnapshot fires rapidly.
-      if(fireDb){
+      // Guard against infinite loop: Firestore echoes our own writes back as snapshots.
+      // Only push if this snapshot came from another device (not our own recent push).
+      const now=Date.now();
+      const timeSinceLastPush=now-(window._lastPushTs||0);
+      if(fireDb && timeSinceLastPush > 3000){
         clearTimeout(window._mergeBackPushTimer);
         window._mergeBackPushTimer=setTimeout(()=>pushToCloud(), 1500);
       }
@@ -1957,6 +1959,7 @@ function startRealtimeSync(){
 async function pushToCloud(){
   if(!fireDb) return;
   try{
+    window._lastPushTs=Date.now();
     setSyncUI('syncing');
     // Strip backupSnapshots — they're large and stored locally only
     // Also strip any undefined/function values that Firestore can't handle
@@ -2901,11 +2904,18 @@ function moveStoryToSection(fromSec, id, toSec, archKey, mode){
   if(archKey && !state.archive[archKey].sections[toSec]) state.archive[archKey].sections[toSec]=[];
   const dest=getArr(toSec,archKey);
   if(!dest){ toast('Destination not available'); return; }
-  if(!dest.some(s=>s.id===id)) dest.push({...story, movedFrom:fromSec, movedAt:Date.now()});
+  const movedAt=Date.now();
+  if(!dest.some(s=>s.id===id)) dest.push({...story, movedFrom:fromSec, movedAt, updated:movedAt});
   // Only remove from source if Move (not Copy)
   if(mode!=='copy'){
     if(archKey) state.archive[archKey].sections[fromSec]=fromArr.filter(s=>s.id!==id);
     else state.sections[fromSec]=fromArr.filter(s=>s.id!==id);
+    // Record source deletion so other devices remove it from the source section on sync
+    if(!archKey){
+      if(!state.deletedIds) state.deletedIds={};
+      if(!state.deletedIds[fromSec]) state.deletedIds[fromSec]=[];
+      if(!state.deletedIds[fromSec].includes(id)) state.deletedIds[fromSec].push(id);
+    }
     ui.openCards.delete(id);
   }
   ui.openSections.add(toSec);
