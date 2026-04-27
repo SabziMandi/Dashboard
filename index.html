@@ -2084,12 +2084,25 @@ function checkDateChange(){
     const toAutoArchive=[];
 
     // ── IBU: ALL stories auto-archive on day change (one-day-only section) ──
-    // Exception: stories moved INTO ibu today (via Move to Stories) should NOT be archived
-    // They were explicitly placed here today and should persist until the next day change
+    // Exception 1: stories moved INTO ibu today should NOT be archived
+    // Exception 2: stories moved from another section (movedFrom field) carry forward like 'other' stories
     (state.sections.ibu||[]).forEach(story=>{
       const movedToday=story.movedAt&&dateStr(new Date(story.movedAt))>=today;
       const createdToday=story.created&&dateStr(new Date(story.created))>=today;
       if(movedToday||createdToday) return; // skip — story arrived today, keep it
+      // Stories promoted from another section (e.g. Requests → Stories) carry forward
+      if(story.movedFrom){
+        const terminal=['completed','not-done','shelved'];
+        if(terminal.includes(story.status)){
+          toAutoArchive.push({story,sec:'ibu'});
+        } else {
+          story.carriedForward=true;
+          story.carriedFromDate=story.carriedFromDate||prev;
+          story.carriedDays=(story.carriedDays||0)+1;
+          carried++;
+        }
+        return;
+      }
       toAutoArchive.push({story, sec:'ibu'});
     });
 
@@ -2141,14 +2154,8 @@ function checkDateChange(){
     // Remove all archived stories from working board
     const archivedIBU=toAutoArchive.filter(x=>x.sec==='ibu').map(x=>x.story.id);
     const archivedOther=toAutoArchive.filter(x=>x.sec==='other').map(x=>x.story.id);
-    // Track all auto-archived IDs in deletedIds so sync can't resurrect them on the live board
-    if(!state.deletedIds) state.deletedIds={};
-    toAutoArchive.forEach(({story,sec})=>{
-      if(!state.deletedIds[sec]) state.deletedIds[sec]=[];
-      if(!state.deletedIds[sec].includes(story.id)) state.deletedIds[sec].push(story.id);
-    });
-    // IBU always clears fully at midnight
-    state.sections.ibu=[];
+    // IBU: remove only stories that were auto-archived — preserve carried-forward moved stories
+    state.sections.ibu=(state.sections.ibu||[]).filter(s=>!archivedIBU.includes(s.id));
     // Other/requests: remove terminal stories (completed, not-done, shelved) — they had their day
     const TERM_MIDNIGHT=['completed','not-done','shelved'];
     state.sections.other=(state.sections.other||[]).filter(s=>!TERM_MIDNIGHT.includes(s.status));
@@ -3031,11 +3038,6 @@ function sweepStaleTerminalStories(){
       s.notDoneOn?dateStr(new Date(s.notDoneOn)):
       s.shelvedAt?dateStr(new Date(s.shelvedAt)):null;
     if(resDate&&resDate>=today) return true;
-    // Record in deletedIds so sync can't bring it back
-    if(key){
-      if(!state.deletedIds[key]) state.deletedIds[key]=[];
-      if(!state.deletedIds[key].includes(s.id)) state.deletedIds[key].push(s.id);
-    }
     swept=true; return false;
   };
   SECTIONS.filter(s=>!s.isUpcoming&&!s.isCombined&&s.key!=='ibu').forEach(({key})=>{
