@@ -2916,13 +2916,16 @@ function moveStoryToSection(fromSec, id, toSec, archKey, mode){
   if(!dest){ toast('Destination not available'); return; }
   const movedAt=Date.now();
   if(!dest.some(s=>s.id===id)) dest.push({...story, movedFrom:fromSec, movedAt, updated:movedAt});
+  // Clear destination tombstone — story may have been auto-archived at midnight
+  // leaving its ID in deletedIds[toSec], which would block it on other devices
+  if(!state.deletedIds) state.deletedIds={};
+  if(state.deletedIds[toSec]) state.deletedIds[toSec]=state.deletedIds[toSec].filter(id2=>id2!==id);
   // Only remove from source if Move (not Copy)
   if(mode!=='copy'){
     if(archKey) state.archive[archKey].sections[fromSec]=fromArr.filter(s=>s.id!==id);
     else state.sections[fromSec]=fromArr.filter(s=>s.id!==id);
     // Record source deletion so other devices remove it from the source section on sync
     if(!archKey){
-      if(!state.deletedIds) state.deletedIds={};
       if(!state.deletedIds[fromSec]) state.deletedIds[fromSec]=[];
       if(!state.deletedIds[fromSec].includes(id)) state.deletedIds[fromSec].push(id);
     }
@@ -8837,6 +8840,15 @@ function init(){
   scheduleAllReminders();
   const cfg=getFireConfig(); if(cfg) initFirebase(cfg, true);
   window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); /* onSnapshot will fire automatically on reconnect and merge before we push */ } });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&fireDb){
+      // iOS PWA kills the Firestore WebSocket when backgrounded — re-establish on foreground
+      setSyncUI('syncing');
+      startRealtimeSync();
+    }
+  });
+  // Fallback: re-establish sync every 30s in case iOS killed the WebSocket silently
+  setInterval(()=>{ if(fireDb&&document.visibilityState==='visible') startRealtimeSync(); }, 30000);
   window.addEventListener('offline', ()=>{ if(fireDb) setSyncUI('offline'); });
   updateDateHeader(); renderDateStrip(); render();
   renderOnLeavePill();
