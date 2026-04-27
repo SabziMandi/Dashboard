@@ -1804,7 +1804,7 @@ function startRealtimeSync(){
             map.set(item.id,item); // new entry from remote
           }
         });
-        mergedArrays[k]=[...map.values()];
+        mergedArrays[k]=[...map.values()].filter(item=>!deletedForKey.has(item.id));
       });
       // For archive: deep merge — keep all keys from both
       const localArchive=state.archive||{};
@@ -1893,7 +1893,7 @@ function startRealtimeSync(){
             if(remoteTs>localTs) secMap.set(s.id,s);
           }
         });
-        mergedSections[sec.key]=[...secMap.values()];
+        mergedSections[sec.key]=[...secMap.values()].filter(s=>!(mergedDeletedIds[sec.key]||[]).includes(s.id));
       });
 
       // Apply all other scalar fields from remote — but preserve local-only fields
@@ -1960,7 +1960,16 @@ function startRealtimeSync(){
           });
           if(state.travelDismissed.length!==prevDismissed.length) saveLocal();
         }
-        render(); renderDateStrip(); setSyncUI('live'); _teRefresh();
+        const hasOpenForm=ui.openForms.size>0||_te.open;
+        if(hasOpenForm){
+          // Form is open — don't re-render (would lose user's input focus and feel jarring)
+          // Mark that a sync arrived so render fires when the form closes
+          window._pendingSyncRender=true;
+          renderDateStrip(); setSyncUI('live');
+        } else {
+          render(); renderDateStrip(); setSyncUI('live'); _teRefresh();
+          window._pendingSyncRender=false;
+        }
       }
     }
     else pushToCloud();
@@ -2064,7 +2073,12 @@ function checkDateChange(){
     const toAutoArchive=[];
 
     // ── IBU: ALL stories auto-archive on day change (one-day-only section) ──
+    // Exception: stories moved INTO ibu today (via Move to Stories) should NOT be archived
+    // They were explicitly placed here today and should persist until the next day change
     (state.sections.ibu||[]).forEach(story=>{
+      const movedToday=story.movedAt&&dateStr(new Date(story.movedAt))>=today;
+      const createdToday=story.created&&dateStr(new Date(story.created))>=today;
+      if(movedToday||createdToday) return; // skip — story arrived today, keep it
       toAutoArchive.push({story, sec:'ibu'});
     });
 
@@ -4179,9 +4193,16 @@ function toggleForm(sec,archKey){
   const k=sec+(archKey?'::'+archKey:'');
   if(ui.openForms.has(k)){ ui.openForms.delete(k); delete ui.editMap[k]; } else { ui.openForms.add(k); delete ui.editMap[k]; }
   render();
-  if(ui.openForms.has(k)) setTimeout(()=>document.getElementById('f-title-'+sec+(archKey?'-arch':''))?.focus(),50);
+  if(ui.openForms.has(k)){
+    setTimeout(()=>{
+      document.getElementById('f-title-'+sec+(archKey?'-arch':''))?.focus();
+      // Guard against iOS ghost-tap: disable submit for 600ms after form opens
+      const btn=document.getElementById('form-submit-'+sec+(archKey?'-arch':''));
+      if(btn){ btn.disabled=true; btn.style.opacity='.5'; setTimeout(()=>{ btn.disabled=false; btn.style.opacity=''; },600); }
+    },50);
+  }
 }
-function cancelForm(sec,archKey){ const k=sec+(archKey?'::'+archKey:''); ui.openForms.delete(k); delete ui.editMap[k]; render(); }
+function cancelForm(sec,archKey){ const k=sec+(archKey?'::'+archKey:''); ui.openForms.delete(k); delete ui.editMap[k]; render(); if(window._pendingSyncRender){ window._pendingSyncRender=false; _teRefresh(); } }
 function editStory(sec,id,archKey){
   const k=sec+(archKey?'::'+archKey:'');
   ui.openForms.add(k); ui.editMap[k]=id;
@@ -4280,6 +4301,7 @@ function submitForm(sec,archKey){
     toast('Story added ✓');
   }
   ui.openForms.delete(k); delete ui.editMap[k]; render();
+  if(window._pendingSyncRender){ window._pendingSyncRender=false; _teRefresh(); }
 }
 function toggleCard(id){
   if(ui.openCards.has(id)) ui.openCards.delete(id); else ui.openCards.add(id);
@@ -4325,7 +4347,56 @@ function reqNotif(){
     }
   });
 }
-function deleteArchiveEntry(key){ if(!confirm('Delete "'+archiveLabel(key)+'"? Cannot be undone.')) return; delete state.archive[key]; saveAndPush(); renderDateStrip(); setView('today',null); }
+function repairStory(id){
+  // Remove story ID from ALL deletedIds keys — clears midnight-sweep tombstones
+  if(!state.deletedIds) state.deletedIds={};
+  let found=false;
+  Object.keys(state.deletedIds).forEach(function(k){
+    if((state.deletedIds[k]||[]).includes(id)){
+      state.deletedIds[k]=state.deletedIds[k].filter(function(x){return x!==id;});
+      found=true;
+    }
+  });
+  // Bump updated timestamp on the story in every section it appears in
+  SECTIONS.forEach(function(sec){
+    (state.sections[sec.key]||[]).forEach(function(s){
+      if(s.id===id) s.updated=Date.now();
+    });
+  });
+  // Write clean state directly to Firebase — bypasses merge
+  saveLocal();
+  const raw=JSON.parse(localStorage.getItem('nd_v5'));
+  fireDb.collection('nd').doc('data').set(raw).then(function(){
+    toast('Story repaired ✓ — mobile will show it on next sync');
+    render();
+  }).catch(function(e){ toast('Repair failed: '+e.message); });
+}
+function openRepairModal(){
+  if(document.getElementById('repair-modal')) return;
+  const stories=[];
+  SECTIONS.forEach(function(sec){
+    (state.sections[sec.key]||[]).forEach(function(s){
+      stories.push({id:s.id,title:s.title||'Untitled',sec:sec.key});
+    });
+  });
+  const m=document.createElement('div'); m.className='modal-bg'; m.id='repair-modal';
+  m.innerHTML='<div class="modal" onclick="event.stopPropagation()" style="max-width:420px">'
+    +'<h2>🔧 Repair Story Sync</h2>'
+    +'<p class="modal-sub" style="margin-bottom:12px">Use this if a story shows on desktop but not on mobile. Select the story to clear its sync tombstone and force it to all devices.</p>'
+    +'<div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">'
+    +stories.map(function(s){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px">'
+        +'<span style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.title+'</span>'
+        +'<span style="font-size:10px;color:var(--text3);flex-shrink:0">'+s.sec+'</span>'
+        +'<button class="btn btn-accent btn-sm" style="flex-shrink:0;font-size:11px" onclick="repairStory(\''+s.id+'\');document.getElementById(\'repair-modal\').remove()">Repair</button>'
+        +'</div>';
+    }).join('')
+    +'</div>'
+    +'<div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById(\'repair-modal\').remove()">Close</button></div>'
+    +'</div>';
+  m.addEventListener('click',function(e){ if(e.target===m) m.remove(); });
+  document.body.appendChild(m);
+}
 function openSyncModal(){
   if(document.getElementById('sync-modal')){ document.getElementById('sync-modal').remove(); return; }
   const cfg=getFireConfig();
@@ -4359,6 +4430,7 @@ function openSyncModal(){
     <div class="modal-footer">
       <button class="btn btn-accent" onclick="connectFirebase()">Connect &amp; Sync</button>
       <button class="btn btn-ghost" onclick="document.getElementById('sync-modal').remove()">Skip</button>
+      ${cfg?`<button class="btn btn-ghost btn-sm" onclick="document.getElementById('sync-modal').remove();openRepairModal()" style="color:var(--working);border-color:rgba(13,148,136,.35)">🔧 Repair story</button>`:''}
       ${cfg?`<button class="btn btn-ghost btn-sm btn-danger" onclick="disconnectFirebase()">Disconnect</button>`:''}
     </div>
     <p style="font-size:11px;color:var(--text3);margin-top:11px">Data stays in your own Firebase. Free plan = 20,000 writes/day. Backup snapshots are stored locally only.</p>
@@ -7623,12 +7695,18 @@ function _teOpenForm(opts){
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
   else { ui.openSections.add('travel'); render(); setTimeout(()=>{ const t=document.getElementById('acc-body-travel'); if(t){ t.innerHTML=_teRenderBody(); t.classList.add('open'); } },50); }
-  setTimeout(()=>document.getElementById('te-story')?.focus(),80);
+  setTimeout(()=>{
+    document.getElementById('te-story')?.focus();
+    // Ghost-tap guard: disable save button briefly after form opens
+    const btn=document.getElementById('te-submit-btn');
+    if(btn){ btn.disabled=true; btn.style.opacity='.5'; setTimeout(()=>{ btn.disabled=false; btn.style.opacity=''; },600); }
+  },80);
 }
 function _teCloseForm(){
   _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
+  if(window._pendingSyncRender){ window._pendingSyncRender=false; render(); }
 }
 function _teSetType(t){
   _te.type=t;
@@ -7651,11 +7729,15 @@ function _teSubmit(){
   else if(type==='fixer') data={fixerName:g('fixername'),where:g('where'),phone:g('phone'),email:g('email'),startDate:g('startdate'),endDate:g('enddate'),fixerDays:g('fixerdays'),rateDay:g('rateday'),fixerTotal:g('fixertotal'),payment:g('payment'),paidBy:g('paidby'),claimed:g('claimed'),status:g('status'),fixerNotes:(document.getElementById('te-fixernotes')?.value||'').trim()};
 
   const entry={type,storyId,storySec,data};
+  // Basic validation — require at least one meaningful field
+  const hasContent=Object.values(data).some(v=>v&&String(v).trim());
+  if(!hasContent){ toast('Please fill in at least one field'); return; }
   if(_te.editId) _teUpdate(_te.editId,entry);
   else _teAdd(entry);
   _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
+  if(window._pendingSyncRender){ window._pendingSyncRender=false; render(); }
 }
 
 
@@ -7723,7 +7805,7 @@ function _teBuildForm(){
     <div style="border-top:1px solid var(--border);margin:4px 0 12px"></div>
     <div class="form-grid">${fields}</div>
     <div style="display:flex;gap:8px;margin-top:14px">
-      <button class="btn btn-accent btn-sm" onclick="_teSubmit()">Save entry</button>
+      <button class="btn btn-accent btn-sm" id="te-submit-btn" onclick="_teSubmit()">Save entry</button>
       <button class="btn btn-ghost btn-sm" onclick="_teCloseForm()">Cancel</button>
     </div>
   </div>`;
@@ -8735,7 +8817,7 @@ function renderForm(sec,archKey){
 
   </div>
   <div class="form-footer">
-    <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add'}</button>
+    <button class="btn btn-accent" id="form-submit-${sec}${archKey?'-arch':''}" onclick="submitForm('${sec}',${archKeyJS})" style="transition:opacity .3s">${isEdit?'Update':'Add'}</button>
     <button class="btn btn-ghost" onclick="cancelForm('${sec}',${archKeyJS})">Cancel</button>
   </div>
 </div>`;
@@ -8842,13 +8924,17 @@ function init(){
   window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); /* onSnapshot will fire automatically on reconnect and merge before we push */ } });
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'&&fireDb){
-      // iOS PWA kills the Firestore WebSocket when backgrounded — re-establish on foreground
-      setSyncUI('syncing');
-      startRealtimeSync();
+      const hasOpenForm=ui.openForms.size>0||_te.open;
+      if(!hasOpenForm){ setSyncUI('syncing'); startRealtimeSync(); }
     }
   });
-  // Fallback: re-establish sync every 30s in case iOS killed the WebSocket silently
-  setInterval(()=>{ if(fireDb&&document.visibilityState==='visible') startRealtimeSync(); }, 30000);
+  // Fallback: re-establish sync if connection has been idle — but only when no form is open
+  setInterval(()=>{
+    if(fireDb&&document.visibilityState==='visible'){
+      const hasOpenForm=ui.openForms.size>0||_te.open;
+      if(!hasOpenForm) startRealtimeSync();
+    }
+  }, 60000);
   window.addEventListener('offline', ()=>{ if(fireDb) setSyncUI('offline'); });
   updateDateHeader(); renderDateStrip(); render();
   renderOnLeavePill();
