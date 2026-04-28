@@ -1911,6 +1911,7 @@ function startRealtimeSync(){
       const localBackups=state.backupSnapshots; // backups are local-only
       const localLAD=state.lastActiveDate;      // never let cloud roll back lastActiveDate
       const localEodDismissed=state.eodDismissed; // keep whichever dismissal is more recent
+      const localDailyBackup=state.lastDailyBackup;
       const localWeeklyBackup=state.lastWeeklyBackup;
       const localMonthlyBackup=state.lastMonthlyBackup;
       const localYearlyBackup=state.lastYearlyBackup;
@@ -1935,6 +1936,8 @@ function startRealtimeSync(){
       if(localEodDismissed && (!state.eodDismissed || localEodDismissed > state.eodDismissed))
         state.eodDismissed=localEodDismissed;
       // Keep most recent backup timestamps
+      if(localDailyBackup && (!state.lastDailyBackup || localDailyBackup > state.lastDailyBackup))
+        state.lastDailyBackup=localDailyBackup;
       if(localWeeklyBackup && (!state.lastWeeklyBackup || localWeeklyBackup > state.lastWeeklyBackup))
         state.lastWeeklyBackup=localWeeklyBackup;
       if(localMonthlyBackup && (!state.lastMonthlyBackup || localMonthlyBackup > state.lastMonthlyBackup))
@@ -1972,7 +1975,10 @@ function startRealtimeSync(){
           if(state.travelDismissed.length!==prevDismissed.length) saveLocal();
         }
         const hasOpenForm=ui.openForms.size>0||_te.open;
-        if(hasOpenForm){
+        // Also block render if user is actively typing in a remark field
+        const activeEl=document.activeElement;
+        const typingInRemark=activeEl&&(activeEl.id&&activeEl.id.startsWith('sr-')||activeEl.closest&&activeEl.closest('.sremark-add'));
+        if(hasOpenForm||typingInRemark){
           // Form is open — don't re-render (would lose user's input focus and feel jarring)
           // Mark that a sync arrived so render fires when the form closes
           window._pendingSyncRender=true;
@@ -2282,6 +2288,8 @@ function checkBackupsDue(){
   const thisMonth=today.slice(0,7);
   const thisYear=today.slice(0,4);
   const due=[];
+  if(!state.lastDailyBackup||state.lastDailyBackup<today)
+    due.push({type:'daily',label:'Daily backup due',period:today});
   if(state.autoBackup.weeklyEnabled!==false && (!state.lastWeeklyBackup||state.lastWeeklyBackup<thisWeekMon))
     due.push({type:'weekly',label:'Weekly backup due',period:thisWeekMon});
   if(state.autoBackup.monthlyEnabled!==false && (!state.lastMonthlyBackup||state.lastMonthlyBackup<thisMonth))
@@ -2322,12 +2330,14 @@ function _triggerJsonDownload(snap, filename){
 }
 
 function runBackup(type, period, silent){
-  if(!state.backupSnapshots) state.backupSnapshots={weekly:[],monthly:[],yearly:[]};
+  if(!state.backupSnapshots) state.backupSnapshots={daily:[],weekly:[],monthly:[],yearly:[]};
+  if(!state.backupSnapshots.daily) state.backupSnapshots.daily=[];
   const snap=makeBackupSnapshot();
   snap._backupMeta.type=type; snap._backupMeta.period=period;
-  const limits={weekly:52,monthly:12,yearly:5};
+  const limits={daily:7,weekly:52,monthly:12,yearly:5};
   state.backupSnapshots[type].unshift(snap);
-  state.backupSnapshots[type]=state.backupSnapshots[type].slice(0,limits[type]);
+  state.backupSnapshots[type]=state.backupSnapshots[type].slice(0,limits[type]||52);
+  if(type==='daily')   state.lastDailyBackup=todayStr();
   if(type==='weekly')  state.lastWeeklyBackup=weekMondayStr(todayStr());
   if(type==='monthly') state.lastMonthlyBackup=todayStr().slice(0,7);
   if(type==='yearly')  state.lastYearlyBackup=todayStr().slice(0,4);
@@ -2554,6 +2564,8 @@ function captureFormState(){
     // Capture radio buttons
     if(el.type==='radio'&&el.name) saved['__radio_'+el.name]=el.checked?el.value:(saved['__radio_'+el.name]||'');
   });
+  // Also capture remark textareas (sr-input-* and sr-edit-*) so sync render doesn't wipe typed text
+  document.querySelectorAll('textarea[id^="sr-"]').forEach(el=>{ if(el.id) saved[el.id]=el.value; });
   const slots=[];
   document.querySelectorAll('.bt-row').forEach(row=>{
     const idx=row.dataset.idx;
@@ -4204,7 +4216,7 @@ function onSearch(v){
 }
 function toggleForm(sec,archKey){
   const k=sec+(archKey?'::'+archKey:'');
-  if(ui.openForms.has(k)){ ui.openForms.delete(k); delete ui.editMap[k]; } else { ui.openForms.add(k); delete ui.editMap[k]; }
+  if(ui.openForms.has(k)){ ui.openForms.delete(k); delete ui.editMap[k]; } else { ui.openForms.add(k); delete ui.editMap[k]; window._lastFormOpenTs=Date.now(); }
   render();
   if(ui.openForms.has(k)){
     setTimeout(()=>{
@@ -8937,8 +8949,12 @@ function init(){
   window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); /* onSnapshot will fire automatically on reconnect and merge before we push */ } });
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'&&fireDb){
-      const hasOpenForm=ui.openForms.size>0||_te.open;
-      if(!hasOpenForm){ setSyncUI('syncing'); startRealtimeSync(); }
+      setTimeout(()=>{
+        const hasOpenForm=ui.openForms.size>0||_te.open;
+        // Also block if a form was very recently opened (iOS keyboard triggers visibilitychange)
+        const formJustOpened=(Date.now()-(window._lastFormOpenTs||0))<2000;
+        if(!hasOpenForm&&!formJustOpened){ setSyncUI('syncing'); startRealtimeSync(); }
+      },500);
     }
   });
   // Fallback: re-establish sync if connection has been idle — but only when no form is open
