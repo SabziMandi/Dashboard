@@ -8214,7 +8214,8 @@ function renderLeavesSection(){
       let _name='', _meta='';
       if(_ol.length){
         _name=_ol.slice(0,3).map(l=>(l.employeeName||'?').split(' ')[0]).filter(Boolean).join(' · ');
-        _meta=_ol.length+' on leave';
+        const _soonest=_ol.slice().sort((a,b)=>a.dateTo.localeCompare(b.dateTo))[0];
+        _meta='until '+new Date(_soonest.dateTo+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
       } else {
         const _nx=_ul[0];
         _name=esc(_nx.employeeName||'');
