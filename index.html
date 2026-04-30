@@ -1065,25 +1065,7 @@ body {
   animation: slideIn .17s ease;
 }
 
-/* Combined IBU/Other sub-tabs */
-.cst-bar { display:flex; gap:5px; margin-bottom:12px; }
-.cst-btn {
-  padding:4px 14px; border-radius:20px; border:1.5px solid var(--border2);
-  background:transparent; color:var(--text2); font-size:12px; font-weight:500;
-  cursor:pointer; transition:all .15s; font-family:var(--font);
-}
-.cst-btn:hover { color:var(--text); border-color:var(--border); }
-.cst-btn.cst-ibu.cst-active  { background:var(--accent-bg); color:var(--accent); border-color:var(--accent); }
-.cst-btn.cst-other.cst-active { background:rgba(13,148,136,.09); color:var(--working); border-color:rgba(13,148,136,.4); }
-.cst-btn.cst-all.cst-active   { background:var(--surface3); color:var(--text); border-color:var(--border2); }
 
-/* Sub-section label on card */
-.subsec-badge {
-  font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.5px;
-  padding:3px 9px; border-radius:20px;
-}
-.ssb-ibu   { background:var(--accent-bg); color:var(--accent); border:0.5px solid rgba(207,102,64,.3); }
-.ssb-other { background:rgba(13,148,136,.08); color:var(--working); border:0.5px solid rgba(13,148,136,.3); }
 .recurring-badge {
   font-size: 11px; font-family: var(--font); font-weight: 500;
   color: var(--week); background: rgba(79,70,229,.08);
@@ -1297,8 +1279,14 @@ button.tasks-tab-btn {
 .ttb-cab{background:rgba(14,165,233,.09);color:#0369a1;border:0.5px solid rgba(14,165,233,.3);}
 .ttb-flight{background:rgba(139,92,246,.09);color:#7c3aed;border:0.5px solid rgba(139,92,246,.3);}
 .ttb-hotel{background:rgba(16,185,129,.09);color:#047857;border:0.5px solid rgba(16,185,129,.3);}
-.ttb-expense{background:rgba(245,158,11,.09);color:#b45309;border:0.5px solid rgba(245,158,11,.3);}
-.ttb-fixer{background:rgba(13,148,136,.09);color:#0D9488;border:0.5px solid rgba(13,148,136,.35);}
+.ttb-add-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);transition:opacity .12s;}
+.ttb-add-btn:hover{opacity:.8;}
+.ttb-add-btn.ttb-cab{background:rgba(14,165,233,.07);color:#0369a1;border-color:rgba(14,165,233,.3);}
+.ttb-add-btn.ttb-flight{background:rgba(139,92,246,.07);color:#7c3aed;border-color:rgba(139,92,246,.3);}
+.ttb-add-btn.ttb-hotel{background:rgba(16,185,129,.07);color:#047857;border-color:rgba(16,185,129,.3);}
+.ttb-add-btn.ttb-fixer{background:rgba(13,148,136,.07);color:#0D9488;border-color:rgba(13,148,136,.35);}
+.ttb-add-btn .ttb-lbl{display:inline;}
+@media(max-width:480px){.ttb-add-btn .ttb-lbl{display:none;}.ttb-add-btn{padding:5px 8px;}}
 .travel-add-bar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0 6px;}
 .travel-wrap{display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;}
 /* ── Meetings ── */
@@ -1477,7 +1465,7 @@ let state = {
   carryForwardDismissed:null,
   eodSettings:{ enabled:true, hour:18, workDaysOnly:true },
   eodDismissed:null,
-  sectionNames:{ ibu:'India Business Update (IBU)', other:'Other Lives/Stories' },
+  sectionNames:{ ibu:'Stories', other:'Stories' },
   tasks:[],
   meetings:[],
   leaves:[],
@@ -1506,7 +1494,6 @@ let ui = {
   editMap: {},
   complForms: new Set(),
   showShelved: new Set(),
-  combinedSubTab: 'all',
   notesResolvedOpen: false,
   notesDate: null,      // null = today; string = archive date being viewed in Notes tab
   tasksDate: null,      // null = today; string = archive date
@@ -1753,7 +1740,7 @@ function loadLocal(){
     state.employees=state.employees||[];
     while(state.employees.length<5) state.employees.push('Employee '+(state.employees.length+1));
   }
-  if(!state.sectionNames) state.sectionNames={ ibu:'India Business Update (IBU)', other:'Other Lives/Stories' };
+  if(!state.sectionNames) state.sectionNames={ ibu:'Stories', other:'Stories' };
   if(!state.lastActiveDate) state.lastActiveDate=todayStr();
   // Load backups from separate key (kept local only, never pushed to Firestore)
   try{
@@ -2193,11 +2180,11 @@ function checkDateChange(){
       state.sections[sec]=(state.sections[sec]||[]).filter(s=>s.id!==story.id);
     });
     if(toAutoArchive.length){
-      const ibuCnt=archivedIBU.length;
-      const otherCnt=toAutoArchive.length-ibuCnt;
+      const storiesCnt=toAutoArchive.filter(x=>x.sec==='ibu'||x.sec==='other').length;
+      const otherSecCnt=toAutoArchive.length-storiesCnt;
       const parts=[];
-      if(ibuCnt) parts.push(ibuCnt+' IBU');
-      if(otherCnt) parts.push(otherCnt+' Other');
+      if(storiesCnt) parts.push(storiesCnt+' stor'+(storiesCnt===1?'y':'ies'));
+      if(otherSecCnt) parts.push(otherSecCnt+' other');
       toast(`📦 Auto-archived: ${parts.join(', ')}`);
     }
     // Auto-migrate Upcoming stories whose date has arrived
@@ -3007,8 +2994,10 @@ function markNotDone(sec,id,archKey){
   render();
 }
 function markStoryNotDone(sec,id,archKey){
+  const arr=getArr(sec,archKey); const prev=arr?.find(s=>s.id===id); if(!prev) return;
+  const snapshot={status:prev.status,notDoneOn:prev.notDoneOn,carriedForward:prev.carriedForward};
   updateStory(sec,id,{status:'not-done',carriedForward:false,notDoneOn:Date.now()},archKey);
-  toast('⚫ Not Done');
+  toast('⚫ Not Done', ()=>{ updateStory(sec,id,snapshot,archKey); saveAndPush(); renderDateStrip(); render(); });
   saveAndPush(); renderDateStrip(); render();
 }
 
@@ -3053,7 +3042,7 @@ function sweepStaleTerminalStories(){
   // couldn't run the midnight sweep (missing timestamp fields on old entries)
   const today=todayStr();
   const TERM=['completed','not-done','shelved'];
-  let swept=false;
+  let sweptCount=0;
   if(!state.deletedIds) state.deletedIds={};
   const keepFn=(s,key)=>{
     if(!TERM.includes(s.status)) return true;
@@ -3065,7 +3054,7 @@ function sweepStaleTerminalStories(){
       s.notDoneOn?dateStr(new Date(s.notDoneOn)):
       s.shelvedAt?dateStr(new Date(s.shelvedAt)):null;
     if(resDate&&resDate>=today) return true;
-    swept=true; return false;
+    sweptCount++; return false;
   };
   SECTIONS.filter(s=>!s.isUpcoming&&!s.isCombined&&s.key!=='ibu').forEach(({key})=>{
     state.sections[key]=(state.sections[key]||[]).filter(s=>keepFn(s,key));
@@ -3073,11 +3062,17 @@ function sweepStaleTerminalStories(){
   // Also sweep other (hidden combined section)
   state.sections.other=(state.sections.other||[]).filter(s=>keepFn(s,'other'));
   // IBU always clears if date changed (handled by checkDateChange)
-  if(swept) saveAndPush();
+  if(sweptCount>0){
+    saveAndPush();
+    // Defer toast until after init() finishes and DOM is ready
+    setTimeout(()=>toast(`\uD83D\uDCC2 ${sweptCount} resolved stor${sweptCount===1?'y':'ies'} archived from previous day`),600);
+  }
 }
 function shelveStory(sec,id,archKey){
+  const arr=getArr(sec,archKey); const prev=arr?.find(s=>s.id===id); if(!prev) return;
+  const snapshot={status:prev.status,shelvedAt:prev.shelvedAt,carriedForward:prev.carriedForward};
   updateStory(sec,id,{status:'shelved',carriedForward:false,shelvedAt:Date.now()},archKey);
-  toast('Story shelved — use "Show shelved" to retrieve it');
+  toast('Story shelved — use "Show shelved" to retrieve it', ()=>{ updateStory(sec,id,snapshot,archKey); saveAndPush(); render(); });
   render();
 }
 function unshelveStory(sec,id,archKey){
@@ -3917,7 +3912,15 @@ function doExportLeavesTxt(){
 
 function doExportSectionTxt(sec,archKey){
   const name=secName(sec);
-  const stories=(archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[]).filter(s=>!s._deleted);
+  // For the combined stories accordion, merge ibu + other
+  let stories;
+  if(sec==='ibu'){
+    const ibu=(archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[];
+    const other=(archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[];
+    stories=[...ibu,...other].filter(s=>!s._deleted);
+  } else {
+    stories=(archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[]).filter(s=>!s._deleted);
+  }
   const hr='─'.repeat(48);
   const lines=[name.toUpperCase(),hr,''];
   stories.forEach(s=>{lines.push(storyToText(s));lines.push('');});
@@ -3928,9 +3931,15 @@ function doExportSectionTxt(sec,archKey){
   toast(name+' exported ✓');
 }
 function doEmailSection(sec,archKey){
-  const meta=SECTIONS.find(s=>s.key===sec);
   const name=secName(sec);
-  const stories=(archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[]).filter(s=>!s._deleted);
+  let stories;
+  if(sec==='ibu'){
+    const ibu=(archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[];
+    const other=(archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[];
+    stories=[...ibu,...other].filter(s=>!s._deleted);
+  } else {
+    stories=(archKey?state.archive[archKey]?.sections[sec]||[]:state.sections[sec]||[]).filter(s=>!s._deleted);
+  }
   const lines=[name.toUpperCase(),'─'.repeat(44)];
   stories.forEach(s=>{lines.push(storyToText(s));lines.push('');});
   sendMailto('[Newsroom] '+name+' — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
@@ -4174,7 +4183,7 @@ function updateDateHeader(){
 function toggleAccordion(key){
   const opening=!ui.openSections.has(key);
   if(opening) ui.openSections.add(key); else ui.openSections.delete(key);
-  if(opening&&key==='tasks') ui_taskPage=1;
+  if(opening&&key==='tasks') { ui_taskPage=1; ui_doneTaskPage=1; ui_doneTaskOpen=false; }
   if(opening&&(key==='ibu'||key==='upcoming')) ui_upcomingPage=1;
   if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const b=document.getElementById('acc-body-'+key);
@@ -4464,7 +4473,7 @@ function openSyncModal(){
     <ol class="setup-ol">
       <li class="setup-li">Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → sign in with Google.</li>
       <li class="setup-li"><strong>Create a project</strong> → name it anything → skip Analytics → Continue.</li>
-      <li class="setup-li">Sidebar → <strong>Firestore Database</strong> → Create database → <strong>test mode</strong> → any region → Enable.</li>
+      <li class="setup-li">Sidebar → <strong>Firestore Database</strong> → Create database → <strong>test mode</strong> → any region → Enable. <span style="color:#B45309;font-weight:600">⚠ Security note:</span> Test mode allows anyone with your Project ID to read and write your data. After setup, go to <strong>Firestore → Rules</strong> and restrict access (e.g. allow only your IP or add authentication). <a href="https://firebase.google.com/docs/firestore/security/get-started" target="_blank" style="color:var(--accent)">Learn about Firestore security rules →</a></li>
       <li class="setup-li">Project Overview → <strong>web icon &lt;/&gt;</strong> → name app → copy the <code>firebaseConfig</code> values below.</li>
     </ol>
     <div class="fb-grid">
@@ -4501,9 +4510,12 @@ function deadlineBadge(s){
   if(s.status==='completed') return '';
   const today=todayStr();
   if(s.deadline_uk){
-    // Time is set — use precise diff in hours/mins
-    const dl=s.deadline_date+' '+s.deadline_uk;
-    const diff=new Date(dl).getTime()-Date.now();
+    // Time is set — convert London local time → UTC correctly (handles BST/GMT)
+    const [h,m]=(s.deadline_uk).split(':').map(Number);
+    const ukMin=h*60+m;
+    const midnightUtc=new Date(s.deadline_date+'T00:00:00Z').getTime();
+    const deadlineUtcMs=midnightUtc+(ukMin-ukOffMin())*60000;
+    const diff=deadlineUtcMs-Date.now();
     const abs=Math.abs(diff), mins=Math.round(abs/60000);
     let txt;
     if(mins<60)    txt=(diff<0?'Overdue ':' Due ')+mins+'m';
@@ -4597,8 +4609,13 @@ function render(){
 }
 
 function injectDataLists(){
-  ['dl-correspondents','dl-producers','dl-shoot','dl-staff-all'].forEach(id=>document.getElementById(id)?.remove());
   const sn=state.staffNames||{};
+  const allStaff=[...new Set([...(sn.correspondents||[]),...(sn.producers||[]),...(sn.shootEdit||[])])].sort();
+  // Build a fingerprint — only rebuild DOM datalists when the staff data has actually changed
+  const fingerprint=JSON.stringify({c:sn.correspondents||[],p:sn.producers||[],s:sn.shootEdit||[],a:allStaff});
+  if(injectDataLists._last===fingerprint) return; // no change — skip expensive DOM rebuild
+  injectDataLists._last=fingerprint;
+  ['dl-correspondents','dl-producers','dl-shoot','dl-staff-all'].forEach(id=>document.getElementById(id)?.remove());
   const makeList=(id,arr)=>{
     const dl=document.createElement('datalist'); dl.id=id;
     (arr||[]).forEach(n=>{ const opt=document.createElement('option'); opt.value=n; dl.appendChild(opt); });
@@ -4607,7 +4624,6 @@ function injectDataLists(){
   makeList('dl-correspondents', sn.correspondents||[]);
   makeList('dl-producers',      sn.producers||[]);
   makeList('dl-shoot',          sn.shootEdit||[]);
-  const allStaff=[...new Set([...(sn.correspondents||[]),...(sn.producers||[]),...(sn.shootEdit||[])])].sort();
   makeList('dl-staff-all', allStaff);
 }
 
@@ -4624,11 +4640,9 @@ function storyMatchesSearch(s, q){
   return fields.some(f=>(f||'').toLowerCase().includes(q));
 }
 function sectionMatchesSearch(sec, q){
-  // Allow searching by section name — e.g. "ibu", "other stories", "requests", "note"
-  const names=['ibu','other stories','other','requests','upcoming','note','notes','remarks','tasks','leaves'];
+  // Allow searching by section name — e.g. "stories", "requests", "note"
   const secMap={
-    ibu:['ibu','india business'],
-    other:['other','other stories'],
+    ibu:['stories','story','ibu','india business','other','other stories'],
     requests:['request','requests','future'],
     upcoming:['upcoming'],
     notes:['note','notes','remarks'],
@@ -4660,11 +4674,13 @@ function renderSearchHTML(){
 
   // ── Today ──
   SECTIONS.forEach(sec=>{
-    if(sec.isUpcoming||sec.hidden) return;
+    if(sec.isUpcoming) return;
+    // 'other' is hidden from normal rendering but must appear in search results
     const arr=(state.sections[sec.key]||[]).filter(s=>!s._deleted);
     arr.forEach(s=>{
-      if(secHit===sec.key || storyMatchesSearch(s,q)){
-        results.push({dateKey:'today',dateLabel:'Today',sec:sec.key,secLabel:secName(sec.key),story:s,type:'story'});
+      // secHit==='ibu' covers both ibu and other (they're the same Stories section now)
+      if(secHit===sec.key||(secHit==='ibu'&&sec.key==='other')||storyMatchesSearch(s,q)){
+        results.push({dateKey:'today',dateLabel:'Today',sec:sec.key,secLabel:'Stories',story:s,type:'story'});
       }
     });
   });
@@ -4723,8 +4739,8 @@ function renderSearchHTML(){
     SECTIONS.forEach(sec=>{
       const arr=(entry.sections?.[sec.key]||[]).filter(s=>!s._deleted);
       arr.forEach(s=>{
-        if(secHit===sec.key||storyMatchesSearch(s,q)){
-          results.push({dateKey:archKey,dateLabel:dlabel(archKey),sec:sec.key,secLabel:secName(sec.key),story:s,type:'story',archKey});
+        if(secHit===sec.key||(secHit==='ibu'&&sec.key==='other')||storyMatchesSearch(s,q)){
+          results.push({dateKey:archKey,dateLabel:dlabel(archKey),sec:sec.key,secLabel:'Stories',story:s,type:'story',archKey});
         }
       });
     });
@@ -4777,7 +4793,7 @@ function renderSearchHTML(){
         const s=r.story;
         const archKeyJS=r.archKey?`'${r.archKey}'`:'null';
         const dot2=col=>`<span class="badge-dot" style="background:${col}"></span>`; const sbL=s.status==='urgent'?dot2('#B91C1C')+'Urgent':s.status==='in-progress'?dot2('#B45309')+'In progress':s.status==='completed'?dot2('#15803D')+'Done':s.status==='not-done'?dot2('#475569')+'Not done':s.status==='on-hold'?dot2('#7C3AED')+'On hold':'';
-        const secBadge=r.sec==='ibu'?'IBU':r.sec==='other'?'Other':r.secLabel;
+        const secBadge=r.sec==='ibu'||r.sec==='other'?'Stories':r.secLabel;
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;"
           onclick="clearTimeout(_searchTimer);ui.filter='all';setView(${r.archKey?`'archive','${r.archKey}'`:"'today',null"});setTimeout(()=>{ ui.openCards.add('${s.id}');ui.openSections.add('${r.sec==='other'?'ibu':r.sec}');render();setTimeout(()=>document.querySelector('[data-id=\\'${s.id}\\']')?.scrollIntoView({behavior:'smooth',block:'center'}),100); },150)">
           <div style="flex:1;min-width:0">
@@ -4926,9 +4942,13 @@ function renderUpcomingView(){
     }
 
     if(expiredUpcoming.length){
-      html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div class="fi-hint">📁 ${expiredUpcoming.length} expired</div>
-        ${expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join('')}
+      const isExpOpen=ui_expiredUpcomingOpen['today']===true;
+      html+=`<div style="border-top:1px dashed var(--border);margin-top:8px">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;user-select:none" onclick="ui_expiredUpcomingOpen['today']=!ui_expiredUpcomingOpen['today'];render()">
+          <span class="fi-hint" style="margin:0;padding:0;border:none">📁 ${expiredUpcoming.length} expired</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:auto">${isExpOpen?'▾':'▸'}</span>
+        </div>
+        ${isExpOpen?expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join(''):''}
       </div>`;
     }
   }
@@ -5220,11 +5240,10 @@ function buildMigrateSourceHTML(){
         const sk2=k.replace(/[^a-z0-9]/gi,'-');
         const sbL=s.status==='urgent'?'🔴':s.status==='in-progress'?'🟡':s.status==='completed'?'🟢':s.status==='on-hold'?'🟣':s.status==='not-done'?'⚫':s.status==='postponed'?'🔵':s.status==='shelved'?'🗄':'⚪';
         const carry='';
-        const subsecChip=s._subsec?`<span class="subsec-badge ${s._subsec==='ibu'?'ssb-ibu':'ssb-other'}">${s._subsec==='ibu'?'IBU':'Other'}</span> `:'';
         html+=`<div class="migrate-story-row${sel?' msr-selected':''}" id="msr-${sk2}" onclick="toggleMigrateStory('${k}')">
           <div class="migrate-cb"><span class="migrate-cb-check" style="display:${sel?'block':'none'}">✓</span></div>
           <div class="migrate-story-info">
-            <div class="migrate-story-title">${subsecChip}${esc(s.title||'Untitled')}${carry}</div>
+            <div class="migrate-story-title">${esc(s.title||'Untitled')}${carry}</div>
             <div class="migrate-story-meta">${sbL} ${s.status||'no status'}${s.correspondent?' · 👤 '+esc(s.correspondent):''}</div>
           </div>
         </div>`;
@@ -5235,30 +5254,8 @@ function buildMigrateSourceHTML(){
   return html||'<div class="empty-state"><div class="empty-msg">No stories on this date</div></div>';
 }
 
-/* ─── ACCORDION ─── */
-function buildCombinedStoriesHTML(archKey){
-  const tab=ui.combinedSubTab||'all';
-  const ibuArr=((archKey?state.archive[archKey]?.sections?.ibu:state.sections.ibu)||[]).filter(s=>!s._deleted);
-  const otherArr=((archKey?state.archive[archKey]?.sections?.other:state.sections.other)||[]).filter(s=>!s._deleted);
-  // Apply search + filter to each
-  const filterArr=(arr)=>{
-    let a=arr.filter(s=>s.status!=='shelved');
-    if(ui.search){ const q=ui.search.toLowerCase(); a=a.filter(s=>(s.title||'').toLowerCase().includes(q)||(s.correspondent||'').toLowerCase().includes(q)||(s.producer||'').toLowerCase().includes(q)||(s.shoot_edit||'').toLowerCase().includes(q)||(s.remarks||'').toLowerCase().includes(q)); }
-    if(ui.filter==='working')  return a.filter(s=>s.mode==='working');
-    if(ui.filter==='watching') return a.filter(s=>s.mode==='watching');
-    if(ui.filter!=='all')      return a.filter(s=>s.status===ui.filter);
-    return a;
-  };
-  const ibuFiltered=filterArr(ibuArr).map(s=>({...s,_subsec:'ibu'}));
-  const otherFiltered=filterArr(otherArr).map(s=>({...s,_subsec:'other'}));
-  let stories=[];
-  if(tab==='ibu')   stories=ibuFiltered;
-  else if(tab==='other') stories=otherFiltered;
-  else stories=[...ibuFiltered,...otherFiltered];
 
-  if(!stories.length) return`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories here — click <strong>+ Add</strong></div></div>`;
-  return stories.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('');
-}
+/* ─── ACCORDION ─── */
 
 function renderAccordion(sec,archKey){
   const secObj=SECTIONS.find(s=>s.key===sec.key)||sec;
@@ -5419,11 +5416,16 @@ function renderAccordion(sec,archKey){
       </div>`;
     }
 
-    // Expired entries — past date, not completed — faded at bottom
+    // Expired entries — past date, not completed — collapsed by default
     if(expiredUpcoming.length){
-      html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div class="fi-hint">📁 ${expiredUpcoming.length} expired</div>
-        ${expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
+      const _expKey=(archKey||'today')+'-'+sec.key;
+      const isExpOpen=ui_expiredUpcomingOpen[_expKey]===true;
+      html+=`<div style="border-top:1px dashed var(--border);margin-top:8px">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;user-select:none" onclick="ui_expiredUpcomingOpen['${_expKey}']=!ui_expiredUpcomingOpen['${_expKey}'];render()">
+          <span class="fi-hint" style="margin:0;padding:0;border:none">📁 ${expiredUpcoming.length} expired</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:auto">${isExpOpen?'▾':'▸'}</span>
+        </div>
+        ${isExpOpen?expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}
       </div>`;
     }
   } else {
@@ -5740,15 +5742,7 @@ function renderFormRemarksList(sec, s, archKey){
   return html;
 }
 
-function toggleStorySubsection(sec, id, archKey){
-  // Toggle a story between 'ibu' and 'other' by moving it
-  const fromArr=getArr(sec,archKey);
-  if(!fromArr) return;
-  const story=fromArr.find(s=>s.id===id);
-  if(!story) return;
-  const toSec=sec==='ibu'?'other':'ibu';
-  moveStoryToSection(sec,id,toSec,archKey,'move');
-}
+
 
 function jumpToTasks(){
   const isMobile=window.innerWidth<=720;
@@ -5767,6 +5761,9 @@ let ui_taskForm=false; // is the add-task form open?
 let ui_editTaskId=null;
 let ui_openTasks=new Set();
 let ui_taskPage=1;   // how many batches of 10 to show
+let ui_doneTaskPage=1; // how many batches of 10 done/not-done tasks to show
+let ui_doneTaskOpen=false; // done/not-done task list collapsed by default
+let ui_expiredUpcomingOpen={}; // expired upcoming collapsed per section key
 let ui_upcomingPage=1; // same for upcoming events
 let ui_resolvedPages={done:1,'on-hold':1,'not-done':1,postponed:1,shelved:1};
 let ui_teBookingsOpen={};
@@ -5835,7 +5832,14 @@ function nextRecurrenceDate(task){
 function recurIntervalDays(task){
   if(task.recurFreq==='daily') return 1;
   if(task.recurFreq==='weekly') return 7;
-  if(task.recurFreq==='monthly') return 30; // approximate
+  if(task.recurFreq==='monthly'){
+    // Use actual calendar month length from the task's base date to avoid drift
+    const base=task.deadline_date||todayStr();
+    const d1=new Date(base+'T00:00:00');
+    const d2=new Date(base+'T00:00:00');
+    d2.setMonth(d2.getMonth()+1);
+    return Math.round((d2.getTime()-d1.getTime())/86400000);
+  }
   if(task.recurFreq==='custom'&&task.recurDays>0) return parseInt(task.recurDays);
   return 7; // fallback
 }
@@ -6383,8 +6387,27 @@ function renderTasksSection(){
       </div>`;
     }
     if(_doneTasks.length){
-      html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_doneTasks.length} done / not done</div>`;
-      _doneTasks.forEach(t=>{ html+=renderTaskCard(t,today); });
+      const doneLimit=ui_doneTaskPage*10;
+      const visibleDone=_doneTasks.slice(0,doneLimit);
+      const doneRemaining=_doneTasks.length-visibleDone.length;
+      html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui_doneTaskOpen=!ui_doneTaskOpen;render()">
+          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">✓ ${_doneTasks.length} done / not done</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_doneTaskOpen?'▾':'▸'}</span>
+        </div>
+      </div>`;
+      if(ui_doneTaskOpen){
+        html+=`<div>`;
+        visibleDone.forEach(t=>{ html+=renderTaskCard(t,today); });
+        if(doneRemaining>0){
+          html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
+            <button class="btn btn-ghost btn-sm" onclick="showMoreDoneTasks();event.stopPropagation()" style="color:var(--text3);border-color:var(--border);font-size:12px">
+              ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${doneRemaining} remaining)</span>
+            </button>
+          </div>`;
+        }
+        html+=`</div>`;
+      }
     }
   }
 
@@ -6399,6 +6422,7 @@ function renderTasksSection(){
 }
 
 function showMoreTasks(){ ui_taskPage++; render(); }
+function showMoreDoneTasks(){ ui_doneTaskPage++; render(); }
 function showMoreUpcoming(){ ui_upcomingPage++; render(); }
 function renderTaskCard(t, today){
   const TASK_DAY_NAMES={mon:'Monday',tue:'Tuesday',wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday',sun:'Sunday'};
@@ -7481,24 +7505,32 @@ function renderRemarksAccordion(){
     });
   }
 
-  // Resolved notes — always visible, faded
+  // Resolved notes — collapsed by default, click header to expand
   if(resolved.length){
-    body+=`<div style="font-size:11px;color:var(--text3);font-family:var(--font);margin:10px 0 6px;padding-top:8px;border-top:1px dashed var(--border)">✓ ${resolved.length} resolved</div>`;
-    resolved.forEach(n=>{
-      const created=new Date(n.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-      body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}">
-        <div class="note-text" style="text-decoration:${n.status==='done'?'line-through':''}">${esc(n.text)}</div>
-        <div class="note-meta">
-          <span>🗓 ${created}</span>
-          <span style="color:${n.status==='done'?'var(--done)':'var(--text3)'}">${n.status==='done'?'✅ Done':'↪ Passed'}</span>
-        </div>
-        <div class="note-btns">
-          <button class="btn btn-ghost btn-xs" onclick="updateNote('${n.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>
-          <button class="btn btn-ghost btn-xs" onclick="editNote('${n.id}')">✏ Edit</button>
-          <button class="btn btn-ghost btn-xs btn-danger" onclick="if(confirm('Delete this note?'))deleteNote('${n.id}')">🗑</button>
-        </div>
-      </div>`;
-    });
+    const isResOpen=ui.notesResolvedOpen===true;
+    body+=`<div style="border-top:1px dashed var(--border);margin-top:10px">
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui.notesResolvedOpen=!ui.notesResolvedOpen;render()">
+        <span style="font-size:11px;color:var(--text3);font-family:var(--font)">✓ ${resolved.length} resolved</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:auto">${isResOpen?'▾':'▸'}</span>
+      </div>
+    </div>`;
+    if(isResOpen){
+      resolved.forEach(n=>{
+        const created=new Date(n.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+        body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}">
+          <div class="note-text" style="text-decoration:${n.status==='done'?'line-through':''}">${esc(n.text)}</div>
+          <div class="note-meta">
+            <span>🗓 ${created}</span>
+            <span style="color:${n.status==='done'?'var(--done)':'var(--text3)'}">${n.status==='done'?'✅ Done':'↪ Passed'}</span>
+          </div>
+          <div class="note-btns">
+            <button class="btn btn-ghost btn-xs" onclick="updateNote('${n.id}',{status:'active',resolvedOn:null});render()">↩ Restore</button>
+            <button class="btn btn-ghost btn-xs" onclick="editNote('${n.id}')">✏ Edit</button>
+            <button class="btn btn-ghost btn-xs btn-danger" onclick="if(confirm('Delete this note?'))deleteNote('${n.id}')">🗑</button>
+          </div>
+        </div>`;
+      });
+    }
   }
 
   if(isStandaloneNote){
@@ -7823,6 +7855,20 @@ function _teRestoreStory(sid){
   state.travelDismissed=(state.travelDismissed||[]).filter(x=>x!==sid);
   _teSave();
 }
+function _teDeleteStory(sid){
+  // Remove story from travelDismissed (if hidden) and delete all its T&E entries
+  state.travelDismissed=(state.travelDismissed||[]).filter(x=>x!==sid);
+  const toDelete=(state.travelEntries||[]).filter(e=>e.storyId===sid).map(e=>e.id);
+  toDelete.forEach(id=>{
+    state.travelEntries=(state.travelEntries||[]).filter(e=>e.id!==id);
+    if(!state.deletedIds.travelEntries) state.deletedIds.travelEntries=[];
+    if(!state.deletedIds.travelEntries.includes(id)) state.deletedIds.travelEntries.push(id);
+  });
+  // Also remove from travelDismissed persistent list
+  _teSave();
+  toast(toDelete.length?`🗑 Story removed with ${toDelete.length} entr${toDelete.length===1?'y':'ies'}`:'🗑 Story removed from Travel & Expenses');
+  _teRefresh();
+}
 function _teRefresh(){
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
@@ -8132,9 +8178,22 @@ function _teSubAccordion(sid,sec){
   const allClaimed=expenses.length>0&&expenses.every(e=>_teGetClaimed(e)==='yes');
   const expTotal=(()=>{const t=expenses.reduce((s,e)=>{const _m=String(e.data?.amount||'').match(/[0-9]+(?:\.[0-9]+)?/);const n=_m?parseFloat(_m[0]):0;return s+(isNaN(n)?0:n);},0);return t>0?'Rs '+t.toLocaleString('en-IN'):'';})();
   const bookOpen=ui_teBookingsOpen[sid]===true,expOpen=ui_teExpensesOpen[sid]===true;
-  const addBookBtns=isGen?`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'cab'})">🚕 Cab</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'flight'})">✈️ Flight</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'hotel'})">🏨 Hotel</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'fixer'})" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)">🤝 Fixer</button>`:`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'cab'})">🚕 Cab</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'flight'})">✈️ Flight</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'hotel'})">🏨 Hotel</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'fixer'})" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)">🤝 Fixer</button>`;
+  // Booking payment badges: unpaid count + entry count (only when unpaid) or "All paid"
+  // Cab/flight/hotel: unpaid = data.payment === 'unpaid'
+  // Fixer: unpaid = _teGetClaimed(e) !== 'yes' (uses claimed field, same as expenses)
+  const bookUnpaid=bookings.filter(e=>
+    e.type==='fixer' ? _teGetClaimed(e)!=='yes' : e.data?.payment==='unpaid'
+  ).length;
+  const allBookPaid=bookings.length>0&&bookUnpaid===0;
+  const bookBadges=(()=>{
+    if(!bookings.length) return '';
+    if(allBookPaid) return `<span class="sbadge sb-in-progress">All paid</span>`;
+    return (bookUnpaid?`<span class="sbadge" style="background:rgba(186,117,23,.09);color:#854F0B;border:0.5px solid rgba(186,117,23,.3);font-size:11px"><span class="badge-dot" style="background:#BA7517"></span>${bookUnpaid} unpaid</span>`:'')
+      +`<span class="sbadge" style="background:rgba(37,99,235,.07);color:#1d4ed8;border:0.5px solid rgba(37,99,235,.25);font-size:11px">${bookings.length} entr${bookings.length===1?'y':'ies'}</span>`;
+  })();
+  const addBookBtns=isGen?`<button class="ttb-add-btn ttb-cab" onclick="_teOpenForm({type:'cab'})">🚕 <span class="ttb-lbl">Cab</span></button><button class="ttb-add-btn ttb-flight" onclick="_teOpenForm({type:'flight'})">✈️ <span class="ttb-lbl">Flight</span></button><button class="ttb-add-btn ttb-hotel" onclick="_teOpenForm({type:'hotel'})">🏨 <span class="ttb-lbl">Hotel</span></button><button class="ttb-add-btn ttb-fixer" onclick="_teOpenForm({type:'fixer'})">🤝 <span class="ttb-lbl">Fixer</span></button>`:`<button class="ttb-add-btn ttb-cab" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'cab'})">🚕 <span class="ttb-lbl">Cab</span></button><button class="ttb-add-btn ttb-flight" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'flight'})">✈️ <span class="ttb-lbl">Flight</span></button><button class="ttb-add-btn ttb-hotel" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'hotel'})">🏨 <span class="ttb-lbl">Hotel</span></button><button class="ttb-add-btn ttb-fixer" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'fixer'})">🤝 <span class="ttb-lbl">Fixer</span></button>`;
   const addExpBtn=isGen?`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'expense'})">💳 Add expense</button>`:`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'expense'})">💳 Add expense</button>`;
-  return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)"><div style="display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer" onclick="_teToggleBookings('${sid}')"><span style="font-size:14px">🗓</span><span style="font-size:12px;font-weight:600;color:var(--text);flex:1">Bookings</span>${bookings.length?`<span class="sbadge" style="background:rgba(37,99,235,.07);color:#1d4ed8;border:0.5px solid rgba(37,99,235,.25);font-size:11px">${bookings.length} entr${bookings.length===1?'y':'ies'}</span>`:''}<span id="te-book-chev-${sid}" style="font-size:11px;color:var(--text3)">${bookOpen?'▾':'▸'}</span></div><div id="te-book-body-${sid}" style="display:${bookOpen?'block':'none'};border-top:1px solid var(--border)"><div id="te-book-inner-${sid}" style="padding:8px 11px">${_teBuildBookingsInner(sid)}</div><div style="display:flex;gap:5px;flex-wrap:wrap;padding:6px 11px;border-top:1px dashed var(--border);background:var(--surface2)">${addBookBtns}</div></div></div>
+  return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)"><div style="display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer" onclick="_teToggleBookings('${sid}')"><span style="font-size:14px">🗓</span><span style="font-size:12px;font-weight:600;color:var(--text);flex:1">Bookings</span>${bookBadges}<span id="te-book-chev-${sid}" style="font-size:11px;color:var(--text3)">${bookOpen?'▾':'▸'}</span></div><div id="te-book-body-${sid}" style="display:${bookOpen?'block':'none'};border-top:1px solid var(--border)"><div id="te-book-inner-${sid}" style="padding:8px 11px">${_teBuildBookingsInner(sid)}</div><div style="display:flex;gap:5px;flex-wrap:wrap;padding:6px 11px;border-top:1px dashed var(--border);background:var(--surface2)">${addBookBtns}</div></div></div>
     <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)"><div style="display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer" onclick="_teToggleExpenses('${sid}')"><span style="font-size:14px">💳</span><span style="font-size:12px;font-weight:600;color:var(--text);flex:1">Expenses</span>${allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:expenses.filter(e=>_teGetClaimed(e)!=='yes').length?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${expenses.filter(e=>_teGetClaimed(e)!=='yes').length} unclaimed</span>`:''}${expTotal?`<span class="sbadge" style="background:rgba(13,148,136,.07);color:#0D9488;border:0.5px solid rgba(13,148,136,.25);font-weight:600;font-size:11px">${expTotal}</span>`:''}<span id="te-exp-chev-${sid}" style="font-size:11px;color:var(--text3)">${expOpen?'▾':'▸'}</span></div><div id="te-exp-body-${sid}" style="display:${expOpen?'block':'none'};border-top:1px solid var(--border)"><div id="te-exp-inner-${sid}" style="padding:8px 11px">${_teBuildExpensesInner(sid)}</div><div style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-top:1px dashed var(--border);background:var(--surface2)">${addExpBtn}<div style="flex:1"></div>${allClaimed?`<button class="btn btn-ghost btn-sm" style="color:var(--text3);cursor:default">✓ Claimed</button>`:`<button class="btn btn-ghost btn-sm" onclick="_teMarkAllClaimed('${sid}');event.stopPropagation()" style="color:#15803D;border-color:rgba(22,163,74,.4)">✓ Mark all claimed</button>`}</div></div></div>`;
 }
 function _teRenderBody(){
@@ -8145,10 +8204,16 @@ function _teRenderBody(){
   if(_te.open) html+=_teBuildForm();
   stories.forEach(({sec,s})=>{
     const entries=_teEntriesForStory(s.id),expenses=entries.filter(e=>e.type==='expense'),unclaimed=expenses.filter(e=>_teGetClaimed(e)!=='yes').length,allClaimed=expenses.length>0&&unclaimed===0;
+    const bookingsAll=entries.filter(e=>['cab','flight','hotel','fixer'].includes(e.type));
+    const bookUnpaid=bookingsAll.filter(e=>
+      e.type==='fixer' ? _teGetClaimed(e)!=='yes' : e.data?.payment==='unpaid'
+    ).length;
+    const allBookPaid=bookingsAll.length>0&&bookUnpaid===0;
+    const bookPayBadge=allBookPaid?`<span class="sbadge sb-in-progress">All paid</span>`:bookUnpaid?`<span class="sbadge sb-in-progress">${bookUnpaid} unpaid</span>`:'';
     const deadlineStr=s.deadline_date?(()=>{const diff=Math.round((new Date(s.deadline_date+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);const lbl=diff<0?'Overdue '+Math.abs(diff)+'d':diff===0?'Due today':diff===1?'Due tomorrow':'Due '+_fmtDShort(s.deadline_date);const col=diff<0?'#B91C1C':diff<=2?'#B45309':'var(--text3)';return `<span style="font-size:10.5px;color:${col};flex-shrink:0">⏰ ${lbl}</span>`;})():'';
     const claimBadge=allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:unclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${unclaimed} unclaimed</span>`:'';
     const secLabel={ibu:'Stories',other:'Other Stories',requests:'Requests'}[sec]||sec;
-    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap"><span style="font-size:13px">📡</span><span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>${deadlineStr}${claimBadge}<span style="font-size:10.5px;color:var(--text3);flex-shrink:0">${secLabel}${s.field_location?' · '+esc(s.field_location):''}</span><button onclick="_teDismissStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0">✕ Hide</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion(s.id,sec)}</div></div>`;
+    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap"><span style="font-size:13px">📡</span><span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>${deadlineStr}${bookPayBadge}${claimBadge}<span style="font-size:10.5px;color:var(--text3);flex-shrink:0">${secLabel}${s.field_location?' · '+esc(s.field_location):''}</span><button onclick="_teDismissStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide from this list">✕ Hide</button><button onclick="if(confirm('Remove this story from Travel &amp; Expenses? All its travel entries will be deleted.'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0" title="Delete story and all its entries">🗑</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion(s.id,sec)}</div></div>`;
   });
   const genEntries=_teEntriesGeneral();
   if(genEntries.length||stories.length===0){
@@ -8173,9 +8238,14 @@ function renderTravelSection(){
   const isOpen=ui.openSections.has('travel');
   const today=todayStr();
   const allEntries=state.travelEntries||[];
-  const allExp=allEntries.filter(e=>e.type==='expense'||e.type==='fixer');
+  const allExp=allEntries.filter(e=>e.type==='expense');
   const notClaimedCount=allExp.filter(e=>_teGetClaimed(e)!=='yes').length;
   const allClaimed=allExp.length>0&&notClaimedCount===0;
+  const allBookings=allEntries.filter(e=>['cab','flight','hotel','fixer'].includes(e.type));
+  const allBookUnpaid=allBookings.filter(e=>
+    e.type==='fixer' ? _teGetClaimed(e)!=='yes' : e.data?.payment==='unpaid'
+  ).length;
+  const allBookPaid=allBookings.length>0&&allBookUnpaid===0;
 
   // Header summary: title of first story sorted by overdue→nearest future
   const stories=_teGetStories().filter(({s})=>!(state.travelDismissed||[]).includes(s.id)).sort((a,b)=>{
@@ -8209,8 +8279,10 @@ function renderTravelSection(){
       <span class="acc-name">Travel &amp; Expenses</span>
       <span class="acc-summary">${summary}</span>
       <div class="acc-meta">
+        ${allBookUnpaid?`<span class="sbadge sb-in-progress">${allBookUnpaid} unpaid</span>`:''}
+        ${allBookPaid?`<span class="sbadge sb-in-progress">All paid</span>`:''}
         ${notClaimedCount?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${notClaimedCount} unclaimed</span>`:''}
-        ${allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>All claimed</span>`:''}
+        ${allClaimed?`<span class="sbadge sb-in-progress">All claimed</span>`:''}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-travel">▾</span>
     </div>
@@ -8625,9 +8697,7 @@ function renderStoryCard(sec,s,archKey){
   const archKeyJS=archKey?`'${archKey}'`:'null';
   const mode=s.mode||'none';
   const wwLabel=mode==='working'?'▶ Working':mode==='watching'?'👁 Watching':'● Set mode';
-  const subsecBadge=(sec==='ibu'||sec==='other')
-    ? `<span class="subsec-badge ${sec==='ibu'?'ssb-ibu':'ssb-other'} hide-mobile" onclick="toggleStorySubsection('${sec}','${s.id}',${archKey?`'${archKey}'`:'null'});event.stopPropagation()" title="Click to switch" style="cursor:pointer">${sec==='ibu'?'Live':'Other'} ⇄</span>`
-    : '';
+  const subsecBadge='';
   const isIBU=sec==='ibu'&&!archKey;
   const cardBorderCls=carried?'c-carried':s.status?'c-'+s.status:'';
   const wwModeCls=mode&&mode!=='none'?' c-'+mode:'';
@@ -9065,7 +9135,23 @@ function updateExpectedInput(sec,archKey){
   if(inp){ inp.type=t==='month'?'month':'date'; inp.value=''; }
 }
 function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function toast(msg){ const w=document.getElementById('toast-wrap'); if(!w) return; const el=document.createElement('div'); el.className='toast'; el.textContent=msg; w.appendChild(el); setTimeout(()=>el.remove(),3800); }
+function toast(msg, undoFn){
+  const w=document.getElementById('toast-wrap'); if(!w) return;
+  const el=document.createElement('div'); el.className='toast';
+  if(undoFn){
+    el.style.cssText='display:flex;align-items:center;gap:10px;pointer-events:all';
+    const txt=document.createElement('span'); txt.textContent=msg; el.appendChild(txt);
+    const btn=document.createElement('button');
+    btn.textContent='Undo';
+    btn.style.cssText='background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:inherit;border-radius:5px;padding:2px 9px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);flex-shrink:0';
+    btn.onclick=()=>{ clearTimeout(el._timer); el.remove(); undoFn(); };
+    el.appendChild(btn);
+  } else {
+    el.textContent=msg;
+  }
+  w.appendChild(el);
+  el._timer=setTimeout(()=>el.remove(),3800);
+}
 function confirmDelete(sec,id,archKey){ const arr=getArr(sec,archKey); const s=arr?.find(s=>s.id===id); if(!s) return; if(confirm('Delete "'+s.title+'"?')) deleteStory(sec,id,archKey); }
 function updateClock(){
   const el=document.getElementById('live-clock');
@@ -9196,7 +9282,7 @@ document.addEventListener('DOMContentLoaded', init);
     <span class="bnb-icon">🌴</span><span>Leaves</span>
   </button>
   <button class="bnb-item" id="bnb-upcoming" onclick="bnbNav('upcoming')">
-    <span class="bnb-icon">🗓</span><span style="font-size:8px">Events</span>
+    <span class="bnb-icon">🗓</span><span>Events</span>
   </button>
   <button class="bnb-item" id="bnb-notes" onclick="bnbNav('notes')">
     <span class="bnb-icon">📝</span><span>Notes</span>
