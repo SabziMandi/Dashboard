@@ -770,6 +770,29 @@ body {
 .fselect option { background: #fff; color: var(--text); }
 .ftextarea { resize: vertical; min-height: 72px; line-height: 1.6; box-sizing: border-box; overflow: auto; }
 .form-footer { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+.fsec-header {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 0; cursor: pointer; user-select: none;
+}
+.fsec-header:hover .fsec-label { color: var(--accent); }
+.fsec-label {
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .8px; font-family: var(--mono);
+  flex-shrink: 0; transition: color .15s;
+}
+.fsec-summary {
+  font-size: 11px; color: var(--text3); flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-left: 6px;
+}
+.fsec-chev { font-size: 10px; color: var(--text3); flex-shrink: 0; transition: transform .15s; }
+.fsec-chev.open { transform: rotate(90deg); }
+.fsec-fields { display: contents; }
+.fsec-fields.hidden { display: none; }
+.fsec-full { grid-column: 1 / -1; display: none; padding-bottom: 8px; }
+.fsec-full.open { display: block; }
 .form-divider {
   grid-column: 1 / -1; font-size: 10px; color: var(--text3);
   text-transform: uppercase; letter-spacing: .9px; font-family: var(--mono);
@@ -955,7 +978,7 @@ body {
 .slot-row-accent { width:3px; align-self:stretch; flex-shrink:0; border-radius:0; }
 .slot-row-inner { display:contents; }
 .slot-row-tag-cell { padding:6px 0 6px 8px; display:flex; align-items:flex-start; }
-.slot-row-tag { font-size:10px; font-weight:500; padding:2px 0; border-radius:4px; white-space:nowrap; width:76px; text-align:center; display:inline-block; }
+.slot-row-tag { font-size:10px; font-weight:500; padding:3px 8px; border-radius:20px; white-space:nowrap; width:80px; text-align:center; display:inline-block; box-sizing:border-box; }
 .slot-tag-tv     { background:rgba(22,163,74,.09);  color:#15803D; border:.5px solid rgba(22,163,74,.3); }
 .slot-tag-radio  { background:rgba(37,99,235,.09);  color:#1D4ED8; border:.5px solid rgba(37,99,235,.3); }
 .slot-tag-social { background:rgba(124,58,237,.09); color:#6D28D9; border:.5px solid rgba(124,58,237,.3); }
@@ -2758,13 +2781,23 @@ function getPlatformLabels(){ return [...DEFAULT_PLATFORM_LABELS,...(state.custo
 function onPlatformLabelChange(idx){
   const sel=document.getElementById('bt-plat-'+idx); if(!sel) return;
   if(sel.value==='__custom'){
-    const v=prompt('Enter custom label:','');
+    const v=prompt('Enter custom label (or leave blank to manage existing):','');
     if(v&&v.trim()){
       if(!state.customPlatformLabels) state.customPlatformLabels=[];
-      if(!state.customPlatformLabels.includes(v.trim())) state.customPlatformLabels.push(v.trim());
+      // Allow duplicates — user may want same name in different contexts; they can manage via settings
+      state.customPlatformLabels.push(v.trim());
       saveAndPush();
       const opt=document.createElement('option'); opt.value=v.trim(); opt.textContent=v.trim(); opt.selected=true;
       sel.insertBefore(opt,sel.querySelector('option[value="__custom"]')); sel.value=v.trim();
+    } else if(v===''&&state.customPlatformLabels?.length){
+      // Empty enter = manage existing custom labels
+      const existing=(state.customPlatformLabels||[]).join(', ');
+      const edited=prompt('Edit custom labels (comma-separated). Delete any you want removed:',existing);
+      if(edited!==null){
+        state.customPlatformLabels=edited.split(',').map(s=>s.trim()).filter(Boolean);
+        saveAndPush(); render();
+      }
+      sel.value='';
     } else sel.value='';
   }
   const badge=document.getElementById('bt-plat-badge-'+idx);
@@ -5613,7 +5646,9 @@ function deleteStoryRemark(sec, storyId, remarkId, archKey){
 function submitStoryRemark(sec, storyId, archKey){
   const el=document.getElementById('sr-input-'+storyId); if(!el) return;
   if(!el.value.trim()){ toast('Enter remark text'); return; }
-  addStoryRemark(sec, storyId, el.value, archKey);
+  const text=el.value;
+  el.value=''; // clear before render so captureFormState saves empty string
+  addStoryRemark(sec, storyId, text, archKey);
 }
 function submitStoryRemarkEdit(sec, storyId, remarkId, archKey){
   const el=document.getElementById('sr-edit-'+storyId+'-'+remarkId); if(!el) return;
@@ -5630,7 +5665,7 @@ function buildStoryRemarksHTML(sec, s, archKey){
   const list=s.remarksList||[];
   const editingId=_storyRemarkEditId[s.id];
   let html='<div class="story-remarks-list">';
-  html+=`<div style="font-size:11px;font-weight:700;color:var(--text2);font-family:var(--font);margin-bottom:8px">🗒 Updates / Log${list.length?' ('+list.length+')':''}</div>`;
+  html+=`<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#7C3AED;font-family:var(--mono);white-space:nowrap">📝 Updates / Log${list.length?' ('+list.length+')':''}</span><div style="flex:1;height:1px;background:rgba(124,58,237,.2)"></div></div>`;
   list.forEach(r=>{
     const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     if(editingId===r.id){
@@ -6556,14 +6591,22 @@ function renderCombinedAccordion(archKey){
     const s=candidates[0];
     const dotCol=s.status==='urgent'?'#DC2626':s.status==='in-progress'?'#D97706':'#94a3b8';
     const _today=todayStr();
-    let meta='';
+    let metaParts=[];
     if(s.deadline_date){
       const diff=Math.round((new Date(s.deadline_date+'T00:00:00').getTime()-new Date(_today+'T00:00:00').getTime())/86400000);
-      meta=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due '+_stripDateWord(s.deadline_date,_today);
+      const dlStr=diff===0?'Due today':diff===1?'Due tomorrow':diff===-1?'Due yesterday':diff<0?'Overdue '+Math.abs(diff)+'d':'Due '+_stripDateWord(s.deadline_date,_today);
+      if(s.deadline_uk) metaParts.push(dlStr+' '+s.deadline_uk+' BST');
+      else metaParts.push(dlStr);
     } else {
       const statusLbl=s.status==='urgent'?'Urgent':s.status==='in-progress'?'In progress':s.status==='postponed'?'Postponed':'';
-      meta=[statusLbl,s.correspondent?esc(s.correspondent):''].filter(Boolean).join(' · ');
+      if(statusLbl) metaParts.push(statusLbl);
     }
+    if(s.broadcast_times&&s.broadcast_times.length){
+      const bt=s.broadcast_times[0];
+      const bStr=[bt.prog||bt.plat||'',bt.uk?bt.uk+' BST':''].filter(Boolean).join(' ');
+      if(bStr) metaParts.push(bStr);
+    }
+    const meta=metaParts.join(' · ');
     return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${esc(s.title||'')}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${meta}</span></div>`;
   })();
 
@@ -6636,7 +6679,7 @@ function renderCombinedAccordion(archKey){
       const grp=_byDate[dl];
       const g_uc=grp.filter(s=>s.status==='urgent').length;
       const g_ip=grp.filter(s=>s.status==='in-progress').length;
-      html+=`<div style="font-size:11px;font-weight:600;color:${isToday?'var(--accent)':'var(--text2)'};padding:0 2px 5px;border-bottom:1px solid var(--border);margin:4px 0 8px;display:flex;align-items:center;gap:7px"><span>${dlLabel}</span>${g_uc?`<span class="sbadge sb-urgent" style="font-size:10px">${g_uc} urgent</span>`:''}${g_ip?`<span class="sbadge sb-in-progress" style="font-size:10px">${g_ip} in progress</span>`:''}</div>${grp.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
+      html+=`<div style="font-size:11px;font-weight:600;color:${isToday?'var(--accent)':'var(--text2)'};padding:0 2px 5px;border-bottom:1px solid var(--border);margin:4px 0 8px">${dlLabel}</div>${grp.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
     });
     if(_noDate.length) html+=`<div style="font-size:11px;font-weight:600;color:var(--text3);padding:0 2px 5px;border-bottom:1px solid var(--border);margin:4px 0 8px">No deadline</div>${_noDate.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
   }
@@ -6662,7 +6705,8 @@ function renderCombinedAccordion(archKey){
         const postponeLabel=s.status==='postponed'&&s.postponedTo?` → ${new Date(s.postponedTo+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`:'';
         const isOpen=ui.openCards.has(s.id);
         const rowId='res-row-'+s.id, bodyId='res-body-'+s.id;
-        g+=`<div style="margin-bottom:5px"><div id="${rowId}" style="display:${isOpen?'none':'flex'};align-items:center;gap:8px;padding:7px 11px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer;opacity:.85" onclick="ui.openCards.add('${s.id}');const _bd=document.getElementById('${bodyId}');const _rw=document.getElementById('${rowId}');if(_bd)_bd.style.display='block';if(_rw)_rw.style.display='none';" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.85'"><span style="font-size:12px;color:${color};flex-shrink:0">${icon}</span><span style="font-size:12.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${s.status==='completed'?'text-decoration:line-through;color:var(--text3)':''}">${esc(s.title||'Untitled')}</span>${resolvedDate?`<span style="font-size:10px;color:var(--text3);flex-shrink:0">${resolvedDate}${postponeLabel}</span>`:''}<span style="font-size:11px;color:var(--border2);flex-shrink:0">▾</span></div><div id="${bodyId}" style="display:${isOpen?'block':'none'}">${renderCard(s._subsec||'ibu',s,archKey)}</div></div>`;
+        const _cardAK=s._archiveDate||archKey||null;
+        g+=`<div style="margin-bottom:5px"><div id="${rowId}" style="display:${isOpen?'none':'flex'};align-items:center;gap:8px;padding:7px 11px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer;opacity:.85" onclick="toggleCard('${s.id}');" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.85'"><span style="font-size:12px;color:${color};flex-shrink:0">${icon}</span><span style="font-size:12.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${s.status==='completed'?'text-decoration:line-through;color:var(--text3)':''}">${esc(s.title||'Untitled')}</span>${resolvedDate?`<span style="font-size:10px;color:var(--text3);flex-shrink:0">${resolvedDate}${postponeLabel}</span>`:''}<span style="font-size:11px;color:var(--border2);flex-shrink:0">▾</span></div><div id="${bodyId}" style="display:${isOpen?'block':'none'}">${renderCard(s._subsec||'ibu',s,_cardAK)}</div></div>`;
       });
       if(remaining>0){ const nb=Math.min(remaining,10); g+=`<div style="padding:4px 2px"><button class="btn btn-ghost btn-sm" onclick="ui_resolvedPages['${key}']=(ui_resolvedPages['${key}']||1)+1;render();event.stopPropagation()" style="color:var(--accent);border-color:rgba(207,102,64,.3);font-size:11.5px">Show ${nb} more <span style="opacity:.6;font-size:11px">(${remaining} remaining)</span></button></div>`; }
       g+='</div>'; // close groupBodyId
@@ -8087,7 +8131,7 @@ function _teSubAccordion(sid,sec){
   const expenses=entries.filter(e=>e.type==='expense');
   const allClaimed=expenses.length>0&&expenses.every(e=>_teGetClaimed(e)==='yes');
   const expTotal=(()=>{const t=expenses.reduce((s,e)=>{const _m=String(e.data?.amount||'').match(/[0-9]+(?:\.[0-9]+)?/);const n=_m?parseFloat(_m[0]):0;return s+(isNaN(n)?0:n);},0);return t>0?'Rs '+t.toLocaleString('en-IN'):'';})();
-  const bookOpen=ui_teBookingsOpen[sid]!==false,expOpen=ui_teExpensesOpen[sid]!==false;
+  const bookOpen=ui_teBookingsOpen[sid]===true,expOpen=ui_teExpensesOpen[sid]===true;
   const addBookBtns=isGen?`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'cab'})">🚕 Cab</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'flight'})">✈️ Flight</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'hotel'})">🏨 Hotel</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'fixer'})" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)">🤝 Fixer</button>`:`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'cab'})">🚕 Cab</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'flight'})">✈️ Flight</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'hotel'})">🏨 Hotel</button><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'fixer'})" style="color:#0D9488;border-color:rgba(13,148,136,.35);background:rgba(13,148,136,.06)">🤝 Fixer</button>`;
   const addExpBtn=isGen?`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'expense'})">💳 Add expense</button>`:`<button class="btn btn-ghost btn-sm" onclick="_teOpenForm({storyId:'${sid}',storySec:'${sec}',type:'expense'})">💳 Add expense</button>`;
   return `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface2)"><div style="display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer" onclick="_teToggleBookings('${sid}')"><span style="font-size:14px">🗓</span><span style="font-size:12px;font-weight:600;color:var(--text);flex:1">Bookings</span>${bookings.length?`<span class="sbadge" style="background:rgba(37,99,235,.07);color:#1d4ed8;border:0.5px solid rgba(37,99,235,.25);font-size:11px">${bookings.length} entr${bookings.length===1?'y':'ies'}</span>`:''}<span id="te-book-chev-${sid}" style="font-size:11px;color:var(--text3)">${bookOpen?'▾':'▸'}</span></div><div id="te-book-body-${sid}" style="display:${bookOpen?'block':'none'};border-top:1px solid var(--border)"><div id="te-book-inner-${sid}" style="padding:8px 11px">${_teBuildBookingsInner(sid)}</div><div style="display:flex;gap:5px;flex-wrap:wrap;padding:6px 11px;border-top:1px dashed var(--border);background:var(--surface2)">${addBookBtns}</div></div></div>
@@ -8611,6 +8655,7 @@ function renderStoryCard(sec,s,archKey){
       </div>
       <div class="card-tags">
         ${secObj.hasWW&&!archKey?`<span class="ww-badge ww-${mode}" id="wwbadge-${s.id}" onclick="toggleWWMode('${sec}','${s.id}',${archKeyJS});event.stopPropagation()" title="Click to cycle: None → Working → Watching">${wwLabel}</span>`:''}
+
         ${(s.location==='Field'||s.location==='field')&&!archKey&&!(state.travelDismissed||[]).includes(s.id)?(()=>{
           const entries=(state.travelEntries||[]).filter(e=>e.storyId===s.id);
           const tc=entries.length;
@@ -8681,7 +8726,7 @@ function renderStoryCard(sec,s,archKey){
         return 'var(--border2)';
       };
       const editSlotsBtn=!archKey?`<button class="btn btn-ghost btn-xs" style="font-size:10px;padding:2px 8px;margin-left:auto" onclick="editStory('${sec}','${s.id}',null);event.stopPropagation()" title="Edit broadcast slots">✏ Edit slots</button>`:'';
-      let slotsHTML=`<div style="display:flex;align-items:center;margin-bottom:4px">${'<span class="slot-section-label">Broadcast slots</span>'}${editSlotsBtn}</div><div class="slot-rows-wrap">`;
+      let slotsHTML=`<div style="display:flex;align-items:center;gap:8px;margin:8px 0"><span style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;font-family:var(--mono);white-space:nowrap">📡 Broadcast slots</span><div style="flex:1;height:1px;background:rgba(37,99,235,.2)"></div>${editSlotsBtn}</div><div class="slot-rows-wrap">`;
       if(s.broadcast_times&&s.broadcast_times.length){
         s.broadcast_times.forEach((t,i)=>{
           const plat=t.plat||t.lbl||('Slot '+(i+1));
@@ -8810,83 +8855,145 @@ function renderForm(sec,archKey){
       </div>
     </div>
 
-    <!-- ── PEOPLE → LINKS: unified master 3-col grid ── -->
+    <!-- ── PEOPLE → LINKS: accordion sections inside master grid ── -->
     <div class="form-master-grid" style="grid-column:1/-1">
 
-      <div class="form-row-label">People</div>
-      <div class="fgroup"><label class="flabel">Correspondent</label>
-        <div style="display:flex;gap:5px;align-items:center">
-          <input class="finput" id="f-correspondent${sfx}" placeholder="Name or leave blank" list="dl-correspondents" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.correspondent||'')}">
-          <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-correspondent${sfx}').value=''" title="Clear">✕</button>
-        </div>
-      </div>
-      <div class="fgroup"><label class="flabel">Producer</label>
-        <div style="display:flex;gap:5px;align-items:center">
-          <input class="finput" id="f-producer${sfx}" placeholder="Name or leave blank" list="dl-producers" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.producer||'')}">
-          <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-producer${sfx}').value=''" title="Clear">✕</button>
-        </div>
-      </div>
-      <div class="fgroup"><label class="flabel">Shoot-Edit</label>
-        <div style="display:flex;gap:5px;align-items:center">
-          <input class="finput" id="f-shoot-edit${sfx}" placeholder="Person or team or leave blank" list="dl-shoot" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.shoot_edit||'')}">
-          <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-shoot-edit${sfx}').value=''" title="Clear">✕</button>
-        </div>
-      </div>
+      <!-- ── Accordion 1: People & Request ── -->
+      ${(()=>{
+        const hasPeople=!!(editStoryObj?.correspondent||editStoryObj?.producer||editStoryObj?.shoot_edit||editStoryObj?.req_name||editStoryObj?.req_team||editStoryObj?.req_location);
+        const open=isEdit&&hasPeople;
+        const peopleParts=[editStoryObj?.correspondent,editStoryObj?.producer,editStoryObj?.shoot_edit,editStoryObj?.req_name].filter(Boolean);
+        const summary=peopleParts.slice(0,3).join(' · ')||'';
+        const bid='fsec-people-${sfx}';
+        return `<div class="fsec-header" onclick="(function(t){const b=document.getElementById('${bid}');const c=t.querySelector('.fsec-chev');const isHidden=b.classList.contains('hidden');b.classList.toggle('hidden',!isHidden);c.classList.toggle('open',isHidden);})(this)">
+            <span class="fsec-label">People &amp; request</span>
+            <span class="fsec-summary">${summary}</span>
+            <span class="fsec-chev${open?' open':''}">▸</span>
+          </div>
+          <div id="${bid}" class="fsec-fields${open?'':' hidden'}">
+            <div class="fgroup"><label class="flabel">Correspondent</label>
+              <div style="display:flex;gap:5px;align-items:center">
+                <input class="finput" id="f-correspondent${sfx}" placeholder="Name or leave blank" list="dl-correspondents" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.correspondent||'')}">
+                <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-correspondent${sfx}').value=''" title="Clear">✕</button>
+              </div>
+            </div>
+            <div class="fgroup"><label class="flabel">Producer</label>
+              <div style="display:flex;gap:5px;align-items:center">
+                <input class="finput" id="f-producer${sfx}" placeholder="Name or leave blank" list="dl-producers" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.producer||'')}">
+                <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-producer${sfx}').value=''" title="Clear">✕</button>
+              </div>
+            </div>
+            <div class="fgroup"><label class="flabel">Shoot-Edit</label>
+              <div style="display:flex;gap:5px;align-items:center">
+                <input class="finput" id="f-shoot-edit${sfx}" placeholder="Person or team or leave blank" list="dl-shoot" autocomplete="off" style="flex:1" value="${esc(editStoryObj?.shoot_edit||'')}">
+                <button type="button" class="btn btn-ghost btn-xs btn-danger" onclick="document.getElementById('f-shoot-edit${sfx}').value=''" title="Clear">✕</button>
+              </div>
+            </div>
+            <div class="fgroup"><label class="flabel">Requested by</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
+            <div class="fgroup"><label class="flabel">Team</label><input class="finput" id="f-req-team${sfx}" placeholder="Team" value="${esc(editStoryObj?.req_team||'')}"></div>
+            <div class="fgroup"><label class="flabel">Location</label><input class="finput" id="f-req-location${sfx}" placeholder="City / office" value="${esc(editStoryObj?.req_location||'')}"></div>
+          </div>`;
+      })()}
 
-      <div class="form-row-label">Request Details</div>
-      <div class="fgroup"><label class="flabel">Requested By</label><input class="finput" id="f-req-name${sfx}" placeholder="Name" value="${esc(editStoryObj?.req_name||'')}"></div>
-      <div class="fgroup"><label class="flabel">Team</label><input class="finput" id="f-req-team${sfx}" placeholder="Team" value="${esc(editStoryObj?.req_team||'')}"></div>
-      <div class="fgroup"><label class="flabel">Location</label><input class="finput" id="f-req-location${sfx}" placeholder="City / office" value="${esc(editStoryObj?.req_location||'')}"></div>
+      <!-- ── Accordion 2: Deadline & Location ── -->
+      ${(()=>{
+        const hasDl=!!(editStoryObj?.deadline_date||editStoryObj?.deadline_uk||editStoryObj?.location||editStoryObj?.field_location);
+        const open=isEdit&&hasDl;
+        const dlParts=[editStoryObj?.deadline_date?_fmtD(editStoryObj.deadline_date):'',editStoryObj?.deadline_uk||'',editStoryObj?.location||'',editStoryObj?.field_location||''].filter(Boolean);
+        const summary=dlParts.slice(0,3).join(' · ')||'';
+        const bid='fsec-dl-${sfx}';
+        return `<div class="fsec-header" onclick="(function(t){const b=document.getElementById('${bid}');const c=t.querySelector('.fsec-chev');const isHidden=b.classList.contains('hidden');b.classList.toggle('hidden',!isHidden);c.classList.toggle('open',isHidden);})(this)">
+            <span class="fsec-label">Deadline &amp; location</span>
+            <span class="fsec-summary">${summary}</span>
+            <span class="fsec-chev${open?' open':''}">▸</span>
+          </div>
+          <div id="${bid}" class="fsec-fields${open?'':' hidden'}">
+            <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
+            <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
+            <div class="fgroup"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
+            <div class="fgroup"><label class="flabel">Location type</label>
+              <select class="fselect" id="f-location${sfx}" onchange="updateLocationPlaceholder('${sec}',${archKeyJS})">
+                <option value="">– Select –</option><option value="Studio"${editStoryObj?.location==='Studio'?' selected':''}>Studio</option><option value="Field"${editStoryObj?.location==='Field'?' selected':''}>Field</option><option value="Remote"${editStoryObj?.location==='Remote'?' selected':''}>Remote</option>
+              </select>
+            </div>
+            <div class="fgroup"><label class="flabel">Detail</label><input class="finput" id="f-field-location${sfx}" placeholder="${locPlaceholder}" value="${esc(editStoryObj?.field_location||'')}"></div>
+            <div class="form-field-empty fgroup"><label class="flabel">&nbsp;</label><input class="finput" tabindex="-1"></div>
+          </div>`;
+      })()}
 
-      <div class="form-row-label">Deadline</div>
-      <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(editStoryObj?.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(editStoryObj?.deadline_ist||'')}"></div>
+      <!-- ── Accordion 3: Status & Reminder ── -->
+      ${(()=>{
+        const summary=[editStoryObj?.status||'',editStoryObj?.reminder&&editStoryObj.reminder!=='off'?'Reminder: '+editStoryObj.reminder:''].filter(Boolean).join(' · ')||'';
+        const bid='fsec-sr-${sfx}';
+        return `<div class="fsec-header" onclick="(function(t){const b=document.getElementById('${bid}');const c=t.querySelector('.fsec-chev');const isHidden=b.classList.contains('hidden');b.classList.toggle('hidden',!isHidden);c.classList.toggle('open',isHidden);})(this)">
+            <span class="fsec-label">Status &amp; reminder</span>
+            <span class="fsec-summary">${summary}</span>
+            <span class="fsec-chev">▸</span>
+          </div>
+          <div id="${bid}" class="fsec-fields hidden">
+            <div class="fgroup"><label class="flabel">Status</label>
+              <select class="fselect" id="f-status${sfx}">
+                <option value="">– Select –</option>
+                <option value="urgent"${editStoryObj?.status==='urgent'?' selected':''}>🔴 Urgent</option>
+                <option value="in-progress"${editStoryObj?.status==='in-progress'?' selected':''}>🟡 In Progress</option>
+                <option value="completed"${editStoryObj?.status==='completed'?' selected':''}>🟢 Completed</option>
+                <option value="not-done"${editStoryObj?.status==='not-done'?' selected':''}>⚫ Not Done</option>
+                <option value="postponed"${editStoryObj?.status==='postponed'?' selected':''}>🔵 Postponed</option>
+                <option value="on-hold"${editStoryObj?.status==='on-hold'?' selected':''}>🟣 On Hold</option>
+                <option value="shelved"${editStoryObj?.status==='shelved'?' selected':''}>🗄 Shelved</option>
+              </select>
+            </div>
+            <div class="fgroup"><label class="flabel">Reminder</label>
+              <select class="fselect" id="f-reminder${sfx}">
+                <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
+              </select>
+            </div>
+            <div class="form-field-empty fgroup"><label class="flabel">&nbsp;</label><input class="finput" tabindex="-1"></div>
+          </div>`;
+      })()}
 
-      <div class="form-row-label">Location</div>
-      <div class="fgroup"><label class="flabel">Type</label>
-        <select class="fselect" id="f-location${sfx}" onchange="updateLocationPlaceholder('${sec}',${archKeyJS})">
-          <option value="">– Select –</option><option value="Studio"${editStoryObj?.location==='Studio'?' selected':''}>Studio</option><option value="Field"${editStoryObj?.location==='Field'?' selected':''}>Field</option><option value="Remote"${editStoryObj?.location==='Remote'?' selected':''}>Remote</option>
-        </select>
-      </div>
-      <div class="fgroup"><label class="flabel">Detail</label><input class="finput" id="f-field-location${sfx}" placeholder="${locPlaceholder}" value="${esc(editStoryObj?.field_location||'')}"></div>
-      <div class="form-field-empty fgroup"><label class="flabel">&nbsp;</label><input class="finput" tabindex="-1"></div>
+      <!-- ── Accordion 4: Broadcast Times ── -->
+      ${(()=>{
+        const hasSlots=existingSlots&&existingSlots.length>0;
+        const slotSummary=hasSlots?(existingSlots[0].programme||'')+(existingSlots[0].bst?' · '+existingSlots[0].bst+' BST':''):'';
+        const bid='fsec-bcast-${sfx}';
+        return `<div class="fsec-header" onclick="(function(t){const b=document.getElementById('${bid}');const c=t.querySelector('.fsec-chev');const isOpen=b.classList.contains('open');b.classList.toggle('open',!isOpen);c.classList.toggle('open',!isOpen);})(this)">
+            <span class="fsec-label">Broadcast times</span>
+            <span class="fsec-summary">${slotSummary}</span>
+            <span class="fsec-chev">▸</span>
+          </div>
+          <div id="${bid}" class="fsec-full">
+            <div class="form-slot-wrap" style="padding-bottom:8px">
+              <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
+              <button class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
+            </div>
+          </div>`;
+      })()}
 
-      <div class="form-row-label">Status &amp; Reminder</div>
-      <div class="fgroup"><label class="flabel">Status</label>
-        <select class="fselect" id="f-status${sfx}">
-          <option value="">– Select –</option>
-          <option value="urgent"${editStoryObj?.status==='urgent'?' selected':''}>🔴 Urgent</option>
-          <option value="in-progress"${editStoryObj?.status==='in-progress'?' selected':''}>🟡 In Progress</option>
-          <option value="completed"${editStoryObj?.status==='completed'?' selected':''}>🟢 Completed</option>
-          <option value="not-done"${editStoryObj?.status==='not-done'?' selected':''}>⚫ Not Done</option>
-          <option value="postponed"${editStoryObj?.status==='postponed'?' selected':''}>🔵 Postponed</option>
-          <option value="on-hold"${editStoryObj?.status==='on-hold'?' selected':''}>🟣 On Hold</option>
-          <option value="shelved"${editStoryObj?.status==='shelved'?' selected':''}>🗄 Shelved</option>
-        </select>
-      </div>
-      <div class="fgroup"><label class="flabel">Reminder</label>
-        <select class="fselect" id="f-reminder${sfx}">
-          <option value="off"${(editStoryObj?.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${editStoryObj?.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${editStoryObj?.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${editStoryObj?.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${editStoryObj?.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${editStoryObj?.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${editStoryObj?.reminder==='1week'?' selected':''}>1 week</option>
-        </select>
-      </div>
-      <div class="form-field-empty fgroup"><label class="flabel">&nbsp;</label><input class="finput" tabindex="-1"></div>
-
-      <div class="form-row-label">Broadcast Times</div>
-      <div class="form-slot-wrap">
-        <div id="broadcast-slots">${buildBroadcastSlotsHTML(existingSlots)}</div>
-        <button class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="addBroadcastSlot()">+ Add Broadcast Slot</button>
-      </div>
-
-      <div class="form-row-label">Remarks</div>
-      <div style="grid-column:1/-1">
-        ${isEdit&&editStoryObj
-          ? renderFormRemarksList(sec,editStoryObj,archKey)
-          : `<textarea class="ftextarea" id="f-remarks-new${sfx}" placeholder="Context, contacts, logistics, previous coverage…" style="min-height:72px;resize:vertical;white-space:pre-wrap"></textarea>`}
-      </div>
-
-      <div class="form-row-label">Reference Links</div>
-      <div style="grid-column:1/-1"><label class="flabel" style="display:none">URLs</label><input class="finput" id="f-links${sfx}" placeholder="https://… (comma-separated)" value="${esc(editStoryObj?.links||'')}"></div>
+      <!-- ── Accordion 5: Remarks & Links ── -->
+      ${(()=>{
+        const latestRemark=(editStoryObj?.remarks||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0))[0]?.text||'';
+        const firstLine=latestRemark.split('\n')[0].slice(0,60)+(latestRemark.length>60?'…':'');
+        const hasLinks=!!(editStoryObj?.links);
+        const summary=firstLine||(hasLinks?'Has links':'');
+        const bid='fsec-rl-${sfx}';
+        return `<div class="fsec-header" onclick="(function(t){const b=document.getElementById('${bid}');const c=t.querySelector('.fsec-chev');const isOpen=b.classList.contains('open');b.classList.toggle('open',!isOpen);c.classList.toggle('open',!isOpen);})(this)">
+            <span class="fsec-label">Remarks &amp; links</span>
+            <span class="fsec-summary">${summary}</span>
+            <span class="fsec-chev">▸</span>
+          </div>
+          <div id="${bid}" class="fsec-full">
+            <div style="padding-bottom:10px">
+              ${isEdit&&editStoryObj
+                ? renderFormRemarksList(sec,editStoryObj,archKey)
+                : `<textarea class="ftextarea" id="f-remarks-new${sfx}" placeholder="Context, contacts, logistics, previous coverage…" style="min-height:72px;resize:vertical;white-space:pre-wrap"></textarea>`}
+              <div style="margin-top:10px">
+                <label class="flabel">Reference links</label>
+                <input class="finput" id="f-links${sfx}" placeholder="https://… (comma-separated)" value="${esc(editStoryObj?.links||'')}">
+              </div>
+            </div>
+          </div>`;
+      })()}
 
     </div>
 
