@@ -429,7 +429,7 @@ body {
 .acc-chevron.open { transform: rotate(180deg); }
 .acc-body { display: none; border-top: 1px solid var(--border); padding: 16px 17px; background: var(--surface); }
 .acc-body.open { display: block; }
-.sec-head { display: flex; justify-content: flex-end; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
+.sec-head { display: flex; justify-content: flex-end; align-items: center; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
 .ww-tabs {
   display: flex; gap: 6px; margin-bottom: 12px;
 }
@@ -469,7 +469,7 @@ body {
 .btn-indigo:hover { background: #4338CA; }
 
 .btn-orange:hover { background: #C2410C; }
-.btn-sm  { padding: 5px 10px; font-size: 11.5px; }
+.btn-sm  { padding: 5px 10px !important; font-size: 11.5px !important; line-height: 1.2 !important; }
 .btn-xs  { padding: 3px 8px; font-size: 11px; }
 .btn-danger { color: var(--urgent) !important; }
 .btn-done {
@@ -2509,7 +2509,7 @@ function openBackupsPanel(){
     ${autoSettingsHtml}
     ${html}
     <div class="modal-footer" style="justify-content:space-between">
-      <button class="btn btn-ghost" style="border-color:rgba(220,38,38,.35);color:#B91C1C" onclick="openImportDialog()">📂 Restore from backup…</button>
+      <button class="btn btn-ghost btn-sm" style="border-color:rgba(220,38,38,.35);color:#B91C1C" onclick="openImportDialog()">📂 Restore from backup…</button>
       <button class="btn btn-ghost" onclick="document.getElementById('backups-modal').remove()">Close</button>
     </div>
   </div>`;
@@ -3753,8 +3753,8 @@ function showEmailFallback(subject,body){
       <textarea class="ftextarea" id="email-fallback-body" style="min-height:260px;font-family:var(--mono);font-size:11px" readonly onclick="this.select()">${esc(body)}</textarea>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-accent" onclick="copyEmailBodyFromModal()">📋 Copy Body</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('email-fallback-modal').remove();window._emailFallbackBody=null">Close</button>
+      <button class="btn btn-accent btn-sm" onclick="copyEmailBodyFromModal()">📋 Copy Body</button>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('email-fallback-modal').remove();window._emailFallbackBody=null">Close</button>
     </div>
   </div>`;
   m.addEventListener('click',e=>{ if(e.target===m){ m.remove(); window._emailFallbackBody=null; } });
@@ -3976,15 +3976,15 @@ function openMobileMore(){
     <h2 style="margin-bottom:14px">More</h2>
     <div style="display:flex;flex-direction:column;gap:4px">
       <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:4px 0 3px;">Data</div>
-      <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('mobile-more-modal').remove()">⬇ Export data</button>
-      <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('mobile-more-modal').remove()">⬇ Export .txt</button>
-      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('mobile-more-modal').remove()">⬆ Import data</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportJSON();document.getElementById('mobile-more-modal').remove()">↓ Export data</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTxt();document.getElementById('mobile-more-modal').remove()">↓ Export .txt</button>
+      <button class="btn btn-ghost btn-sm" onclick="openImportDialog();document.getElementById('mobile-more-modal').remove()">⬆ Import data</button>
       <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">Stories</div>
-      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('mobile-more-modal').remove()">✉ Email all</button>
+      <button class="btn btn-ghost btn-sm" onclick="doEmailAll();document.getElementById('mobile-more-modal').remove()">✉ Email all</button>
       <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">System</div>
-      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
-      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Staff names</button>
-      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">${syncLabel}</button>
+      <button class="btn btn-ghost btn-sm" onclick="openBackupsPanel();document.getElementById('mobile-more-modal').remove()">💾 Backups</button>
+      <button class="btn btn-ghost btn-sm" onclick="openStaffSettings();document.getElementById('mobile-more-modal').remove()">👥 Staff names</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSyncModal();document.getElementById('mobile-more-modal').remove()">${syncLabel}</button>
       <button class="btn btn-ghost" style="color:var(--accent);border-color:rgba(207,102,64,.3);background:rgba(207,102,64,.04)" onclick="openSettingsModal();document.getElementById('mobile-more-modal').remove()">⚙️ Settings</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
@@ -4106,9 +4106,9 @@ function toggleRemarksExpand(id){
 }
 function saveMainRemark(sec, storyId, archKey){
   const el=document.getElementById('mr-edit-'+storyId); if(!el) return;
-  const text=el.value; // keep as-is (allow blank to clear)
-  updateStory(sec, storyId, {remarks: text.trim()}, archKey);
+  const text=el.value.trim();
   _editingMainRemark.delete(storyId);
+  updateStory(sec, storyId, {remarks: text}, archKey);
 }
 function saveAddRemark(sec, storyId, archKey){
   const el=document.getElementById('mr-add-'+storyId); if(!el) return;
@@ -4373,12 +4373,23 @@ function submitForm(sec,archKey){
 }
 function toggleCard(id){
   if(ui.openCards.has(id)) ui.openCards.delete(id); else ui.openCards.add(id);
-  const b=document.getElementById('cb-'+id), c=document.getElementById('ch-'+id);
+  const b=document.getElementById('cb-'+id);
+  const c=document.getElementById('ch-'+id);
   const nowOpen=ui.openCards.has(id);
   if(b) b.classList.toggle('open',nowOpen);
   if(c) c.classList.toggle('open',nowOpen);
-  // Toggle uc-open on parent row to hide/show preview text via CSS
-  if(b){ const row=b.closest('.uc-row'); if(row) row.classList.toggle('uc-open',nowOpen); }
+  // Also toggle expand icon
+  const icon=document.querySelector(`[data-id="${id}"] .uc-expand-icon`);
+  if(icon) icon.classList.toggle('open',nowOpen);
+  // Also directly hide/show the preview div for instant feedback
+  if(b){
+    const row=b.closest('.uc-row');
+    if(row){
+      row.classList.toggle('uc-open',nowOpen);
+      const preview=row.querySelector('.uc-preview');
+      if(preview) preview.style.display=nowOpen?'none':'';
+    }
+  }
   // Also handle resolved section rows — show compact row back when card collapses
   const resRow=document.getElementById('res-row-'+id);
   const resBody=document.getElementById('res-body-'+id);
@@ -4939,7 +4950,7 @@ function renderUpcomingView(){
     <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
       <div class="fi-form-footer">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">⬇ Export</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">↓ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
       </div>`;
 
@@ -5085,7 +5096,7 @@ function renderArchiveHTML(key){
     </div>
     <div class="avh-actions">
       <button class="btn btn-ghost btn-sm" onclick="doEmailAll()">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTxt()">⬇ Export</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTxt()">↓ Export</button>
       ${!isTomm?`<button class="btn btn-ghost btn-sm btn-danger" onclick="deleteArchiveEntry('${key}')">🗑 Delete</button>`:''}
     </div>
   </div>`;
@@ -5392,7 +5403,7 @@ function renderAccordion(sec,archKey){
       ${wwTabs}
       <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('${sec.key}',${archKeyJS});event.stopPropagation()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('${sec.key}',${archKeyJS});event.stopPropagation()">⬇ Export</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('${sec.key}',${archKeyJS});event.stopPropagation()">↓ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('${sec.key}',${archKeyJS});event.stopPropagation()">+ Add</button>
       </div>
     </div>`;
@@ -5533,17 +5544,17 @@ function openDesktopMore(){
     <h2 style="margin-bottom:14px">Actions</h2>
     <div style="display:flex;flex-direction:column;gap:4px">
       <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;">Data</div>
-      <button class="btn btn-ghost" onclick="doExportJSON();document.getElementById('desktop-more-modal').remove()">⬇ Export data</button>
-      <button class="btn btn-ghost" onclick="doExportTxt();document.getElementById('desktop-more-modal').remove()">⬇ Export .txt</button>
-      <button class="btn btn-ghost" onclick="openImportDialog();document.getElementById('desktop-more-modal').remove()">⬆ Import data</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportJSON();document.getElementById('desktop-more-modal').remove()">↓ Export data</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTxt();document.getElementById('desktop-more-modal').remove()">↓ Export .txt</button>
+      <button class="btn btn-ghost btn-sm" onclick="openImportDialog();document.getElementById('desktop-more-modal').remove()">⬆ Import data</button>
       <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">Stories</div>
-      <button class="btn btn-ghost" onclick="doEmailAll();document.getElementById('desktop-more-modal').remove()">✉ Email all</button>
-      <button class="btn btn-ghost" onclick="setView('migrate',null);document.getElementById('desktop-more-modal').remove()">⇄ Migrate stories</button>
+      <button class="btn btn-ghost btn-sm" onclick="doEmailAll();document.getElementById('desktop-more-modal').remove()">✉ Email all</button>
+      <button class="btn btn-ghost btn-sm" onclick="setView('migrate',null);document.getElementById('desktop-more-modal').remove()">⇄ Migrate stories</button>
       <div style="font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--border)">System</div>
-      <button class="btn btn-ghost" onclick="openBackupsPanel();document.getElementById('desktop-more-modal').remove()">💾 Backups</button>
-      <button class="btn btn-ghost" onclick="snapshotToday();document.getElementById('desktop-more-modal').remove()">📸 Snapshot today</button>
-      <button class="btn btn-ghost" onclick="openStaffSettings();document.getElementById('desktop-more-modal').remove()">👥 Staff names</button>
-      <button class="btn btn-ghost" onclick="openSyncModal();document.getElementById('desktop-more-modal').remove()">☁️ Sync setup</button>
+      <button class="btn btn-ghost btn-sm" onclick="openBackupsPanel();document.getElementById('desktop-more-modal').remove()">💾 Backups</button>
+      <button class="btn btn-ghost btn-sm" onclick="snapshotToday();document.getElementById('desktop-more-modal').remove()">📸 Snapshot today</button>
+      <button class="btn btn-ghost btn-sm" onclick="openStaffSettings();document.getElementById('desktop-more-modal').remove()">👥 Staff names</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSyncModal();document.getElementById('desktop-more-modal').remove()">☁️ Sync setup</button>
       <button class="btn btn-ghost" style="color:var(--accent);border-color:rgba(207,102,64,.3);background:rgba(207,102,64,.04)" onclick="openSettingsModal();document.getElementById('desktop-more-modal').remove()">⚙️ Settings</button>
     </div>
     <div class="modal-footer" style="margin-top:14px">
@@ -6197,7 +6208,7 @@ function renderTasksSection(){
     <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">
     ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">↓ Export</button>
       <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div></div>`:''}`;
 
@@ -6301,7 +6312,7 @@ function renderTasksSection(){
   <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
     <div class="fi-form-footer">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">⬇ Export</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">↓ Export</button>
       <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div>`;
   }
@@ -6692,7 +6703,7 @@ function renderCombinedAccordion(archKey){
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
       <div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()">⬇ Export</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()">↓ Export</button>
         <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Add</button>
       </div>
       ${_ibuForm}${_otherForm}`;
@@ -7416,7 +7427,7 @@ function renderMeetingsSection(){
   let body=`<div id="meetings-section">`;
   body+=`${!isStandaloneMeet?`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
     <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
-    <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
+    <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">↓ Export</button>
     <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
   </div>`:''}`;
   if(ui_meetingForm) body+=renderMeetingForm();
@@ -7448,7 +7459,7 @@ function renderMeetingsSection(){
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">⬇ Export</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">↓ Export</button>
           <button class="btn btn-accent btn-sm" onclick="ui_meetForm=!ui_meetForm;ui_editMeetId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
         </div>
         ${body}
@@ -7597,7 +7608,7 @@ function renderRemarksAccordion(){
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">↓ Export</button>
           <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
         </div>
         ${body}
@@ -7646,7 +7657,7 @@ function renderRemarksAccordion(){
     <div class="acc-body${isOpen?' open':''}" id="acc-body-remarks">
       <div class="sec-head">
         <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">⬇ Export</button>
+        <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">↓ Export</button>
         <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
       </div>
       ${body}
@@ -8275,7 +8286,7 @@ function _teRenderBody(){
   const today=todayStr();
   const dismissed=state.travelDismissed||[];
   const stories=_teGetStories().filter(({s})=>!dismissed.includes(s.id)).sort((a,b)=>{const da=a.s.deadline_date||'9999-99-99',db=b.s.deadline_date||'9999-99-99';if(da<today&&db<today)return da.localeCompare(db);if(da<today)return -1;if(db<today)return 1;return da.localeCompare(db);});
-  let html=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px"><div style="flex:1"></div><button onclick="doEmailTravel()" class="btn btn-ghost btn-sm">✉ Email</button><button onclick="doExportTravelTxt()" class="btn btn-ghost btn-sm">⬇ Export</button><button onclick="_teOpenForm({})" class="btn btn-accent btn-sm">+ Add</button></div>`;
+  let html=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px"><div style="flex:1"></div><button onclick="doEmailTravel()" class="btn btn-ghost btn-sm">✉ Email</button><button onclick="doExportTravelTxt()" class="btn btn-ghost btn-sm">↓ Export</button><button onclick="_teOpenForm({})" class="btn btn-accent btn-sm">+ Add</button></div>`;
   if(_te.open) html+=_teBuildForm();
   stories.forEach(({sec,s})=>{
     const entries=_teEntriesForStory(s.id),expenses=entries.filter(e=>e.type==='expense'),unclaimed=expenses.filter(e=>_teGetClaimed(e)!=='yes').length,allClaimed=expenses.length>0&&unclaimed===0;
@@ -8288,13 +8299,13 @@ function _teRenderBody(){
     const deadlineStr=s.deadline_date?(()=>{const diff=Math.round((new Date(s.deadline_date+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);const lbl=diff<0?'Overdue '+Math.abs(diff)+'d':diff===0?'Due today':diff===1?'Due tomorrow':'Due '+_fmtDShort(s.deadline_date);const col=diff<0?'#B91C1C':diff<=2?'#B45309':'var(--text3)';return `<span style="font-size:10.5px;color:${col};flex-shrink:0">⏰ ${lbl}</span>`;})():'';
     const claimBadge=allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:unclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${unclaimed} unclaimed</span>`:'';
     const secLabel={ibu:'Stories',other:'Other Stories',requests:'Requests'}[sec]||sec;
-    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap"><span style="font-size:13px">📡</span><span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>${deadlineStr}${bookPayBadge}${claimBadge}<button onclick="_teDismissStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide from this list">✕ Hide</button><button onclick="if(confirm('Remove this story from Travel &amp; Expenses? All its travel entries will be deleted.'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0" title="Delete story and all its entries">🗑</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion(s.id,sec)}</div></div>`;
+    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap"><span style="font-size:13px">📡</span><span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>${deadlineStr}${bookPayBadge}${claimBadge}<button onclick="_teDismissStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide from this list">✕ Hide</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion(s.id,sec)}</div></div>`;
   });
   const genEntries=_teEntriesGeneral();
   if((genEntries.length||stories.length===0)&&!state.travelGeneralDismissed){
     const genExp=genEntries.filter(e=>e.type==='expense'),genUnclaimed=genExp.filter(e=>_teGetClaimed(e)!=='yes').length;
     const genBadge=genUnclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${genUnclaimed} unclaimed</span>`:(genExp.length?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:'');
-    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)"><span style="font-size:13px">📋</span><span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General</span>${genBadge}<button onclick="_teDismissGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide General from this list">✕ Hide</button><button onclick="if(confirm('Delete all General travel entries?'))_teDeleteGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0" title="Delete General entries">🗑</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion('gen',null)}</div></div>`;
+    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)"><span style="font-size:13px">📋</span><span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General</span>${genBadge}<button onclick="_teDismissGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide General from this list">✕ Hide</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion('gen',null)}</div></div>`;
   }
   if(stories.length===0&&_teEntriesGeneral().length===0&&!_te.open) html+=`<div style="text-align:center;padding:22px 16px;color:var(--text3);font-size:13px">No travel or expenses yet. Use <strong style="color:var(--accent)">+ Add</strong> to log a cab, flight, hotel or expense.</div>`;
   const dismissedStories=_teGetStories().filter(({s})=>dismissed.includes(s.id));
@@ -8532,7 +8543,7 @@ function renderLeavesSection(){
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
   ${!isStandaloneLeave?`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
-    <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
+    <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">↓ Export</button>
     <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
   </div>`:''}`;
 
@@ -8602,7 +8613,7 @@ function renderLeavesSection(){
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">⬇ Export</button>
+          <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">↓ Export</button>
           <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
         </div>
         ${html}
@@ -8778,16 +8789,7 @@ function renderUpcomingRow(sec,s,archKey){
       ${s.deadline_date?`<div class="uc-field"><span class="uc-flbl">Deadline</span><span class="uc-fval">${esc(fmtDate(s.deadline_date)+(s.deadline_uk?' · '+s.deadline_uk+' '+ukLabel():'')+(s.deadline_ist?' / '+s.deadline_ist+' IST':'')+'')}</span></div>`:''}
       ${s.reminder&&s.reminder!=='off'?`<div class="uc-field"><span class="uc-flbl">Reminder</span><span class="uc-fval">⏰ ${esc(s.reminder)}</span></div>`:''}
     </div>
-    ${(()=>{
-      const isEditing=_editingMainRemark&&_editingMainRemark.has(s.id);
-      if(isEditing){
-        return remarksHTML(s.remarks||'', s.id+'_cr', sec, s.id, archKey);
-      }
-      if(s.remarks){
-        return `<div class="card-remarks" onclick="event.stopPropagation()">💬 <span class="card-remarks-text" style="white-space:pre-wrap">${esc(s.remarks)}</span></div>`;
-      }
-      return '';
-    })()}
+    ${buildStoryRemarksHTML(sec, s, archKey)}
     ${linksHtml}
     ${s.completion_note||s.completion_links?`<div class="completion-box"><div class="completion-label">✅ Completion Notes</div>${s.completion_note?`<div class="completion-note">${esc(s.completion_note)}</div>`:''} ${clHtml}</div>`:''}
     <div id="compl-form-${s.id}" style="display:${isComplOpen?'block':'none'}">
@@ -8806,7 +8808,6 @@ function renderUpcomingRow(sec,s,archKey){
         :`<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>`
       }
       <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
-      <button class="btn btn-ghost btn-xs" style="margin-left:auto;color:var(--text3);border-color:var(--border)" onclick="event.stopPropagation();if(!ui.openCards.has('${s.id}')){toggleCard('${s.id}');}setTimeout(()=>{_editingMainRemark.add('${s.id}');render();},0)">Remarks</button>
     </div>
   </div>
 </div>`;
