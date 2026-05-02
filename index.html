@@ -641,8 +641,9 @@ body {
 .card-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px,1fr)); gap: 9px; margin-top: 11px; }
 .cfield-label { font-size: 10.5px; color: var(--text3); font-family: var(--font); font-weight: 500; margin-bottom: 2px; }
 .cfield-value { font-size: 12.5px; color: var(--text);  white-space: pre-wrap; }
-.card-remarks { font-size: 12px; color: var(--text2); margin-top: 9px; font-style: italic; line-height: 1.55; white-space: pre-wrap; }
-.card-remarks-collapsed { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.card-remarks { font-size: 12px; color: var(--text2); margin-top: 9px; font-style: italic; line-height: 1.55; }
+.card-remarks-text { white-space: pre-wrap; }
+.card-remarks-collapsed { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; }
 .card-remarks-expand { font-size: 11px; color: var(--accent); cursor: pointer; font-style: normal; margin-left: 4px; }
 .fi-hint { font-size:11px;font-family:var(--font);color:var(--text3);margin-bottom:6px; }
 .fi-form-footer { display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px; }
@@ -935,8 +936,13 @@ body {
 .uc-chip { font-size: 11px; color: var(--text3); font-family: var(--font); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
 .uc-chip.uc-chip-overdue { color: var(--urgent); font-weight: 600; }
-.uc-body { display: none; padding: 4px 13px 13px; border-top: 1px solid var(--border); }
+.uc-body { display: none; padding: 10px 14px 13px; border-top: 1px solid var(--border); }
 .uc-body.open { display: block; }
+.uc-row.uc-open .uc-preview { display: none; }
+.uc-fields { display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+.uc-field  { display: flex; align-items: baseline; gap: 10px; }
+.uc-flbl   { font-size: 10.5px; font-weight: 500; color: var(--text3); flex-shrink: 0; min-width: 80px; padding-top: 1px; }
+.uc-fval   { font-size: 13px; color: var(--text); line-height: 1.5; flex: 1; white-space: pre-wrap; }
 .tasks-tab-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 14px; border-radius: 20px; cursor: pointer;
@@ -1195,6 +1201,15 @@ button.tasks-tab-btn {
   input[type="date"], input[type="search"], input[type="text"],
   input[type="number"], textarea, select { font-size: 16px !important; }
 
+  /* Date/time inputs: enforce same height as text inputs — browser native chrome makes them taller */
+  input[type="date"], input[type="time"] {
+    height: 36px !important;
+    line-height: 1 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    box-sizing: border-box !important;
+  }
+
   /* Scrollable filter bar — no wrapping, scroll horizontally */
   .filter-bar { padding: 6px 16px; overflow-x: auto; flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -1226,7 +1241,7 @@ button.tasks-tab-btn {
   .expected-row .finput { width: 100% !important; min-width: 0; flex: unset; }
 
   /* Prevent any flex child from overflowing its container */
-  .form-wrap *, .task-form *, .leave-form *, .meeting-form * { min-width: 0; }
+  .form-wrap *, .note-add-form * { min-width: 0; }
 }
 @media(min-width:721px){
   .show-mobile-only { display: none !important; }
@@ -4095,6 +4110,15 @@ function saveMainRemark(sec, storyId, archKey){
   updateStory(sec, storyId, {remarks: text.trim()}, archKey);
   _editingMainRemark.delete(storyId);
 }
+function saveAddRemark(sec, storyId, archKey){
+  const el=document.getElementById('mr-add-'+storyId); if(!el) return;
+  const newText=el.value.trim(); if(!newText){ _addingRemark.delete(storyId); render(); return; }
+  const story=(getArr(sec,archKey)||[]).find(s=>s.id===storyId);
+  const existing=(story?.remarks||'').trim();
+  const combined=existing?existing+'\n'+newText:newText;
+  updateStory(sec, storyId, {remarks: combined}, archKey);
+  _addingRemark.delete(storyId);
+}
 function remarksHTML(text, id, sec, storyId, archKey){
   // sec/storyId/archKey optional — if provided, enable inline CRUD
   const hasCRUD=!!(sec&&storyId);
@@ -4118,12 +4142,7 @@ function remarksHTML(text, id, sec, storyId, archKey){
   const LIMIT=160;
   const needsCollapse=text.length>LIMIT;
   const collapsed=needsCollapse&&!_expandedRemarks.has(id);
-  return`<div class="card-remarks" onclick="event.stopPropagation()">💬 <span id="cr-${id}"${collapsed?' class="card-remarks-collapsed"':' style="white-space:pre-wrap"'}>${esc(text)}</span>${needsCollapse?`<span id="cr-btn-${id}" class="card-remarks-expand" onclick="event.stopPropagation();toggleRemarksExpand('${id}')">${collapsed?'▼ expand':'▲ collapse'}</span>`:''
-  }${hasCRUD?`<span style="margin-left:8px">
-    <button class="btn btn-ghost btn-xs" style="font-style:normal" onclick="event.stopPropagation();_editingMainRemark.add('${storyId}');render()" title="Edit remarks">✏</button>
-    <button class="btn btn-ghost btn-xs btn-danger" style="font-style:normal" onclick="event.stopPropagation();if(confirm('Clear remarks?'))updateStory('${sec}','${storyId}',{remarks:''},${archKeyJS})" title="Clear remarks">🗑</button>
-  </span>`:''}
-  </div>`;
+  return`<div class="card-remarks" onclick="event.stopPropagation()">💬 <span id="cr-${id}" class="card-remarks-text${collapsed?' card-remarks-collapsed':''}">${esc(text)}</span>${needsCollapse?`<span id="cr-btn-${id}" class="card-remarks-expand" onclick="event.stopPropagation();toggleRemarksExpand('${id}')">${collapsed?'▼ expand':'▲ collapse'}</span>`:''}${hasCRUD?`<span style="display:inline-flex;gap:4px;margin-left:6px;vertical-align:middle"><button class="btn btn-ghost btn-xs" style="font-style:normal;padding:2px 6px" onclick="event.stopPropagation();_editingMainRemark.add('${storyId}');render()" title="Edit remarks">✏</button><button class="btn btn-ghost btn-xs btn-danger" style="font-style:normal;padding:2px 6px" onclick="event.stopPropagation();if(confirm('Clear remarks?'))updateStory('${sec}','${storyId}',{remarks:''},${archKeyJS})" title="Clear remarks">🗑</button></span>`:''}</div>`;
 }
 function setView(view,archiveKey){
   // Clear search when navigating away from search
@@ -4355,8 +4374,11 @@ function submitForm(sec,archKey){
 function toggleCard(id){
   if(ui.openCards.has(id)) ui.openCards.delete(id); else ui.openCards.add(id);
   const b=document.getElementById('cb-'+id), c=document.getElementById('ch-'+id);
-  if(b) b.classList.toggle('open',ui.openCards.has(id));
-  if(c) c.classList.toggle('open',ui.openCards.has(id));
+  const nowOpen=ui.openCards.has(id);
+  if(b) b.classList.toggle('open',nowOpen);
+  if(c) c.classList.toggle('open',nowOpen);
+  // Toggle uc-open on parent row to hide/show preview text via CSS
+  if(b){ const row=b.closest('.uc-row'); if(row) row.classList.toggle('uc-open',nowOpen); }
   // Also handle resolved section rows — show compact row back when card collapses
   const resRow=document.getElementById('res-row-'+id);
   const resBody=document.getElementById('res-body-'+id);
@@ -4945,7 +4967,7 @@ function renderUpcomingView(){
       const isExpOpen=ui_expiredUpcomingOpen['today']===true;
       html+=`<div style="border-top:1px dashed var(--border);margin-top:8px">
         <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;user-select:none" onclick="ui_expiredUpcomingOpen['today']=!ui_expiredUpcomingOpen['today'];render()">
-          <span class="fi-hint" style="margin:0;padding:0;border:none">📁 ${expiredUpcoming.length} expired</span>
+          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${expiredUpcoming.length} expired</span>
           <span style="font-size:10px;color:var(--text3);margin-left:auto">${isExpOpen?'▾':'▸'}</span>
         </div>
         ${isExpOpen?expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join(''):''}
@@ -4973,11 +4995,13 @@ function renderNotesView(){
         <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add</button>
       </div>`;
       if(ui_noteForm){
-        html+=`<div class="note-add-form">
-          <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
-          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
-          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline-arch"></div>
-          <div style="display:flex;gap:7px">
+        html+=`<div class="form-wrap">
+          <div class="form-title">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
+          <div class="form-grid">
+            <div class="fgroup full"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
+            <div class="fgroup"><label class="flabel">Deadline <span class="flabel-hint">(optional)</span></label><input class="finput" type="date" id="nf-deadline-arch"></div>
+          </div>
+          <div class="form-footer">
             <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update':'Add'}</button>
             <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
           </div>
@@ -4990,11 +5014,13 @@ function renderNotesView(){
         <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-text')?.focus(),60)">+ Add</button>
       </div>`;
       if(ui_noteForm){
-        html+=`<div class="note-add-form">
-          <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
-          <div class="fgroup" style="margin-bottom:8px"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
-          <div class="fgroup" style="margin-bottom:10px"><label class="flabel">Deadline (optional)</label><input class="finput" type="date" id="nf-deadline-arch"></div>
-          <div style="display:flex;gap:7px">
+        html+=`<div class="form-wrap">
+          <div class="form-title">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
+          <div class="form-grid">
+            <div class="fgroup full"><label class="flabel">Note *</label><textarea class="ftextarea" id="nf-text-arch" placeholder="Write your note…" style="min-height:72px"></textarea></div>
+            <div class="fgroup"><label class="flabel">Deadline <span class="flabel-hint">(optional)</span></label><input class="finput" type="date" id="nf-deadline-arch"></div>
+          </div>
+          <div class="form-footer">
             <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update':'Add'}</button>
             <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
           </div>
@@ -5422,7 +5448,7 @@ function renderAccordion(sec,archKey){
       const isExpOpen=ui_expiredUpcomingOpen[_expKey]===true;
       html+=`<div style="border-top:1px dashed var(--border);margin-top:8px">
         <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;user-select:none" onclick="ui_expiredUpcomingOpen['${_expKey}']=!ui_expiredUpcomingOpen['${_expKey}'];render()">
-          <span class="fi-hint" style="margin:0;padding:0;border:none">📁 ${expiredUpcoming.length} expired</span>
+          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${expiredUpcoming.length} expired</span>
           <span style="font-size:10px;color:var(--text3);margin-left:auto">${isExpOpen?'▾':'▸'}</span>
         </div>
         ${isExpOpen?expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}
@@ -5436,18 +5462,32 @@ function renderAccordion(sec,archKey){
       if(_live.length){ _live.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
       else html+='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No active entries</div></div>';
       if(_done.length){
-        html+=`<div style="font-size:11px;font-family:var(--font);font-weight:500;color:var(--text3);padding:6px 0 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ ${_done.length} done / not done</div>`;
-        _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+        const _secDoneKey=(archKey||'today')+'-'+sec.key;
+        const _isDoneOpen=ui_storiesDoneOpen[_secDoneKey]===true;
+        html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none" onclick="ui_storiesDoneOpen['${_secDoneKey}']=!ui_storiesDoneOpen['${_secDoneKey}'];render()">
+            <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${_done.length} done / not done</span>
+            <span style="font-size:10px;color:var(--text3);margin-left:auto">${_isDoneOpen?'▾':'▸'}</span>
+          </div>
+        </div>`;
+        if(_isDoneOpen){ _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
       }
     }
 
     // Shelved ribbon — always visible, displayed below active stories
     if(shelvedCount>0){
-      html+=`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">`;
-      html+=`<div class="fi-hint">🗄 Shelved (${shelvedCount})</div>`;
-      html+=`<div class="shelved-section">`;
-      all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
-      html+=`</div></div>`;
+      const _isShelvedOpen=ui_storiesShelvedOpen[sec.key]===true;
+      html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none" onclick="ui_storiesShelvedOpen['${sec.key}']=!ui_storiesShelvedOpen['${sec.key}'];render()">
+          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${shelvedCount} shelved</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:auto">${_isShelvedOpen?'▾':'▸'}</span>
+        </div>
+      </div>`;
+      if(_isShelvedOpen){
+        html+=`<div class="shelved-section">`;
+        all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+        html+=`</div>`;
+      }
     }
   }
 
@@ -5661,6 +5701,7 @@ function submitStoryRemarkEdit(sec, storyId, remarkId, archKey){
 
 let _storyRemarkEditId={};  // storyId → remarkId being edited
 let _editingMainRemark=new Set();  // storyIds currently editing main remarks field
+let _addingRemark=new Set();       // storyIds currently adding to existing remarks
 
 function buildStoryRemarksHTML(sec, s, archKey){
   const archKeyJS=archKey?`'${archKey}'`:'null';
@@ -5764,6 +5805,9 @@ let ui_taskPage=1;   // how many batches of 10 to show
 let ui_doneTaskPage=1; // how many batches of 10 done/not-done tasks to show
 let ui_doneTaskOpen=false; // done/not-done task list collapsed by default
 let ui_expiredUpcomingOpen={}; // expired upcoming collapsed per section key
+let ui_storiesDoneOpen={}; // done/not-done stories collapsed per section key
+let ui_storiesShelvedOpen={}; // shelved stories collapsed per section key
+let ui_meetPrevOpen=false; // previous/done meetings collapsed by default
 let ui_upcomingPage=1; // same for upcoming events
 let ui_resolvedPages={done:1,'on-hold':1,'not-done':1,postponed:1,shelved:1};
 let ui_teBookingsOpen={};
@@ -6183,21 +6227,23 @@ function renderTasksSection(){
       return sk(a)-sk(b);
     });
     if(ui_taskForm){
-      html+=`<div class="task-form" id="task-form-wrap">
-        <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--upcoming)">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
+      html+=`<div class="form-wrap" id="task-form-wrap">
+        <div class="form-title">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
         <div class="form-grid">
           <div class="fgroup full"><label class="flabel">Task *</label><input class="finput" id="tf-title" placeholder="What needs to be done…" autocomplete="off"></div>
           <div class="fgroup full"><label class="flabel">Notes / Detail</label><textarea class="ftextarea" id="tf-notes" placeholder="Any context or extra detail…" style="min-height:56px"></textarea></div>
-          <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="tf-deadline-date"></div>
-          <div class="fgroup"><label class="flabel">Deadline time (${ukLabel()})</label><input class="finput" type="time" id="tf-deadline-time" oninput="onTaskDeadlineTimeChange()" onblur="onTaskDeadlineTimeChange()"></div>
-          <div class="fgroup"><label class="flabel">Deadline time (IST)</label><input class="finput" type="time" id="tf-deadline-time-ist" oninput="onTaskDeadlineISTChange()" onblur="onTaskDeadlineISTChange()"></div>
+          <div class="deadline-split">
+            <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="tf-deadline-date"></div>
+            <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" type="time" id="tf-deadline-time" oninput="onTaskDeadlineTimeChange()" onblur="onTaskDeadlineTimeChange()"></div>
+            <div class="fgroup"><label class="flabel">IST</label><input class="finput" type="time" id="tf-deadline-time-ist" oninput="onTaskDeadlineISTChange()" onblur="onTaskDeadlineISTChange()"></div>
+          </div>
           <div class="fgroup"><label class="flabel">Reminder</label>
             <select class="fselect" id="tf-reminder">
               <option value="off">Off</option><option value="1hr">1 hour before</option><option value="4hr">4 hours before</option><option value="1day">1 day before</option><option value="1week">1 week before</option>
             </select>
           </div>
         </div>
-        <div style="display:flex;gap:7px;margin-top:12px">
+        <div class="form-footer">
           <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add'}</button>
           <button class="btn btn-ghost" onclick="ui_taskForm=false;ui_editTaskId=null;render()">Cancel</button>
         </div>
@@ -6261,8 +6307,8 @@ function renderTasksSection(){
   }
 
   if(ui_taskForm){
-    html+=`<div class="task-form" id="task-form-wrap-standalone">
-      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--upcoming)">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
+    html+=`<div class="form-wrap" id="task-form-wrap-standalone">
+      <div class="form-title">${ui_editTaskId?'✏ Edit Task':'+ New Task'}</div>
       <div class="form-grid">
         <div class="fgroup full"><label class="flabel">Task *</label><input class="finput" id="tf-title" placeholder="What needs to be done…" autocomplete="off"></div>
         <div class="fgroup full"><label class="flabel">Notes / Detail</label><textarea class="ftextarea" id="tf-notes" placeholder="Any context or extra detail…" style="min-height:56px"></textarea></div>
@@ -6312,7 +6358,7 @@ function renderTasksSection(){
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:7px;margin-top:12px">
+      <div class="form-footer">
         <button class="btn btn-accent" onclick="submitTaskForm()">${ui_editTaskId?'Update':'Add'}</button>
         <button class="btn btn-ghost" onclick="ui_taskForm=false;ui_editTaskId=null;render()">Cancel</button>
       </div>
@@ -6392,7 +6438,7 @@ function renderTasksSection(){
       const doneRemaining=_doneTasks.length-visibleDone.length;
       html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
         <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui_doneTaskOpen=!ui_doneTaskOpen;render()">
-          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">✓ ${_doneTasks.length} done / not done</span>
+          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${_doneTasks.length} done / not done</span>
           <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_doneTaskOpen?'▾':'▸'}</span>
         </div>
       </div>`;
@@ -6723,7 +6769,7 @@ function renderCombinedAccordion(archKey){
       const groupBodyId='rg-body-'+key;
       const page=ui_resolvedPages[key]||1, limit=page*10;
       const visible=arr.slice(0,limit), remaining=arr.length-limit;
-      let g=`<div style="margin-bottom:6px"><div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:3px 2px;display:flex;align-items:center;gap:6px;cursor:pointer;border-radius:5px" onclick="ui._resolvedGroupOpen['${key}']=!ui._resolvedGroupOpen['${key}'];const gb=document.getElementById('${groupBodyId}');const gc=document.getElementById('rg-chev-${key}');if(gb)gb.style.display=ui._resolvedGroupOpen['${key}']?'block':'none';if(gc)gc.textContent=ui._resolvedGroupOpen['${key}']?'▾':'▸'" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'"><span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${label} <span style="font-weight:400;color:var(--text3)">(${arr.length})</span><span id="rg-chev-${key}" style="font-size:10px;color:var(--text3);margin-left:auto">${isGOpen?'▾':'▸'}</span></div><div id="${groupBodyId}" style="display:${isGOpen?'block':'none'}">`;
+      let g=`<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:500;color:var(--text3);padding:3px 2px;display:flex;align-items:center;gap:6px;cursor:pointer;border-radius:5px" onclick="ui._resolvedGroupOpen['${key}']=!ui._resolvedGroupOpen['${key}'];const gb=document.getElementById('${groupBodyId}');const gc=document.getElementById('rg-chev-${key}');if(gb)gb.style.display=ui._resolvedGroupOpen['${key}']?'block':'none';if(gc)gc.textContent=ui._resolvedGroupOpen['${key}']?'▾':'▸'" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'"><span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>${label} <span style="font-weight:400;color:var(--text3)">(${arr.length})</span><span id="rg-chev-${key}" style="font-size:10px;color:var(--text3);margin-left:auto">${isGOpen?'▾':'▸'}</span></div><div id="${groupBodyId}" style="display:${isGOpen?'block':'none'}">`;
       visible.forEach(s=>{
         const resolvedDate=s.deadline_date?new Date(s.deadline_date+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
         const postponeLabel=s.status==='postponed'&&s.postponedTo?` → ${new Date(s.postponedTo+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`:'';
@@ -7058,8 +7104,8 @@ function toggleMeetingRecurFields(){
 function renderMeetingForm(){
   const isEdit=!!ui_editMeetingId;
   const today=todayStr();
-  return`<div class="meeting-form" id="meeting-form-wrap">
-    <div style="font-size:13px;font-weight:700;color:#6366f1;margin-bottom:12px">${isEdit?'✏ Edit Meeting':'+ New Meeting'}</div>
+  return`<div class="form-wrap" id="meeting-form-wrap">
+    <div class="form-title">${isEdit?'✏ Edit Meeting':'+ New Meeting'}</div>
     <div class="form-grid">
       <div class="fgroup"><label class="flabel">Meeting Name *</label><input class="finput" id="mf-name" placeholder="Morning call, Editorial standup…" autocomplete="off"></div>
       <div class="fgroup"><label class="flabel">Date *</label><input class="finput" type="date" id="mf-date" value="${today}"></div>
@@ -7124,7 +7170,7 @@ function renderMeetingForm(){
       </div>
       <div class="fgroup"><label class="flabel">Reminder Note</label><input class="finput" id="mf-reminder-note" placeholder="e.g. Prepare talking points"></div>
     </div>
-    <div style="display:flex;gap:7px;margin-top:10px">
+    <div class="form-footer">
       <button class="btn btn-accent" onclick="submitMeetingForm()">${isEdit?'Update':'Add'}</button>
       <button class="btn btn-ghost" onclick="ui_meetingForm=false;ui_editMeetingId=null;render()">Cancel</button>
     </div>
@@ -7380,8 +7426,13 @@ function renderMeetingsSection(){
     _scheduledMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
     const _previousMeetings=[..._pastOneOffMeetings, ..._doneMeetings].sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
     if(_previousMeetings.length){
-      body+=`<div style="font-size:10.5px;font-family:var(--font);font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);padding:8px 2px 4px;margin-top:4px;border-top:1px dashed var(--border)">✓ Previous / Done</div>`;
-      _previousMeetings.forEach(m=>{ body+=renderMeetingCard(m, _pastOneOffMeetings.includes(m)); });
+      body+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui_meetPrevOpen=!ui_meetPrevOpen;render()">
+          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${_previousMeetings.length} previous / done</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_meetPrevOpen?'▾':'▸'}</span>
+        </div>
+      </div>`;
+      if(ui_meetPrevOpen){ _previousMeetings.forEach(m=>{ body+=renderMeetingCard(m, _pastOneOffMeetings.includes(m)); }); }
     }
   }
   body+=`</div>`;
@@ -7437,21 +7488,23 @@ function renderRemarksAccordion(){
 
   // Add-note form
   if(ui_noteForm){
-    body+=`<div class="note-add-form">
-      <div style="font-size:12.5px;font-weight:700;color:var(--upcoming);margin-bottom:10px">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
-      <div class="fgroup" style="margin-bottom:8px">
-        <label class="flabel">Headline *</label>
-        <input class="finput" id="nf-headline" placeholder="Short headline for this note…" autocomplete="off">
+    body+=`<div class="form-wrap">
+      <div class="form-title">${ui_editNoteId?'✏ Edit Note':'+ New Note'}</div>
+      <div class="form-grid">
+        <div class="fgroup full">
+          <label class="flabel">Headline *</label>
+          <input class="finput" id="nf-headline" placeholder="Short headline for this note…" autocomplete="off">
+        </div>
+        <div class="fgroup full">
+          <label class="flabel">Note body</label>
+          <textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea>
+        </div>
+        <div class="fgroup">
+          <label class="flabel">Deadline <span class="flabel-hint">(optional)</span></label>
+          <input class="finput" type="date" id="nf-deadline">
+        </div>
       </div>
-      <div class="fgroup" style="margin-bottom:8px">
-        <label class="flabel">Note body</label>
-        <textarea class="ftextarea" id="nf-text" placeholder="Write your note…" style="min-height:72px"></textarea>
-      </div>
-      <div class="fgroup" style="margin-bottom:10px">
-        <label class="flabel">Deadline (optional)</label>
-        <input class="finput" type="date" id="nf-deadline">
-      </div>
-      <div style="display:flex;gap:7px">
+      <div class="form-footer">
         <button class="btn btn-accent btn-sm" onclick="submitNoteForm()">${ui_editNoteId?'Update':'Add'}</button>
         <button class="btn btn-ghost btn-sm" onclick="ui_noteForm=false;ui_editNoteId=null;render()">Cancel</button>
       </div>
@@ -7510,7 +7563,7 @@ function renderRemarksAccordion(){
     const isResOpen=ui.notesResolvedOpen===true;
     body+=`<div style="border-top:1px dashed var(--border);margin-top:10px">
       <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui.notesResolvedOpen=!ui.notesResolvedOpen;render()">
-        <span style="font-size:11px;color:var(--text3);font-family:var(--font)">✓ ${resolved.length} resolved</span>
+        <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${resolved.length} resolved</span>
         <span style="font-size:10px;color:var(--text3);margin-left:auto">${isResOpen?'▾':'▸'}</span>
       </div>
     </div>`;
@@ -7845,6 +7898,28 @@ function _teDelete(id){
   if(!state.deletedIds.travelEntries) state.deletedIds.travelEntries=[];
   if(!state.deletedIds.travelEntries.includes(id)) state.deletedIds.travelEntries.push(id);
   _teSave();
+}
+function _teDismissGeneral(){
+  state.travelGeneralDismissed=true;
+  _teSave();
+  _teRefresh();
+}
+function _teDeleteGeneral(){
+  const toDelete=(state.travelEntries||[]).filter(e=>!e.storyId).map(e=>e.id);
+  toDelete.forEach(id=>{
+    state.travelEntries=(state.travelEntries||[]).filter(e=>e.id!==id);
+    if(!state.deletedIds.travelEntries) state.deletedIds.travelEntries=[];
+    if(!state.deletedIds.travelEntries.includes(id)) state.deletedIds.travelEntries.push(id);
+  });
+  state.travelGeneralDismissed=true;
+  _teSave();
+  toast(toDelete.length?`🗑 General entries deleted (${toDelete.length})`:'🗑 General removed');
+  _teRefresh();
+}
+function _teRestoreGeneral(){
+  state.travelGeneralDismissed=false;
+  _teSave();
+  _teRefresh();
 }
 function _teDismissStory(sid){
   if(!state.travelDismissed) state.travelDismissed=[];
@@ -8213,22 +8288,64 @@ function _teRenderBody(){
     const deadlineStr=s.deadline_date?(()=>{const diff=Math.round((new Date(s.deadline_date+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);const lbl=diff<0?'Overdue '+Math.abs(diff)+'d':diff===0?'Due today':diff===1?'Due tomorrow':'Due '+_fmtDShort(s.deadline_date);const col=diff<0?'#B91C1C':diff<=2?'#B45309':'var(--text3)';return `<span style="font-size:10.5px;color:${col};flex-shrink:0">⏰ ${lbl}</span>`;})():'';
     const claimBadge=allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:unclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${unclaimed} unclaimed</span>`:'';
     const secLabel={ibu:'Stories',other:'Other Stories',requests:'Requests'}[sec]||sec;
-    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap"><span style="font-size:13px">📡</span><span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>${deadlineStr}${bookPayBadge}${claimBadge}<span style="font-size:10.5px;color:var(--text3);flex-shrink:0">${secLabel}${s.field_location?' · '+esc(s.field_location):''}</span><button onclick="_teDismissStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide from this list">✕ Hide</button><button onclick="if(confirm('Remove this story from Travel &amp; Expenses? All its travel entries will be deleted.'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0" title="Delete story and all its entries">🗑</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion(s.id,sec)}</div></div>`;
+    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(13,148,136,.06);border-bottom:1px solid rgba(13,148,136,.15);flex-wrap:wrap"><span style="font-size:13px">📡</span><span style="font-size:13px;font-weight:600;color:var(--working);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>${deadlineStr}${bookPayBadge}${claimBadge}<button onclick="_teDismissStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide from this list">✕ Hide</button><button onclick="if(confirm('Remove this story from Travel &amp; Expenses? All its travel entries will be deleted.'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0" title="Delete story and all its entries">🗑</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion(s.id,sec)}</div></div>`;
   });
   const genEntries=_teEntriesGeneral();
-  if(genEntries.length||stories.length===0){
+  if((genEntries.length||stories.length===0)&&!state.travelGeneralDismissed){
     const genExp=genEntries.filter(e=>e.type==='expense'),genUnclaimed=genExp.filter(e=>_teGetClaimed(e)!=='yes').length;
     const genBadge=genUnclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${genUnclaimed} unclaimed</span>`:(genExp.length?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:'');
-    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)"><span style="font-size:13px">📋</span><span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General</span>${genBadge}</div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion('gen',null)}</div></div>`;
+    html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden"><div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)"><span style="font-size:13px">📋</span><span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General</span>${genBadge}<button onclick="_teDismissGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0" title="Hide General from this list">✕ Hide</button><button onclick="if(confirm('Delete all General travel entries?'))_teDeleteGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0" title="Delete General entries">🗑</button></div><div style="padding:10px 13px;display:flex;flex-direction:column;gap:8px">${_teSubAccordion('gen',null)}</div></div>`;
   }
   if(stories.length===0&&_teEntriesGeneral().length===0&&!_te.open) html+=`<div style="text-align:center;padding:22px 16px;color:var(--text3);font-size:13px">No travel or expenses yet. Use <strong style="color:var(--accent)">+ Add</strong> to log a cab, flight, hotel or expense.</div>`;
   const dismissedStories=_teGetStories().filter(({s})=>dismissed.includes(s.id));
-  if(dismissedStories.length){
-    const hiddenEntryCount=dismissedStories.reduce((n,{s})=>n+_teEntriesForStory(s.id).length,0);
-    const hiddenBadge=hiddenEntryCount?`<span style="font-size:10.5px;font-weight:500;color:#B45309;background:rgba(217,119,6,.09);border:0.5px solid rgba(217,119,6,.3);padding:2px 8px;border-radius:20px">⏳ ${hiddenEntryCount} entr${hiddenEntryCount===1?'y':'ies'} hidden</span>`:'';
-    html+=`<div style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--border)"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10.5px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px">Hidden (${dismissedStories.length})</span>${hiddenBadge}</div>`;
-    dismissedStories.forEach(({s})=>{const eCount=_teEntriesForStory(s.id).length;html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;opacity:.85"><span style="font-size:11.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span>${eCount?`<span style="font-size:10.5px;color:var(--text3)">${eCount} entr${eCount===1?'y':'ies'}</span>`:''}<button onclick="_teRestoreStory('${s.id}')" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer;flex-shrink:0">↩ Show</button></div>`;});
-    html+=`</div>`;
+  const genDismissed=!!state.travelGeneralDismissed;
+  const totalResolved=dismissedStories.length+(genDismissed?1:0);
+  if(totalResolved>0){
+    const resolvedId='te-resolved-'+Date.now();
+    html+=`<div style="margin-top:6px;padding-top:8px;border-top:1px dashed var(--border)">
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none;border-top:1px dashed var(--border);margin-top:4px" onclick="(function(el){const items=el.nextElementSibling;const open=items.style.display==='none'||!items.style.display;items.style.display=open?'block':'none';el.querySelector('.te-res-chev').textContent=open?'▾':'▸';})(this)">
+        <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${totalResolved} resolved</span>
+        <span class="te-res-chev" style="font-size:10px;color:var(--text3);margin-left:auto">▸</span>
+      </div>
+      <div style="display:none">`;
+    dismissedStories.forEach(({s})=>{
+      const eCount=_teEntriesForStory(s.id).length;
+      const rowId='te-res-'+s.id.replace(/[^a-z0-9]/gi,'');
+      html+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;overflow:hidden;opacity:.85">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer" onclick="(function(el){const body=el.nextElementSibling;const open=body.style.display==='none'||!body.style.display;body.style.display=open?'block':'none';el.querySelector('.te-rc').style.transform=open?'rotate(90deg)':'';})(this)">
+          <span style="font-size:11.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span>
+          ${eCount?`<span style="font-size:10.5px;color:var(--text3)">${eCount} entr${eCount===1?'y':'ies'}</span>`:''}
+          <span class="te-rc" style="font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0">›</span>
+        </div>
+        <div style="display:none;padding:8px 10px 10px;border-top:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">${esc(s.title||'Untitled')}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Resolved · ${eCount} entr${eCount===1?'y':'ies'}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button onclick="_teRestoreStory('${s.id}')" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer">↩ Restore</button>
+            <button onclick="if(confirm('Permanently delete this story and all its entries?'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer">🗑 Delete</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    if(genDismissed){
+      const genCount=_teEntriesGeneral().length;
+      html+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;overflow:hidden;opacity:.85">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer" onclick="(function(el){const body=el.nextElementSibling;const open=body.style.display==='none'||!body.style.display;body.style.display=open?'block':'none';el.querySelector('.te-rc').style.transform=open?'rotate(90deg)':'';})(this)">
+          <span style="font-size:11.5px;color:var(--text2);flex:1">General</span>
+          ${genCount?`<span style="font-size:10.5px;color:var(--text3)">${genCount} entr${genCount===1?'y':'ies'}</span>`:''}
+          <span class="te-rc" style="font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0">›</span>
+        </div>
+        <div style="display:none;padding:8px 10px 10px;border-top:1px solid var(--border);background:var(--surface)">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">General</div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Resolved · ${genCount} entr${genCount===1?'y':'ies'}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button onclick="_teRestoreGeneral()" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer">↩ Restore</button>
+            <button onclick="if(confirm('Permanently delete all General entries?'))_teDeleteGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer">🗑 Delete</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    html+=`</div></div>`;
   }
   return html;
 }
@@ -8266,7 +8383,7 @@ function renderTravelSection(){
       const isOverdue=dl<today;
       const dlWord=_stripDateWord(dl,today);
       const dlLabel=isOverdue?'Overdue':'Due';
-      meta=`<span style="font-size:10px;color:${isOverdue?'#B91C1C':'#888'};font-family:var(--font);flex-shrink:0;margin-left:4px">${dlLabel} ${dlWord}</span>`;
+      meta=`<span style="font-size:10px;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${dlLabel} ${dlWord}</span>`;
     } else if(stories.length>1){
       meta=`<span style="font-size:10px;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">+${stories.length-1} more</span>`;
     }
@@ -8421,8 +8538,8 @@ function renderLeavesSection(){
 
   // Add / edit form
   if(ui_leaveForm){
-    html+=`<div class="leave-form" id="leave-form-wrap">
-      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:#0EA5E9">${ui_editLeaveId?'✏ Edit':'+ Add'}</div>
+    html+=`<div class="form-wrap" id="leave-form-wrap">
+      <div class="form-title">${ui_editLeaveId?'✏ Edit':'+ Add Leave'}</div>
       <div class="form-grid">
         <div class="fgroup">
           <label class="flabel">Employee</label>
@@ -8447,7 +8564,7 @@ function renderLeavesSection(){
         </div>
         <div class="fgroup full"><label class="flabel">Reason (optional)</label><input class="finput" id="lf-reason" placeholder="e.g. Family travel, medical appointment…"></div>
       </div>
-      <div style="display:flex;gap:7px;margin-top:12px">
+      <div class="form-footer">
         <button class="btn btn-accent" onclick="submitLeaveForm()">${ui_editLeaveId?'Update':'Add'}</button>
         <button class="btn btn-ghost" onclick="ui_leaveForm=false;ui_editLeaveId=null;render()">Cancel</button>
       </div>
@@ -8463,9 +8580,11 @@ function renderLeavesSection(){
 
   // Past leaves
   if(pastLeaves.length){
-    html+=`<div class="shelved-toggle" onclick="ui_showPastLeaves=!ui_showPastLeaves;render()">
-      <span>${ui_showPastLeaves?'▾':'▸'}</span>
-      📁 ${pastLeaves.length} past leave record${pastLeaves.length>1?'s':''} — ${ui_showPastLeaves?'hide':'show'}
+    html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none" onclick="ui_showPastLeaves=!ui_showPastLeaves;render()">
+        <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${pastLeaves.length} past leaves</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_showPastLeaves?'▾':'▸'}</span>
+      </div>
     </div>`;
     if(ui_showPastLeaves){
       [...pastLeaves].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,true); });
@@ -8636,12 +8755,12 @@ function renderUpcomingRow(sec,s,archKey){
   let clHtml='';
   if(s.completion_links){ const ls=s.completion_links.split(',').map(l=>l.trim()).filter(Boolean); if(ls.length) clHtml=`<div class="completion-links">${ls.map(l=>`<a class="link-pill" href="${esc(l)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 ${esc(l.replace(/^https?:\/\//,'').slice(0,36))}</a>`).join('')}</div>`; }
 
-  return`<div class="${rowCls}" data-id="${s.id}">
+  return`<div class="${rowCls}${isOpen?' uc-open':''}" data-id="${s.id}">
   <div class="uc-top" onclick="toggleCard('${s.id}')">
     <span class="uc-expand-icon${isOpen?' open':''}">▶</span>
     <div style="flex:1;min-width:0">
       <div class="uc-title${(isExpired||isCompleted)?' uc-title-past':''}" style="${isCompleted?'text-decoration:line-through;opacity:.6;':''}}">${esc(s.title||'Untitled')}</div>
-      ${(s.detail||s.correspondent)?`<div style="font-size:11px;color:var(--text3);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font);line-height:1.4">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
+      ${(s.detail||s.correspondent)?`<div class="uc-preview" style="font-size:11px;color:var(--text3);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font);line-height:1.4">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
     </div>
     <div class="uc-meta-line">
       ${dateBoxHtml}
@@ -8651,15 +8770,24 @@ function renderUpcomingRow(sec,s,archKey){
     <span class="chevron${isOpen?' open':''}" id="ch-${s.id}" style="display:none"></span>
   </div>
   <div class="uc-body${isOpen?' open':''}" id="cb-${s.id}">
-    <div class="card-fields">
-      ${s.description?`<div style="grid-column:1/-1"><div class="cfield-label">Description</div><div class="cfield-value" style="white-space:pre-wrap;line-height:1.55;">${esc(s.description)}</div></div>`:''}
-      ${field('Detail',s.detail)}
-      ${field('Correspondent',s.correspondent)}
-      ${field('Expected',s.expected_date?fmtDate(s.expected_date)+(s.expected_date_to?' – '+fmtDate(s.expected_date_to):'')+(s.expected_type&&s.expected_type!=='date'?' ('+s.expected_type+')':''):'')}
-      ${s.deadline_date?field('Deadline',fmtDate(s.deadline_date)+(s.deadline_uk?' · '+s.deadline_uk+' '+ukLabel():'')+(s.deadline_ist?' / '+s.deadline_ist+' IST':'')):''}
-      ${s.reminder&&s.reminder!=='off'?field('Reminder','⏰ '+s.reminder):''}
+    <div class="uc-fields">
+      ${s.description?`<div class="uc-field"><span class="uc-flbl">Description</span><span class="uc-fval" style="white-space:pre-wrap;line-height:1.55">${esc(s.description)}</span></div>`:''}
+      ${s.detail?`<div class="uc-field"><span class="uc-flbl">Detail</span><span class="uc-fval">${esc(s.detail)}</span></div>`:''}
+      ${s.correspondent?`<div class="uc-field"><span class="uc-flbl">Correspondent</span><span class="uc-fval">${esc(s.correspondent)}</span></div>`:''}
+      ${(s.expected_date&&(s.expected_date_to||(s.expected_type&&s.expected_type!=='date')))?`<div class="uc-field"><span class="uc-flbl">Expected</span><span class="uc-fval">${esc(fmtDate(s.expected_date)+(s.expected_date_to?' – '+fmtDate(s.expected_date_to):'')+(s.expected_type&&s.expected_type!=='date'?' ('+s.expected_type+')':''))}</span></div>`:''}
+      ${s.deadline_date?`<div class="uc-field"><span class="uc-flbl">Deadline</span><span class="uc-fval">${esc(fmtDate(s.deadline_date)+(s.deadline_uk?' · '+s.deadline_uk+' '+ukLabel():'')+(s.deadline_ist?' / '+s.deadline_ist+' IST':'')+'')}</span></div>`:''}
+      ${s.reminder&&s.reminder!=='off'?`<div class="uc-field"><span class="uc-flbl">Reminder</span><span class="uc-fval">⏰ ${esc(s.reminder)}</span></div>`:''}
     </div>
-    ${remarksHTML(s.remarks, s.id+'_cr', sec, s.id, archKey)}
+    ${(()=>{
+      const isEditing=_editingMainRemark&&_editingMainRemark.has(s.id);
+      if(isEditing){
+        return remarksHTML(s.remarks||'', s.id+'_cr', sec, s.id, archKey);
+      }
+      if(s.remarks){
+        return `<div class="card-remarks" onclick="event.stopPropagation()">💬 <span class="card-remarks-text" style="white-space:pre-wrap">${esc(s.remarks)}</span></div>`;
+      }
+      return '';
+    })()}
     ${linksHtml}
     ${s.completion_note||s.completion_links?`<div class="completion-box"><div class="completion-label">✅ Completion Notes</div>${s.completion_note?`<div class="completion-note">${esc(s.completion_note)}</div>`:''} ${clHtml}</div>`:''}
     <div id="compl-form-${s.id}" style="display:${isComplOpen?'block':'none'}">
@@ -8670,14 +8798,15 @@ function renderUpcomingRow(sec,s,archKey){
         <div style="display:flex;gap:7px"><button class="btn btn-done-active btn-sm" onclick="submitComplForm('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">✅ Save &amp; Mark Done</button><button class="btn btn-ghost btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Cancel</button></div>
       </div>
     </div>
-    <div class="card-btns">
+    <div class="card-btns" style="margin-top:9px">
       <button class="btn btn-ghost btn-sm" onclick="editStory('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">✏ Edit</button>
       ${isCompleted
         ?`<button class="btn btn-done-active btn-sm" disabled>✅ Done</button>
-          <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Reopen</button>`
+          <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">&#x21a9; Reopen</button>`
         :`<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>`
       }
       <button class="btn btn-ghost btn-sm btn-danger" onclick="confirmDelete('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗑 Delete</button>
+      <button class="btn btn-ghost btn-xs" style="margin-left:auto;color:var(--text3);border-color:var(--border)" onclick="event.stopPropagation();if(!ui.openCards.has('${s.id}')){toggleCard('${s.id}');}setTimeout(()=>{_editingMainRemark.add('${s.id}');render();},0)">Remarks</button>
     </div>
   </div>
 </div>`;
@@ -9077,34 +9206,37 @@ function renderForm(sec,archKey){
 
 function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
   const ev=editStoryObj||{};
-  return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}" style="border-color:var(--upcoming)">
-  <div class="form-title" style="color:var(--upcoming)">${isEdit?'✏ Edit Upcoming Story':'+ New Upcoming Story'}</div>
-  <div class="form-grid">
+  return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}">
+  <div class="form-title">${isEdit?'✏ Edit Upcoming Story':'+ New Upcoming Story'}</div>
+  <div class="form-master-grid">
     <div class="fgroup full"><label class="flabel">Title *</label><input class="finput" id="f-title${sfx}" placeholder="Story title or working title…" autocomplete="off" value="${esc(ev.title||'')}"></div>
     <div class="fgroup full"><label class="flabel">Detail</label><textarea class="ftextarea" id="f-detail${sfx}" placeholder="Background, what the story is about, key details…">${esc(ev.detail||'')}</textarea></div>
-    <div class="form-divider">When Expected</div>
-    <div class="fgroup full">
-      <label class="flabel">Expected</label>
-      <div class="expected-row">
-        <select class="fselect" id="f-expected-type${sfx}" style="width:110px;flex-shrink:0" onchange="updateExpectedInput('${sec}',${archKeyJS})">
-          <option value="date"${(ev.expected_type||'date')==='date'?' selected':''}>Specific date</option>
-          <option value="week"${ev.expected_type==='week'?' selected':''}>Week of</option>
-          <option value="month"${ev.expected_type==='month'?' selected':''}>Month</option>
-        </select>
-        <input class="finput" type="date" id="f-expected-date${sfx}" value="${esc(ev.expected_date||'')}">
-        <input class="finput" type="date" id="f-expected-date-to${sfx}" value="${esc(ev.expected_date_to||'')}" placeholder="End date (optional)" style="margin-top:6px">
-      </div>
-      <div style="font-size:10.5px;color:var(--text3);font-family:var(--font);margin-top:3px">Leave end date blank for single-day events</div>
+    <div class="fsec-header">
+      <span class="fsec-label">When Expected</span>
+      <span class="fsec-chev" style="margin-left:auto">▸</span>
     </div>
-    <div class="fgroup full"><label class="flabel">Requested by (optional)</label><input class="finput" id="f-requested-by${sfx}" placeholder="Name or team requesting coverage…" value="${esc(ev.requested_by||'')}"></div>
-    <div class="form-divider">Deadline</div>
-    <div class="deadline-split">
-      <div class="fgroup"><label class="flabel">Deadline Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline time (${ukLabel()})</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
-      <div class="fgroup"><label class="flabel">Deadline time (IST)</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
+    <div class="fgroup"><label class="flabel">Type</label>
+      <select class="fselect" id="f-expected-type${sfx}" onchange="updateExpectedInput('${sec}',${archKeyJS})">
+        <option value="date"${(ev.expected_type||'date')==='date'?' selected':''}>Specific date</option>
+        <option value="week"${ev.expected_type==='week'?' selected':''}>Week of</option>
+        <option value="month"${ev.expected_type==='month'?' selected':''}>Month</option>
+      </select>
     </div>
-    <div class="form-divider">People &amp; Status</div>
-    <div class="fgroup"><label class="flabel">Correspondent Deployed</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
+    <div class="fgroup"><label class="flabel">Start date</label><input class="finput" type="date" id="f-expected-date${sfx}" value="${esc(ev.expected_date||'')}"></div>
+    <div class="fgroup"><label class="flabel">End date <span class="flabel-hint">(optional)</span></label><input class="finput" type="date" id="f-expected-date-to${sfx}" value="${esc(ev.expected_date_to||'')}"></div>
+    <div class="fgroup"><label class="flabel">Requested by <span class="flabel-hint">(optional)</span></label><input class="finput" id="f-requested-by${sfx}" placeholder="Name or team requesting coverage…" value="${esc(ev.requested_by||'')}"></div>
+    <div class="fsec-header">
+      <span class="fsec-label">Deadline</span>
+      <span class="fsec-chev" style="margin-left:auto">▸</span>
+    </div>
+    <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
+    <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
+    <div class="fgroup"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
+    <div class="fsec-header">
+      <span class="fsec-label">People &amp; Status</span>
+      <span class="fsec-chev" style="margin-left:auto">▸</span>
+    </div>
+    <div class="fgroup"><label class="flabel">Correspondent</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
     <div class="fgroup"><label class="flabel">Status</label>
       <select class="fselect" id="f-status${sfx}">
         <option value="not-started"${(ev.status||'not-started')==='not-started'?' selected':''}>⚪ Not Started</option>
@@ -9120,7 +9252,7 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
       </select>
     </div>
     <div class="fgroup full"><label class="flabel">Remarks &amp; Any Relevant Detail</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Context, previous coverage, contacts, logistics…" style="white-space:pre-wrap;min-height:80px">${esc(ev.remarks||'')}</textarea></div>
-    <div class="fgroup full"><label class="flabel">Reference Links (comma-separated)</label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(ev.links||'')}"></div>
+    <div class="fgroup full"><label class="flabel">Reference Links <span class="flabel-hint">(comma-separated)</span></label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(ev.links||'')}"></div>
   </div>
   <div class="form-footer">
     <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add'}</button>
