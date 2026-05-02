@@ -1772,40 +1772,24 @@ function ensureSignedIn(cfg){
     if(window._firebaseAuthLoadFailed || typeof firebase === 'undefined'){
       resolve(null); return;
     }
-    // Initialise Firebase app if not yet done (needed for auth)
+    // Initialise Firebase app if not yet done
     try{ firebase.app(); }catch(e){
       if(cfg){ try{ firebase.initializeApp(cfg); }catch(e2){} }
-      else { resolve(null); return; } // no config, can't init
+      else { resolve(null); return; }
     }
     const auth = firebase.auth();
-    const provider = new firebase.auth.GoogleAuthProvider();
-    // Check for returning redirect result first
-    auth.getRedirectResult().then(result => {
-      if(result && result.user){ resolve(result.user); return; }
-      const unsub = auth.onAuthStateChanged(user => {
-        unsub();
-        if(user){
-          resolve(user);
-        } else {
-          // Try redirect (works on http://, https://)
-          auth.signInWithRedirect(provider).catch(() => {
-            // Fallback to popup
-            auth.signInWithPopup(provider)
-              .then(r => resolve(r.user))
-              .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
-          });
-        }
-      });
-    }).catch(() => {
-      const unsub = auth.onAuthStateChanged(user => {
-        unsub();
-        if(user){ resolve(user); }
-        else {
-          auth.signInWithPopup(provider)
-            .then(r => resolve(r.user))
-            .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
-        }
-      });
+    // Check if already signed in
+    const unsub = auth.onAuthStateChanged(user => {
+      unsub();
+      if(user){
+        resolve(user);
+      } else {
+        // Not signed in — use popup (works reliably on https://)
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider)
+          .then(r => resolve(r.user))
+          .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
+      }
     });
   });
 }
