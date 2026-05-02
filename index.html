@@ -1767,10 +1767,15 @@ function loadLocal(){
 }
 function saveLocal(){ try{ localStorage.setItem('nd_v5',JSON.stringify(state)); }catch(e){} }
 function getFireConfig(){ try{ const r=localStorage.getItem('nd_fbcfg'); return r?JSON.parse(r):null; }catch(e){ return null; } }
-function ensureSignedIn(){
+function ensureSignedIn(cfg){
   return new Promise((resolve, reject) => {
     if(window._firebaseAuthLoadFailed || typeof firebase === 'undefined'){
       resolve(null); return;
+    }
+    // Initialise Firebase app if not yet done (needed for auth)
+    try{ firebase.app(); }catch(e){
+      if(cfg){ try{ firebase.initializeApp(cfg); }catch(e2){} }
+      else { resolve(null); return; } // no config, can't init
     }
     const auth = firebase.auth();
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -1782,9 +1787,9 @@ function ensureSignedIn(){
         if(user){
           resolve(user);
         } else {
-          // Try redirect (works on file://, http://, https://)
+          // Try redirect (works on http://, https://)
           auth.signInWithRedirect(provider).catch(() => {
-            // Fallback to popup if redirect fails
+            // Fallback to popup
             auth.signInWithPopup(provider)
               .then(r => resolve(r.user))
               .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
@@ -1814,7 +1819,7 @@ function initFirebase(cfg, silent){
     let app; try{ app=firebase.app(); }catch(e){ app=firebase.initializeApp(cfg); }
     fireDb=firebase.firestore();
     localStorage.setItem('nd_fbcfg',JSON.stringify(cfg));
-    ensureSignedIn()
+    ensureSignedIn(cfg)
       .then(user => { startRealtimeSync(); setSyncUI('syncing'); })
       .catch(() => setSyncUI('offline'));
     return true;
@@ -9363,7 +9368,13 @@ function init(){
   }
 
   scheduleAllReminders();
-  const cfg=getFireConfig(); if(cfg) initFirebase(cfg, true);
+  const cfg=getFireConfig();
+  if(cfg) initFirebase(cfg, true);
+  else if(!window._firebaseAuthLoadFailed && typeof firebase !== 'undefined'){
+    // No Firebase config yet — but still try auth so session is ready when user connects
+    // (only works if app was previously initialised in this browser)
+    try{ firebase.app(); ensureSignedIn().catch(()=>{}); }catch(e){}
+  }
   window.addEventListener('online', ()=>{ if(fireDb){ setSyncUI('syncing'); /* onSnapshot will fire automatically on reconnect and merge before we push */ } });
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'&&fireDb){
