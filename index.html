@@ -1333,6 +1333,11 @@ button.tasks-tab-btn {
 </style>
 </head>
 <body>
+<!-- Auth banner — shown when Firebase is connected but user not signed in -->
+<div id="auth-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#1A1714;color:#fff;padding:10px 16px;align-items:center;justify-content:center;gap:12px;font-family:var(--font);font-size:13px">
+  <span>🔒 Sign in to sync your data</span>
+  <button onclick="googleSignIn()" style="padding:6px 16px;border-radius:8px;border:none;background:#CF6640;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">Sign in with Google</button>
+</div>
 <div id="toast-wrap" class="toast-wrap"></div>
 <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(this)">
 
@@ -1772,26 +1777,42 @@ function ensureSignedIn(cfg){
     if(window._firebaseAuthLoadFailed || typeof firebase === 'undefined'){
       resolve(null); return;
     }
-    // Initialise Firebase app if not yet done
     try{ firebase.app(); }catch(e){
       if(cfg){ try{ firebase.initializeApp(cfg); }catch(e2){} }
       else { resolve(null); return; }
     }
     const auth = firebase.auth();
-    // Check if already signed in
+    // Just check current auth state — do NOT auto-trigger sign-in
+    // Sign-in is triggered only by explicit user click (googleSignIn button)
     const unsub = auth.onAuthStateChanged(user => {
       unsub();
-      if(user){
-        resolve(user);
-      } else {
-        // Not signed in — use popup (works reliably on https://)
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider)
-          .then(r => resolve(r.user))
-          .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
-      }
+      if(user){ resolve(user); }
+      else { resolve(null); } // not signed in — caller handles showing sign-in UI
     });
   });
+}
+
+function googleSignIn(){
+  // Called only from a button click — browsers allow popups from user gestures
+  if(typeof firebase === 'undefined'){ toast('Firebase not available'); return; }
+  try{ firebase.app(); }catch(e){
+    const cfg=getFireConfig();
+    if(cfg){ try{ firebase.initializeApp(cfg); }catch(e2){} }
+    else { toast('Connect Firebase first in Settings → Sync'); return; }
+  }
+  const auth = firebase.auth();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .then(result => {
+      toast('✓ Signed in as '+result.user.email);
+      const cfg=getFireConfig();
+      if(cfg && !fireDb){ initFirebase(cfg, true); }
+      else if(fireDb){ startRealtimeSync(); setSyncUI('syncing'); }
+      // Hide sign-in banner
+      const banner = document.getElementById('auth-banner');
+      if(banner) banner.style.display='none';
+    })
+    .catch(e => toast('Sign-in failed: '+(e.message||e)));
 }
 
 function initFirebase(cfg, silent){
@@ -1804,7 +1825,16 @@ function initFirebase(cfg, silent){
     fireDb=firebase.firestore();
     localStorage.setItem('nd_fbcfg',JSON.stringify(cfg));
     ensureSignedIn(cfg)
-      .then(user => { startRealtimeSync(); setSyncUI('syncing'); })
+      .then(user => {
+        if(user){
+          startRealtimeSync(); setSyncUI('syncing');
+          const b=document.getElementById('auth-banner'); if(b) b.style.display='none';
+        } else {
+          // Not signed in — show sign-in banner
+          setSyncUI('offline');
+          const b=document.getElementById('auth-banner'); if(b) b.style.display='flex';
+        }
+      })
       .catch(() => setSyncUI('offline'));
     return true;
   }catch(e){ toast('Firebase error: '+e.message); return false; }
