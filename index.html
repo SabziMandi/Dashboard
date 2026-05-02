@@ -33,6 +33,7 @@ window.addEventListener('unhandledrejection', function(e) {
 </script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" onerror="window._firebaseLoadFailed=true"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" onerror="window._firebaseLoadFailed=true"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" onerror="window._firebaseAuthLoadFailed=true"></script>
 <style>
 :root {
   /* ── Claude light-mode palette ── */
@@ -1766,6 +1767,44 @@ function loadLocal(){
 }
 function saveLocal(){ try{ localStorage.setItem('nd_v5',JSON.stringify(state)); }catch(e){} }
 function getFireConfig(){ try{ const r=localStorage.getItem('nd_fbcfg'); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function ensureSignedIn(){
+  return new Promise((resolve, reject) => {
+    if(window._firebaseAuthLoadFailed || typeof firebase === 'undefined'){
+      resolve(null); return;
+    }
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+    // Check for returning redirect result first
+    auth.getRedirectResult().then(result => {
+      if(result && result.user){ resolve(result.user); return; }
+      const unsub = auth.onAuthStateChanged(user => {
+        unsub();
+        if(user){
+          resolve(user);
+        } else {
+          // Try redirect (works on file://, http://, https://)
+          auth.signInWithRedirect(provider).catch(() => {
+            // Fallback to popup if redirect fails
+            auth.signInWithPopup(provider)
+              .then(r => resolve(r.user))
+              .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
+          });
+        }
+      });
+    }).catch(() => {
+      const unsub = auth.onAuthStateChanged(user => {
+        unsub();
+        if(user){ resolve(user); }
+        else {
+          auth.signInWithPopup(provider)
+            .then(r => resolve(r.user))
+            .catch(e => { toast('Sign-in failed: '+(e.message||e)); reject(e); });
+        }
+      });
+    });
+  });
+}
+
 function initFirebase(cfg, silent){
   if(window._firebaseLoadFailed||typeof firebase==='undefined'){
     if(!silent) toast('Firebase scripts unavailable — check internet connection');
@@ -1775,7 +1814,10 @@ function initFirebase(cfg, silent){
     let app; try{ app=firebase.app(); }catch(e){ app=firebase.initializeApp(cfg); }
     fireDb=firebase.firestore();
     localStorage.setItem('nd_fbcfg',JSON.stringify(cfg));
-    startRealtimeSync(); setSyncUI('syncing'); return true;
+    ensureSignedIn()
+      .then(user => { startRealtimeSync(); setSyncUI('syncing'); })
+      .catch(() => setSyncUI('offline'));
+    return true;
   }catch(e){ toast('Firebase error: '+e.message); return false; }
 }
 function startRealtimeSync(){
