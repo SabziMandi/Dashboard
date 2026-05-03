@@ -535,9 +535,8 @@ body {
 .card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: var(--shadow); }
 .card.c-urgent      { border-left-color: var(--urgent); }
 .card.c-in-progress { border-left-color: var(--progress); }
-.card.c-completed   { border-left-color: var(--done); opacity: .55; }
-.card.c-completed .card-title { text-decoration: line-through; }
-.card.c-on-hold     { border-left-color: var(--onhold); opacity: .75; }
+.card.c-completed   { border-left-color: var(--done); }
+.card.c-on-hold     { border: 1.5px dashed rgba(124,58,237,.35); border-left: 3px dashed var(--onhold); background: rgba(124,58,237,.04); }
 .card.c-carried     { border-left-color: var(--carry); }
 .card.c-working     { border-left-color: var(--working); background: rgba(13,148,136,.04); }
 .card.c-watching    { border-left-color: var(--watching); background: rgba(180,83,9,.035); }
@@ -579,10 +578,9 @@ body {
 .badge-dot { width:6px;height:6px;border-radius:50%;flex-shrink:0;display:inline-block; }
 .countdown-chip { display:inline-flex;align-items:center;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;white-space:nowrap; }
 
-.card.c-not-done  { border-left-color: #64748b; opacity: .55; }
-.card.c-not-done .card-title { text-decoration: line-through; }
-.card.c-postponed { border-left-color: #0EA5E9; opacity: .75; }
-.card.c-shelved   { border-left-color: #94a3b8; opacity: .6; }
+.card.c-not-done  { border-left-color: #64748b; }
+.card.c-postponed { border-left-color: #0EA5E9; }
+.card.c-shelved   { border-left-color: #94a3b8; }
 
 /* Drag reorder */
 .card[draggable="true"] { cursor: grab; }
@@ -940,6 +938,7 @@ body {
 .uc-body { display: none; padding: 10px 14px 13px; border-top: 1px solid var(--border); }
 .uc-body.open { display: block; }
 .uc-row.uc-open .uc-preview { display: none; }
+.uc-preview { font-size:11px; color:var(--text3); margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-family:var(--font); line-height:1.4; }
 .uc-fields { display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
 .uc-field  { display: flex; align-items: baseline; gap: 10px; }
 .uc-flbl   { font-size: 10.5px; font-weight: 500; color: var(--text3); flex-shrink: 0; min-width: 80px; padding-top: 1px; }
@@ -4447,8 +4446,6 @@ function toggleCard(id){
     const row=b.closest('.uc-row');
     if(row){
       row.classList.toggle('uc-open',nowOpen);
-      const preview=row.querySelector('.uc-preview');
-      if(preview) preview.style.display=nowOpen?'none':'';
     }
   }
   // Also handle resolved section rows — show compact row back when card collapses
@@ -6848,7 +6845,7 @@ function renderCombinedAccordion(archKey){
         const isOpen=ui.openCards.has(s.id);
         const rowId='res-row-'+s.id, bodyId='res-body-'+s.id;
         const _cardAK=s._archiveDate||archKey||null;
-        g+=`<div style="margin-bottom:5px"><div id="${rowId}" style="display:${isOpen?'none':'flex'};align-items:center;gap:8px;padding:7px 11px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer;opacity:.85" onclick="toggleCard('${s.id}');" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.85'"><span style="font-size:12px;color:${color};flex-shrink:0">${icon}</span><span style="font-size:12.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${s.status==='completed'?'text-decoration:line-through;color:var(--text3)':''}">${esc(s.title||'Untitled')}</span>${resolvedDate?`<span style="font-size:10px;color:var(--text3);flex-shrink:0">${resolvedDate}${postponeLabel}</span>`:''}<span style="font-size:11px;color:var(--border2);flex-shrink:0">▾</span></div><div id="${bodyId}" style="display:${isOpen?'block':'none'}">${renderCard(s._subsec||'ibu',s,_cardAK)}</div></div>`;
+        g+=`<div style="margin-bottom:5px"><div id="${rowId}" style="display:${isOpen?'none':'flex'};align-items:center;gap:8px;padding:7px 11px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer" onclick="toggleCard('${s.id}');"><span style="font-size:12px;color:${color};flex-shrink:0">${icon}</span><span style="font-size:12.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span>${resolvedDate?`<span style="font-size:10px;color:var(--text3);flex-shrink:0">${resolvedDate}${postponeLabel}</span>`:''}<span style="font-size:11px;color:var(--border2);flex-shrink:0">▾</span></div><div id="${bodyId}" style="display:${isOpen?'block':'none'}">${renderCard(s._subsec||'ibu',s,_cardAK)}</div></div>`;
       });
       if(remaining>0){ const nb=Math.min(remaining,10); g+=`<div style="padding:4px 2px"><button class="btn btn-ghost btn-sm" onclick="ui_resolvedPages['${key}']=(ui_resolvedPages['${key}']||1)+1;render();event.stopPropagation()" style="color:var(--accent);border-color:rgba(207,102,64,.3);font-size:11.5px">Show ${nb} more <span style="opacity:.6;font-size:11px">(${remaining} remaining)</span></button></div>`; }
       g+='</div>'; // close groupBodyId
@@ -8832,7 +8829,7 @@ function renderUpcomingRow(sec,s,archKey){
     <span class="uc-expand-icon${isOpen?' open':''}">▶</span>
     <div style="flex:1;min-width:0">
       <div class="uc-title${(isExpired||isCompleted)?' uc-title-past':''}" style="${isCompleted?'text-decoration:line-through;opacity:.6;':''}}">${esc(s.title||'Untitled')}</div>
-      ${(s.detail||s.correspondent)?`<div class="uc-preview" style="font-size:11px;color:var(--text3);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-family:var(--font);line-height:1.4">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
+      ${(s.detail||s.correspondent)?`<div class="uc-preview">${esc((s.detail||s.correspondent||'')).replace(/\n/g,' ')}</div>`:''}
     </div>
     <div class="uc-meta-line">
       ${dateBoxHtml}
