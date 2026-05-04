@@ -934,20 +934,7 @@ body {
 .uc-date-box-day.overdue { color: var(--urgent); }
 .uc-date-box-cnt  { font-size: 10px; color: var(--text3); font-family: var(--mono); line-height: 1.2; margin-top: 2px; }
 .uc-date-box-type { font-size: 9.5px; color: var(--text3); font-family: var(--font); line-height: 1.2; margin-top: 1px; opacity: .8; }
-/* Task date box — same shape as uc-date-box, amber palette */
-.task-date-box {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: rgba(217,119,6,.06); border: 0.5px solid rgba(217,119,6,.2);
-  border-radius: 7px; width: 72px; min-width: 72px; height: 44px; text-align: center; flex-shrink: 0;
-}
-.task-date-box.tdb-overdue { background: var(--urgent-bg); border-color: rgba(220,38,38,.2); }
-.task-date-box.tdb-today   { background: rgba(207,102,64,.08); border-color: rgba(207,102,64,.3); }
-.task-date-box.tdb-done    { background: rgba(22,163,74,.06); border-color: rgba(22,163,74,.2); opacity:.75; }
-.task-date-box-day { font-size: 11px; font-weight: 600; color: var(--progress); font-family: var(--mono); line-height: 1.2; }
-.task-date-box-day.tdb-overdue { color: var(--urgent); }
-.task-date-box-day.tdb-today   { color: var(--accent); }
-.task-date-box-day.tdb-done    { color: var(--done); }
-.task-date-box-cnt { font-size: 10px; color: var(--text3); font-family: var(--mono); line-height: 1.2; margin-top: 2px; }
+/* Task date box CSS removed — using deadline chip instead */
 .uc-chip { font-size: 11px; color: var(--text3); font-family: var(--font); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
 .uc-chip.uc-chip-overdue { color: var(--urgent); font-weight: 600; }
@@ -1061,6 +1048,8 @@ body {
 .task-section-divider:first-child, .task-section-divider.tsd-first { margin-top: 0; }
 .task-section-divider.tsd-overdue { color: var(--urgent); border-bottom-color: rgba(220,38,38,.2); }
 .task-section-divider.tsd-today   { color: var(--accent); border-bottom-color: rgba(207,102,64,.25); }
+.task-section-divider.tsd-tomorrow{ color: var(--progress); border-bottom-color: rgba(217,119,6,.22); }
+.task-section-divider.tsd-upcoming{ color: var(--upcoming); border-bottom-color: rgba(13,148,136,.2); }
 .task-section-divider.tsd-nodeadline { color: var(--text3); }
 .task-section-divider .tsd-count  { font-weight: 400; color: var(--text3); font-size: 10.5px; }
 .task-section-divider .tsd-chev   { font-size: 10px; color: var(--text3); margin-left: auto; }
@@ -5067,13 +5056,8 @@ function renderUpcomingView(){
 
     if(expiredUpcoming.length){
       const isExpOpen=ui_expiredUpcomingOpen['today']===true;
-      html+=`<div style="border-top:1px dashed var(--border);margin-top:8px">
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;user-select:none" onclick="ui_expiredUpcomingOpen['today']=!ui_expiredUpcomingOpen['today'];render()">
-          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${expiredUpcoming.length} expired</span>
-          <span style="font-size:10px;color:var(--text3);margin-left:auto">${isExpOpen?'▾':'▸'}</span>
-        </div>
-        ${isExpOpen?expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join(''):''}
-      </div>`;
+      html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_expiredUpcomingOpen['today']=!ui_expiredUpcomingOpen['today'];const b=document.getElementById('upexp-today');const c=document.getElementById('upexp-today-chev');if(b)b.style.display=ui_expiredUpcomingOpen['today']?'block':'none';if(c)c.textContent=ui_expiredUpcomingOpen['today']?'▾':'▸'">↩ ${expiredUpcoming.length} expired <span id="upexp-today-chev" class="tsd-chev">${isExpOpen?'▾':'▸'}</span></div>`;
+      html+=`<div id="upexp-today" style="display:${isExpOpen?'block':'none'}">${isExpOpen?expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join(''):''}</div>`;
     }
   }
   if(html.includes('border-top:0;border-radius:0 0')) html+='</div>'; // close content wrapper
@@ -5528,33 +5512,26 @@ function renderAccordion(sec,archKey){
       visibleUpcoming.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
       if(activeUpcoming.length>upcomingLimit){
         const upRemaining=activeUpcoming.length-upcomingLimit;
-        html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
-          <button class="btn btn-ghost btn-sm" onclick="showMoreUpcoming();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
-            ↓ Show 10 more <span style="opacity:.6;font-size:11px">(${upRemaining} remaining)</span>
-          </button>
-        </div>`;
+        html+=`<div class="task-section-divider tsd-nodeadline" onclick="showMoreUpcoming();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${upRemaining} remaining)</span><span class="tsd-chev">+</span></div>`;
       }
     }
 
     // Completed entries — faded, struck-through, sorted newest first
     if(completedUpcoming.length){
-      html+=`<div style="border-top:1px dashed var(--border);padding-top:8px;margin-top:8px">
-        <div style="font-size:11px;font-family:var(--font);color:var(--done);margin-bottom:6px">✅ ${completedUpcoming.length} completed</div>
-        ${completedUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}
-      </div>`;
+      const _compKey=(archKey||'today')+'-'+sec.key+'-comp';
+      const isCompOpen=ui_expiredUpcomingOpen[_compKey]!==false;
+      html+=`<div class="task-section-divider" style="color:var(--done);border-bottom-color:rgba(22,163,74,.2);margin-top:8px" onclick="ui_expiredUpcomingOpen['${_compKey}']=!ui_expiredUpcomingOpen['${_compKey}'];const b=document.getElementById('upcomp-body-${_compKey.replace(/[^a-z0-9]/gi,'-')}');const c=document.getElementById('upcomp-chev-${_compKey.replace(/[^a-z0-9]/gi,'-')}');if(b)b.style.display=ui_expiredUpcomingOpen['${_compKey}']?'block':'none';if(c)c.textContent=ui_expiredUpcomingOpen['${_compKey}']?'▾':'▸'">✓ ${completedUpcoming.length} completed <span id="upcomp-chev-${_compKey.replace(/[^a-z0-9]/gi,'-')}" class="tsd-chev">${isCompOpen?'▾':'▸'}</span></div>`;
+      html+=`<div id="upcomp-body-${_compKey.replace(/[^a-z0-9]/gi,'-')}" style="display:${isCompOpen?'block':'none'}">${completedUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}</div>`;
     }
 
     // Expired entries — past date, not completed — collapsed by default
     if(expiredUpcoming.length){
       const _expKey=(archKey||'today')+'-'+sec.key;
       const isExpOpen=ui_expiredUpcomingOpen[_expKey]===true;
-      html+=`<div style="border-top:1px dashed var(--border);margin-top:8px">
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 4px;cursor:pointer;user-select:none" onclick="ui_expiredUpcomingOpen['${_expKey}']=!ui_expiredUpcomingOpen['${_expKey}'];render()">
-          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${expiredUpcoming.length} expired</span>
-          <span style="font-size:10px;color:var(--text3);margin-left:auto">${isExpOpen?'▾':'▸'}</span>
-        </div>
-        ${isExpOpen?expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}
-      </div>`;
+      const _expBodyId='upexp-body-'+_expKey.replace(/[^a-z0-9]/gi,'-');
+      const _expChevId='upexp-chev-'+_expKey.replace(/[^a-z0-9]/gi,'-');
+      html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_expiredUpcomingOpen['${_expKey}']=!ui_expiredUpcomingOpen['${_expKey}'];const b=document.getElementById('${_expBodyId}');const c=document.getElementById('${_expChevId}');if(b)b.style.display=ui_expiredUpcomingOpen['${_expKey}']?'block':'none';if(c)c.textContent=ui_expiredUpcomingOpen['${_expKey}']?'▾':'▸'">↩ ${expiredUpcoming.length} expired <span id="${_expChevId}" class="tsd-chev">${isExpOpen?'▾':'▸'}</span></div>`;
+      html+=`<div id="${_expBodyId}" style="display:${isExpOpen?'block':'none'}">${isExpOpen?expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}</div>`;
     }
   } else {
     if(!stories.length&&!isFormOpen) html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet — click <strong>+ Add</strong></div></div>`;
@@ -5566,30 +5543,26 @@ function renderAccordion(sec,archKey){
       if(_done.length){
         const _secDoneKey=(archKey||'today')+'-'+sec.key;
         const _isDoneOpen=ui_storiesDoneOpen[_secDoneKey]===true;
-        html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
-          <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none" onclick="ui_storiesDoneOpen['${_secDoneKey}']=!ui_storiesDoneOpen['${_secDoneKey}'];render()">
-            <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${_done.length} done / not done</span>
-            <span style="font-size:10px;color:var(--text3);margin-left:auto">${_isDoneOpen?'▾':'▸'}</span>
-          </div>
-        </div>`;
+        html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_storiesDoneOpen['${_secDoneKey}']=!ui_storiesDoneOpen['${_secDoneKey}'];const b=document.getElementById('sdone-body-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}');const c=document.getElementById('sdone-chev-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}');if(b)b.style.display=ui_storiesDoneOpen['${_secDoneKey}']?'block':'none';if(c)c.textContent=ui_storiesDoneOpen['${_secDoneKey}']?'▾':'▸'">↩ ${_done.length} done / not done <span id="sdone-chev-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}" class="tsd-chev">${_isDoneOpen?'▾':'▸'}</span></div>`;
+        html+=`<div id="sdone-body-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}" style="display:${_isDoneOpen?'block':'none'}">`;
         if(_isDoneOpen){ _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
+        html+=`</div>`;
       }
     }
 
     // Shelved ribbon — always visible, displayed below active stories
     if(shelvedCount>0){
       const _isShelvedOpen=ui_storiesShelvedOpen[sec.key]===true;
-      html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none" onclick="ui_storiesShelvedOpen['${sec.key}']=!ui_storiesShelvedOpen['${sec.key}'];render()">
-          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${shelvedCount} shelved</span>
-          <span style="font-size:10px;color:var(--text3);margin-left:auto">${_isShelvedOpen?'▾':'▸'}</span>
-        </div>
-      </div>`;
+      const _shelvBodyId='shelved-body-'+sec.key;
+      const _shelvChevId='shelved-chev-'+sec.key;
+      html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_storiesShelvedOpen['${sec.key}']=!ui_storiesShelvedOpen['${sec.key}'];const b=document.getElementById('${_shelvBodyId}');const c=document.getElementById('${_shelvChevId}');if(b)b.style.display=ui_storiesShelvedOpen['${sec.key}']?'block':'none';if(c)c.textContent=ui_storiesShelvedOpen['${sec.key}']?'▾':'▸'">🗄 ${shelvedCount} shelved <span id="${_shelvChevId}" class="tsd-chev">${_isShelvedOpen?'▾':'▸'}</span></div>`;
+      html+=`<div id="${_shelvBodyId}" style="display:${_isShelvedOpen?'block':'none'}">`;
       if(_isShelvedOpen){
         html+=`<div class="shelved-section">`;
         all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
         html+=`</div>`;
       }
+      html+=`</div>`;
     }
   }
 
@@ -6119,7 +6092,7 @@ function submitTaskForm(){
 }
 function editTask(id){
   const task=state.tasks?.find(t=>t.id===id); if(!task) return;
-  ui_taskForm=true; ui_editTaskId=id;
+  ui_taskForm=true; ui_editTaskId=id; window._lastFormOpenTs=Date.now();
   render();
   setTimeout(()=>{
     const set=(eid,val)=>{ const el=document.getElementById(eid); if(el) el.value=val||''; };
@@ -6301,7 +6274,7 @@ function renderTasksSection(){
     ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
       <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">↓ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div></div>`:''}`;
 
   // ── Archive date view (both standalone and embedded) ──────────────────────
@@ -6405,7 +6378,7 @@ function renderTasksSection(){
     <div class="fi-form-footer">
       <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
       <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">↓ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
+      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
     </div>`;
   }
 
@@ -6520,9 +6493,9 @@ function renderTasksSection(){
     const _groupMeta={
       today:      {label:'Today',      icon:'📅', extraCls:'tsd-today'},
       overdue:    {label:'Overdue',    icon:'⚠',  extraCls:'tsd-overdue'},
-      tomorrow:   {label:'Tomorrow',   icon:'🔜', extraCls:''},
-      upcoming:   {label:'Upcoming',   icon:'🗓', extraCls:''},
-      nodeadline: {label:'No deadline',icon:'·',  extraCls:'tsd-nodeadline'},
+      tomorrow:   {label:'Tomorrow',   icon:'→',  extraCls:'tsd-tomorrow'},
+      upcoming:   {label:'Upcoming',   icon:'⏳', extraCls:'tsd-upcoming'},
+      nodeadline: {label:'No deadline',icon:'—',  extraCls:'tsd-nodeadline'},
     };
     let isFirstGroup=true;
     ['today','overdue','tomorrow','upcoming','nodeadline'].forEach(gKey=>{
@@ -6538,11 +6511,7 @@ function renderTasksSection(){
     });
     if(_activeTasks.length>taskLimit){
       const remaining=_activeTasks.length-taskLimit;
-      html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
-        <button class="btn btn-ghost btn-sm" onclick="showMoreTasks();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
-          ↓ Show 10 more <span style="opacity:.6;font-size:11px">(${remaining} remaining)</span>
-        </button>
-      </div>`;
+      html+=`<div class="task-section-divider tsd-nodeadline" onclick="showMoreTasks();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${remaining} remaining)</span><span class="tsd-chev">+</span></div>`;
     }
     if(_doneTasks.length){
       const doneLimit=ui_doneTaskPage*10;
@@ -6552,11 +6521,7 @@ function renderTasksSection(){
       html+=`<div id="tg-body-done" style="display:${ui_doneTaskOpen?'block':'none'}">`;
       visibleDone.forEach(t=>{ html+=renderTaskCard(t,today); });
       if(doneRemaining>0){
-        html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
-          <button class="btn btn-ghost btn-sm" onclick="showMoreDoneTasks();event.stopPropagation()" style="color:var(--text3);border-color:var(--border);font-size:12px">
-            ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${doneRemaining} remaining)</span>
-          </button>
-        </div>`;
+        html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:4px" onclick="showMoreDoneTasks();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${doneRemaining} remaining)</span><span class="tsd-chev">+</span></div>`;
       }
       html+=`</div>`;
     }
@@ -6669,35 +6634,15 @@ function renderTaskCard(t, today){
   const carriedChip='';
   const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>`:'';
 
-  // Build task date box (matches uc-date-box pattern, amber palette)
-  let taskDateBox='';
-  if(t.deadline_date && !t.isRecurring){
-    const _dbox_diff=_daysFromToday;
-    const isDone=t.taskStatus==='done';
-    const isOvd=isOverdue;
-    const shortDate=new Date(t.deadline_date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-    let cntLabel='';
-    if(isDone)           cntLabel='done';
-    else if(_dbox_diff===0)  cntLabel='today';
-    else if(_dbox_diff===1)  cntLabel='tomorrow';
-    else if(_dbox_diff===-1) cntLabel='yesterday';
-    else if(isOvd)       cntLabel=Math.abs(_dbox_diff)+'d overdue';
-    else if(_dbox_diff!==null&&_dbox_diff>1) cntLabel='in '+_dbox_diff+'d';
-    const boxCls='task-date-box'+(isOvd?' tdb-overdue':_dbox_diff===0?' tdb-today':isDone?' tdb-done':'');
-    const dayCls='task-date-box-day'+(isOvd?' tdb-overdue':_dbox_diff===0?' tdb-today':isDone?' tdb-done':'');
-    taskDateBox=`<div class="${boxCls}"><div class="${dayCls}">${shortDate}</div>${cntLabel?`<div class="task-date-box-cnt">${cntLabel}</div>`:''}</div>`;
-  }
-
   const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${recurSchedule}</span>`:'';
   return`<div class="${cardCls}" data-id="${t.id}">
   <div class="task-top" onclick="toggleTaskOpen('${t.id}')">
     <div style="flex:1;min-width:0">
       <div class="task-title${t.taskStatus==='done'?' done-title':''}">${esc(t.title||'Untitled')}</div>
       <div class="task-chips">
-        ${postponeChip}${carriedChip}${doneChip}${recurBadge}
+        ${deadlineChip}${postponeChip}${carriedChip}${doneChip}${recurBadge}
       </div>
     </div>
-    ${taskDateBox}
     <div class="task-right">
       <span class="${sbCls}">${sbTxt}</span>
     </div>
@@ -7161,7 +7106,7 @@ function submitMeetingRemarkEdit(meetingId, remarkId){
 }
 function editMeeting(id){
   const m=(state.meetings||[]).find(m=>m.id===id); if(!m) return;
-  ui_meetingForm=true; ui_editMeetingId=id;
+  ui_meetingForm=true; ui_editMeetingId=id; window._lastFormOpenTs=Date.now();
   render();
   setTimeout(()=>{
     const set=(eid,val)=>{ const el=document.getElementById(eid); if(el) el.value=val||''; };
@@ -7550,7 +7495,7 @@ function renderMeetingsSection(){
   body+=`${!isStandaloneMeet?`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
     <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
     <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">↓ Export</button>
-    <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
+    <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
   </div>`:''}`;
   if(ui_meetingForm) body+=renderMeetingForm();
   if(!meetings.length&&!ui_meetingForm){
@@ -7559,13 +7504,10 @@ function renderMeetingsSection(){
     _scheduledMeetings.forEach(m=>{ body+=renderMeetingCard(m); });
     const _previousMeetings=[..._pastOneOffMeetings, ..._doneMeetings].sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
     if(_previousMeetings.length){
-      body+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui_meetPrevOpen=!ui_meetPrevOpen;render()">
-          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${_previousMeetings.length} previous / done</span>
-          <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_meetPrevOpen?'▾':'▸'}</span>
-        </div>
-      </div>`;
+      body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_meetPrevOpen=!ui_meetPrevOpen;const b=document.getElementById('meet-prev-body');const c=document.getElementById('meet-prev-chev');if(b)b.style.display=ui_meetPrevOpen?'block':'none';if(c)c.textContent=ui_meetPrevOpen?'▾':'▸'">↩ ${_previousMeetings.length} previous / done <span id="meet-prev-chev" class="tsd-chev">${ui_meetPrevOpen?'▾':'▸'}</span></div>`;
+      body+=`<div id="meet-prev-body" style="display:${ui_meetPrevOpen?'block':'none'}">`;
       if(ui_meetPrevOpen){ _previousMeetings.forEach(m=>{ body+=renderMeetingCard(m, _pastOneOffMeetings.includes(m)); }); }
+      body+=`</div>`;
     }
   }
   body+=`</div>`;
@@ -7694,13 +7636,8 @@ function renderRemarksAccordion(){
   // Resolved notes — collapsed by default, click header to expand
   if(resolved.length){
     const isResOpen=ui.notesResolvedOpen===true;
-    body+=`<div style="border-top:1px dashed var(--border);margin-top:10px">
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui.notesResolvedOpen=!ui.notesResolvedOpen;render()">
-        <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${resolved.length} resolved</span>
-        <span style="font-size:10px;color:var(--text3);margin-left:auto">${isResOpen?'▾':'▸'}</span>
-      </div>
-    </div>`;
-    if(isResOpen){
+    body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:10px" onclick="ui.notesResolvedOpen=!ui.notesResolvedOpen;const b=document.getElementById('notes-res-body');const c=document.getElementById('notes-res-chev');if(b)b.style.display=ui.notesResolvedOpen?'block':'none';if(c)c.textContent=ui.notesResolvedOpen?'▾':'▸'">↩ ${resolved.length} resolved <span id="notes-res-chev" class="tsd-chev">${isResOpen?'▾':'▸'}</span></div>`;
+    body+=`<div id="notes-res-body" style="display:${isResOpen?'block':'none'}">`;
       resolved.forEach(n=>{
         const created=new Date(n.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
         body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}">
@@ -7716,7 +7653,7 @@ function renderRemarksAccordion(){
           </div>
         </div>`;
       });
-    }
+    body+=`</div>`;
   }
 
   if(isStandaloneNote){
@@ -7880,7 +7817,7 @@ function submitLeaveForm(){
 }
 function editLeave(id){
   const l=(state.leaves||[]).find(l=>l.id===id);if(!l)return;
-  ui_leaveForm=true;ui_editLeaveId=id;render();
+  ui_leaveForm=true;ui_editLeaveId=id;window._lastFormOpenTs=Date.now();render();
   setTimeout(()=>{
     const set=(eid,val)=>{const el=document.getElementById(eid);if(el)el.value=val||'';};
     set('lf-employee', l.employeeName||'');
@@ -8002,9 +7939,18 @@ function _teGetClaimed(e){ return e.data?.claimed||'no'; }
 function _teGetStories(){
   const out=[];
   const seen=new Set();
+  const RESOLVED_STATUSES=new Set(['completed','not-done','shelved','postponed','on-hold']);
   ['ibu','other','requests'].forEach(sec=>{
     (state.sections[sec]||[]).forEach(s=>{
-      if(!seen.has(s.id)){ seen.add(s.id); out.push({sec,s}); }
+      if(seen.has(s.id)) return;
+      seen.add(s.id);
+      // Exclude resolved stories unless they have T&E entries linked
+      // (user may want to review T&E even after resolving the story)
+      if(RESOLVED_STATUSES.has(s.status)){
+        const hasEntries=(state.travelEntries||[]).some(e=>e.storyId===s.id);
+        if(!hasEntries) return;
+      }
+      out.push({sec,s});
     });
   });
   return out;
@@ -8088,6 +8034,7 @@ function _teRefresh(){
 // ── Form ──────────────────────────────────────────────────
 function _teOpenForm(opts){
   _te={open:true,type:opts.type||'cab',storyId:opts.storyId||null,storySec:opts.storySec||null,editId:opts.editId||null};
+  window._lastFormOpenTs=Date.now();
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
   else { ui.openSections.add('travel'); render(); setTimeout(()=>{ const t=document.getElementById('acc-body-travel'); if(t){ t.innerHTML=_teRenderBody(); t.classList.add('open'); } },50); }
@@ -8666,7 +8613,7 @@ function renderLeavesSection(){
   ${!isStandaloneLeave?`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
     <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
     <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">↓ Export</button>
-    <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
+    <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
   </div>`:''}`;
 
   // Add / edit form
@@ -8713,15 +8660,12 @@ function renderLeavesSection(){
 
   // Past leaves
   if(pastLeaves.length){
-    html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;user-select:none" onclick="ui_showPastLeaves=!ui_showPastLeaves;render()">
-        <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${pastLeaves.length} past leaves</span>
-        <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_showPastLeaves?'▾':'▸'}</span>
-      </div>
-    </div>`;
+    html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_showPastLeaves=!ui_showPastLeaves;const b=document.getElementById('past-leaves-body');const c=document.getElementById('past-leaves-chev');if(b)b.style.display=ui_showPastLeaves?'block':'none';if(c)c.textContent=ui_showPastLeaves?'▾':'▸'">↩ ${pastLeaves.length} past leaves <span id="past-leaves-chev" class="tsd-chev">${ui_showPastLeaves?'▾':'▸'}</span></div>`;
+    html+=`<div id="past-leaves-body" style="display:${ui_showPastLeaves?'block':'none'}">`;
     if(ui_showPastLeaves){
       [...pastLeaves].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,true); });
     }
+    html+=`</div>`;
   }
   html+=`</div>`;
   if(isStandaloneLeave){
@@ -8736,7 +8680,7 @@ function renderLeavesSection(){
         <div class="fi-form-footer">
           <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
           <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">↓ Export</button>
-          <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
+          <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
         </div>
         ${html}
       </div>
@@ -9454,7 +9398,7 @@ function init(){
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'&&fireDb){
       setTimeout(()=>{
-        const hasOpenForm=ui.openForms.size>0||_te.open;
+        const hasOpenForm=ui.openForms.size>0||_te.open||ui_taskForm||ui_meetingForm||ui_leaveForm;
         // Also block if a form was very recently opened (iOS keyboard triggers visibilitychange)
         const formJustOpened=(Date.now()-(window._lastFormOpenTs||0))<4000;
         if(!hasOpenForm&&!formJustOpened){ setSyncUI('syncing'); startRealtimeSync(); }
@@ -9464,7 +9408,7 @@ function init(){
   // Fallback: re-establish sync if connection has been idle — but only when no form is open
   setInterval(()=>{
     if(fireDb&&document.visibilityState==='visible'){
-      const hasOpenForm=ui.openForms.size>0||_te.open;
+      const hasOpenForm=ui.openForms.size>0||_te.open||ui_taskForm||ui_meetingForm||ui_leaveForm;
       if(!hasOpenForm) startRealtimeSync();
     }
   }, 60000);
