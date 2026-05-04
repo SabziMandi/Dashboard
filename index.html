@@ -5057,7 +5057,7 @@ function renderUpcomingView(){
     if(expiredUpcoming.length){
       const isExpOpen=ui_expiredUpcomingOpen['today']===true;
       html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_expiredUpcomingOpen['today']=!ui_expiredUpcomingOpen['today'];const b=document.getElementById('upexp-today');const c=document.getElementById('upexp-today-chev');if(b)b.style.display=ui_expiredUpcomingOpen['today']?'block':'none';if(c)c.textContent=ui_expiredUpcomingOpen['today']?'▾':'▸'">↩ ${expiredUpcoming.length} expired <span id="upexp-today-chev" class="tsd-chev">${isExpOpen?'▾':'▸'}</span></div>`;
-      html+=`<div id="upexp-today" style="display:${isExpOpen?'block':'none'}">${isExpOpen?expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join(''):''}</div>`;
+      html+=`<div id="upexp-today" style="display:${isExpOpen?'block':'none'}">${expiredUpcoming.map(s=>renderCard('upcoming',s,null)).join('')}</div>`;
     }
   }
   if(html.includes('border-top:0;border-radius:0 0')) html+='</div>'; // close content wrapper
@@ -5531,7 +5531,7 @@ function renderAccordion(sec,archKey){
       const _expBodyId='upexp-body-'+_expKey.replace(/[^a-z0-9]/gi,'-');
       const _expChevId='upexp-chev-'+_expKey.replace(/[^a-z0-9]/gi,'-');
       html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_expiredUpcomingOpen['${_expKey}']=!ui_expiredUpcomingOpen['${_expKey}'];const b=document.getElementById('${_expBodyId}');const c=document.getElementById('${_expChevId}');if(b)b.style.display=ui_expiredUpcomingOpen['${_expKey}']?'block':'none';if(c)c.textContent=ui_expiredUpcomingOpen['${_expKey}']?'▾':'▸'">↩ ${expiredUpcoming.length} expired <span id="${_expChevId}" class="tsd-chev">${isExpOpen?'▾':'▸'}</span></div>`;
-      html+=`<div id="${_expBodyId}" style="display:${isExpOpen?'block':'none'}">${isExpOpen?expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join(''):''}</div>`;
+      html+=`<div id="${_expBodyId}" style="display:${isExpOpen?'block':'none'}">${expiredUpcoming.map(s=>renderCard(sec.key,s,archKey)).join('')}</div>`;
     }
   } else {
     if(!stories.length&&!isFormOpen) html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet — click <strong>+ Add</strong></div></div>`;
@@ -5545,7 +5545,7 @@ function renderAccordion(sec,archKey){
         const _isDoneOpen=ui_storiesDoneOpen[_secDoneKey]===true;
         html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_storiesDoneOpen['${_secDoneKey}']=!ui_storiesDoneOpen['${_secDoneKey}'];const b=document.getElementById('sdone-body-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}');const c=document.getElementById('sdone-chev-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}');if(b)b.style.display=ui_storiesDoneOpen['${_secDoneKey}']?'block':'none';if(c)c.textContent=ui_storiesDoneOpen['${_secDoneKey}']?'▾':'▸'">↩ ${_done.length} done / not done <span id="sdone-chev-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}" class="tsd-chev">${_isDoneOpen?'▾':'▸'}</span></div>`;
         html+=`<div id="sdone-body-${_secDoneKey.replace(/[^a-z0-9]/gi,'-')}" style="display:${_isDoneOpen?'block':'none'}">`;
-        if(_isDoneOpen){ _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
+        _done.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
         html+=`</div>`;
       }
     }
@@ -5557,11 +5557,9 @@ function renderAccordion(sec,archKey){
       const _shelvChevId='shelved-chev-'+sec.key;
       html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_storiesShelvedOpen['${sec.key}']=!ui_storiesShelvedOpen['${sec.key}'];const b=document.getElementById('${_shelvBodyId}');const c=document.getElementById('${_shelvChevId}');if(b)b.style.display=ui_storiesShelvedOpen['${sec.key}']?'block':'none';if(c)c.textContent=ui_storiesShelvedOpen['${sec.key}']?'▾':'▸'">🗄 ${shelvedCount} shelved <span id="${_shelvChevId}" class="tsd-chev">${_isShelvedOpen?'▾':'▸'}</span></div>`;
       html+=`<div id="${_shelvBodyId}" style="display:${_isShelvedOpen?'block':'none'}">`;
-      if(_isShelvedOpen){
-        html+=`<div class="shelved-section">`;
-        all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
-        html+=`</div>`;
-      }
+      html+=`<div class="shelved-section">`;
+      all.filter(s=>s.status==='shelved').forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
+      html+=`</div>`;
       html+=`</div>`;
     }
   }
@@ -6088,7 +6086,9 @@ function submitTaskForm(){
   }
   ui_taskForm=false;
   render();
-  setTimeout(()=>document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
+  // On mobile the keyboard takes ~300ms to dismiss — delay scroll until after
+  const _scrollDelay=window.innerWidth<=720?350:80;
+  setTimeout(()=>document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}),_scrollDelay);
 }
 function editTask(id){
   const task=state.tasks?.find(t=>t.id===id); if(!task) return;
@@ -6116,7 +6116,8 @@ function editTask(id){
         });
       }
     }
-    document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'});
+    const _editScrollDelay=window.innerWidth<=720?350:80;
+    setTimeout(()=>document.getElementById('tasks-section')?.scrollIntoView({behavior:'smooth',block:'start'}),_editScrollDelay);
   },80);
 }
 function openPostponeDialog(id){
@@ -6538,6 +6539,7 @@ function renderTasksSection(){
 }
 
 function showMoreTasks(){ ui_taskPage++; render(); }
+function showMoreNotes(){ ui_notePage++; render(); }
 function showMoreDoneTasks(){ ui_doneTaskPage++; render(); }
 function showMoreUpcoming(){ ui_upcomingPage++; render(); }
 function renderTaskCard(t, today){
@@ -6872,6 +6874,7 @@ function renderCombinedAccordion(archKey){
   return html;
 }
 let ui_noteForm=false;
+let ui_notePage=1; // notes active pagination
 let ui_openNotes=new Set();
 let ui_editNoteId=null;
 
@@ -6996,6 +6999,7 @@ function submitNoteForm(){
     toast('Note added ✓');
   }
   ui_noteForm=false;
+  ui_notePage=1;
   render();
 }
 function toggleNoteOpen(id){
@@ -7506,7 +7510,7 @@ function renderMeetingsSection(){
     if(_previousMeetings.length){
       body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_meetPrevOpen=!ui_meetPrevOpen;const b=document.getElementById('meet-prev-body');const c=document.getElementById('meet-prev-chev');if(b)b.style.display=ui_meetPrevOpen?'block':'none';if(c)c.textContent=ui_meetPrevOpen?'▾':'▸'">↩ ${_previousMeetings.length} previous / done <span id="meet-prev-chev" class="tsd-chev">${ui_meetPrevOpen?'▾':'▸'}</span></div>`;
       body+=`<div id="meet-prev-body" style="display:${ui_meetPrevOpen?'block':'none'}">`;
-      if(ui_meetPrevOpen){ _previousMeetings.forEach(m=>{ body+=renderMeetingCard(m, _pastOneOffMeetings.includes(m)); }); }
+      _previousMeetings.forEach(m=>{ body+=renderMeetingCard(m, _pastOneOffMeetings.includes(m)); });
       body+=`</div>`;
     }
   }
@@ -7603,7 +7607,10 @@ function renderRemarksAccordion(){
   if(!activeSorted.length && !ui_noteForm){
     body+=`<div class="empty-state" style="padding:16px 0"><div class="empty-icon">📝</div><div class="empty-msg">No notes yet — click <strong>+ Add</strong></div></div>`;
   } else {
-    activeSorted.forEach(n=>{
+    const noteLimit=ui_notePage*10;
+    const visibleNotes=activeSorted.slice(0,noteLimit);
+    const noteRemaining=activeSorted.length-visibleNotes.length;
+    visibleNotes.forEach(n=>{
       const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
       let dlChip='';
       if(n.deadline_date){
@@ -7631,6 +7638,9 @@ function renderRemarksAccordion(){
         </div>
       </div>`;
     });
+    if(noteRemaining>0){
+      body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:4px" onclick="showMoreNotes();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${noteRemaining} remaining)</span><span class="tsd-chev">+</span></div>`;
+    }
   }
 
   // Resolved notes — collapsed by default, click header to expand
@@ -7638,7 +7648,7 @@ function renderRemarksAccordion(){
     const isResOpen=ui.notesResolvedOpen===true;
     body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:10px" onclick="ui.notesResolvedOpen=!ui.notesResolvedOpen;const b=document.getElementById('notes-res-body');const c=document.getElementById('notes-res-chev');if(b)b.style.display=ui.notesResolvedOpen?'block':'none';if(c)c.textContent=ui.notesResolvedOpen?'▾':'▸'">↩ ${resolved.length} resolved <span id="notes-res-chev" class="tsd-chev">${isResOpen?'▾':'▸'}</span></div>`;
     body+=`<div id="notes-res-body" style="display:${isResOpen?'block':'none'}">`;
-      resolved.forEach(n=>{
+    resolved.forEach(n=>{
         const created=new Date(n.created).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
         body+=`<div class="note-card ${n.status==='done'?'note-done':'note-pass'}">
           <div class="note-text" style="text-decoration:${n.status==='done'?'line-through':''}">${esc(n.text)}</div>
@@ -8662,9 +8672,7 @@ function renderLeavesSection(){
   if(pastLeaves.length){
     html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_showPastLeaves=!ui_showPastLeaves;const b=document.getElementById('past-leaves-body');const c=document.getElementById('past-leaves-chev');if(b)b.style.display=ui_showPastLeaves?'block':'none';if(c)c.textContent=ui_showPastLeaves?'▾':'▸'">↩ ${pastLeaves.length} past leaves <span id="past-leaves-chev" class="tsd-chev">${ui_showPastLeaves?'▾':'▸'}</span></div>`;
     html+=`<div id="past-leaves-body" style="display:${ui_showPastLeaves?'block':'none'}">`;
-    if(ui_showPastLeaves){
-      [...pastLeaves].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,true); });
-    }
+    [...pastLeaves].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,true); });
     html+=`</div>`;
   }
   html+=`</div>`;
