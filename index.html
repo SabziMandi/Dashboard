@@ -82,8 +82,8 @@ window.addEventListener('unhandledrejection', function(e) {
   --tomorrow: #0D9488;
 
   /* ── Upcoming ── */
-  --upcoming:    #2563EB;
-  --upcoming-bg: rgba(37,99,235,.07);
+  --upcoming:    #0D9488;
+  --upcoming-bg: rgba(13,148,136,.07);
 
   --font:   'Inter', sans-serif;
   --mono:   'JetBrains Mono', monospace;
@@ -630,7 +630,7 @@ body {
 .deadline-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;background:rgba(124,58,237,.09);color:#7C3AED;border:0.5px solid rgba(124,58,237,.3);white-space:nowrap; }
 .deadline-badge.overdue { color: var(--urgent); background: var(--urgent-bg); border-color: rgba(220,38,38,.2); }
 .carry-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;background:rgba(234,88,12,.09);color:#C2410C;border:0.5px solid rgba(234,88,12,.3);white-space:nowrap; }
-.upcoming-due-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;background:rgba(37,99,235,.09);color:#1D4ED8;border:0.5px solid rgba(37,99,235,.3);white-space:nowrap; }
+.upcoming-due-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;background:rgba(13,148,136,.09);color:#0F766E;border:0.5px solid rgba(13,148,136,.3);white-space:nowrap; }
 .migrated-tag { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;color:#4338CA;background:rgba(79,70,229,.09);border:0.5px solid rgba(79,70,229,.3); }
 
 .chevron { color: var(--text3); font-size: 14px; transition: transform .2s; flex-shrink: 0; margin-top: 2px; }
@@ -653,10 +653,10 @@ body {
   display: inline-flex; align-items: center; gap: 4px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 5px; padding: 3px 8px; font-size: 11px;
-  color: #2563EB; text-decoration: none; transition: border-color .15s;
+  color: var(--accent); text-decoration: none; transition: border-color .15s;
   max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.link-pill:hover { border-color: #93C5FD; }
+.link-pill:hover { border-color: rgba(207,102,64,.4); }
 .card-btns { display: flex; gap: 7px; margin-top: 11px; flex-wrap: wrap; }
 .card-delete-row { display: inline-flex; }
 @media(max-width:720px){
@@ -672,6 +672,8 @@ body {
   background: var(--surface); border: 1px solid var(--accent);
   border-radius: 10px; padding: 18px; margin-bottom: 12px;
   animation: slideIn .17s ease; box-shadow: var(--shadow);
+  overflow-anchor: none;
+  scroll-margin-top: 80px;
 }
 @keyframes slideIn { from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)} }
 .form-title { font-size: 13.5px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
@@ -824,12 +826,12 @@ body {
 .expected-row .finput { flex: 1; }
 .upcoming-card {
   background: var(--surface);
-  border: 1px solid rgba(37,99,235,.2);
+  border: 1px solid rgba(13,148,136,.2);
   border-radius: 9px; margin-bottom: 8px;
   transition: border-color .15s, box-shadow .15s;
   border-left: 3px solid var(--upcoming);
 }
-.upcoming-card:hover { border-color: rgba(37,99,235,.4); box-shadow: var(--shadow); }
+.upcoming-card:hover { border-color: rgba(13,148,136,.4); box-shadow: var(--shadow); }
 .upcoming-card.uc-overdue { border-left-color: var(--urgent); }
 .upcoming-card.uc-completed { border-left-color: var(--done); }
 .upcoming-card.uc-on-hold { border-left-color: var(--onhold); }
@@ -867,8 +869,8 @@ body {
 .sel-counter { font-size: 12px; color: var(--text2); font-family: var(--mono); text-align: center; margin-bottom: 8px; min-height: 18px; }
 .backup-banner {
   display: flex; align-items: center; gap: 10px;
-  background: linear-gradient(135deg,rgba(37,99,235,.06),transparent);
-  border: 1px solid rgba(37,99,235,.25); border-radius: 9px;
+  background: linear-gradient(135deg,rgba(13,148,136,.06),transparent);
+  border: 1px solid rgba(13,148,136,.25); border-radius: 9px;
   padding: 10px 15px; margin-bottom: 8px; flex-wrap: wrap;
 }
 .backup-banner-icon { font-size: 18px; flex-shrink: 0; }
@@ -896,12 +898,12 @@ body {
 @keyframes toastin { from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)} }
 /* ── Compact upcoming row ── */
 .uc-row {
-  background: var(--surface); border: 1px solid var(--border);
+  background: var(--surface); border: 1px solid rgba(13,148,136,.2);
   border-radius: 8px; margin-bottom: 6px;
   transition: border-color .15s, box-shadow .12s;
   border-left: 3px solid var(--upcoming);
 }
-.uc-row:hover { border-color: rgba(37,99,235,.35); box-shadow: var(--shadow); }
+.uc-row:hover { border-color: rgba(13,148,136,.35); box-shadow: var(--shadow); }
 .uc-row.ucr-overdue  { border-left-color: var(--urgent); }
 .uc-row.ucr-completed{ border-left-color: var(--done); }
 .uc-row.ucr-on-hold  { border-left-color: var(--onhold); }
@@ -924,7 +926,7 @@ body {
 .uc-meta-line { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; margin-left: 6px; }
 .uc-date-box {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: rgba(37,99,235,.07); border: 0.5px solid rgba(37,99,235,.2);
+  background: rgba(13,148,136,.07); border: 0.5px solid rgba(13,148,136,.2);
   border-radius: 7px; width: 82px; min-width: 82px; height: 46px; text-align: center; flex-shrink: 0;
 }
 .uc-date-box.uc-date-box-overdue { background: var(--urgent-bg); border-color: rgba(220,38,38,.2); }
@@ -954,7 +956,7 @@ body {
 .note-card {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 8px; padding: 11px 13px; margin-bottom: 8px;
-  border-left: 3px solid var(--upcoming);
+  border-left: 3px solid var(--accent);
 }
 .note-card.note-done { border-left-color: var(--done); opacity: .6; }
 .note-card.note-pass { border-left-color: var(--text3); opacity: .5; }
@@ -962,7 +964,7 @@ body {
 .note-text { font-size: 13px; color: var(--text); line-height: 1.6; white-space: pre-wrap; margin-bottom: 7px; }
 .note-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 10.5px; font-family: var(--mono); color: var(--text3); }
 .note-deadline-chip { color: var(--urgent); font-weight: 600; }
-.note-deadline-chip.ok { color: var(--upcoming); font-weight: 500; }
+.note-deadline-chip.ok { color: #0D9488; font-weight: 500; }
 .note-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .note-add-form { background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 13px; margin-bottom: 10px; animation: slideIn .15s ease; }
 /* Broadcast slot row card */
@@ -1021,12 +1023,12 @@ body {
 .sremark-add textarea { min-width: 0; }
 
 .task-card {
-  background: var(--surface); border: 1px solid var(--border);
+  background: rgba(217,119,6,.03); border: 1px solid rgba(217,119,6,.18);
   border-radius: 8px; margin-bottom: 6px;
   transition: border-color .15s, box-shadow .12s;
-  border-left: 3px solid var(--border);
+  border-left: 3px solid rgba(217,119,6,.35);
 }
-.task-card:hover { border-color: var(--border2); box-shadow: var(--shadow); }
+.task-card:hover { border-color: rgba(217,119,6,.35); box-shadow: var(--shadow); }
 .task-card.ts-done       { border-left-color: var(--done); opacity: .7; }
 .task-card.ts-today      { border-left-color: var(--urgent); }
 .task-card.ts-tomorrow   { border-left-color: var(--progress); }
@@ -1035,13 +1037,27 @@ body {
 .task-card.ts-pending    { border-left-color: var(--upcoming); }
 .task-card.ts-carried    { border-left-color: var(--carry); }
 .task-section-divider {
-  font-size: 10.5px; font-family: var(--font); font-weight: 600; letter-spacing: .6px;
-  text-transform: uppercase; color: var(--text3);
-  padding: 8px 2px 4px; margin-top: 2px;
-  border-top: 1px dashed var(--border);
+  font-size: 11px; font-family: var(--font); font-weight: 600; letter-spacing: .1px;
+  color: var(--text2);
+  padding: 2px 2px 5px; margin: 6px 0 6px;
+  border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
 }
-.task-section-divider:first-child, .task-section-divider.tsd-first { border-top: none; margin-top: 0; padding-top: 2px; }
+.task-section-divider:first-child, .task-section-divider.tsd-first { margin-top: 0; }
+.task-section-divider.tsd-overdue { color: var(--urgent); border-bottom-color: rgba(220,38,38,.2); }
+.task-section-divider.tsd-today   { color: var(--accent); border-bottom-color: rgba(207,102,64,.25); }
+.task-section-divider.tsd-nodeadline { color: var(--text3); }
+.task-section-divider .tsd-count  { font-weight: 400; color: var(--text3); font-size: 10.5px; }
+.task-section-divider .tsd-chev   { font-size: 10px; color: var(--text3); margin-left: auto; }
+/* Story date bucket label — same visual language as task-section-divider */
+.sec-date-label {
+  font-size: 11px; font-family: var(--font); font-weight: 600;
+  color: var(--text2); padding: 2px 2px 5px; margin: 4px 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-date-label.sdl-today { color: var(--accent); border-bottom-color: rgba(207,102,64,.25); }
+.sec-date-label.sdl-muted { color: var(--text3); }
 .task-top {
   display: flex; align-items: center; gap: 9px;
   padding: 10px 13px; cursor: pointer; user-select: none;
@@ -1050,6 +1066,7 @@ body {
 .task-title.done-title { text-decoration: line-through; color: var(--text3); }
 .task-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
 .task-chip { font-size: 11px; color: var(--text3); font-family: var(--font); }
+.task-chip.mono { font-family: var(--mono); }
 .task-chip.overdue-chip { color: var(--urgent); font-weight: 600; }
 .task-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .task-status-badge {
@@ -1069,6 +1086,8 @@ body {
   background: var(--surface); border: 1px solid var(--accent);
   border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
   animation: slideIn .17s ease;
+  overflow-anchor: none;
+  scroll-margin-top: 80px;
 }
 
 
@@ -5497,7 +5516,7 @@ function renderAccordion(sec,archKey){
         const upRemaining=activeUpcoming.length-upcomingLimit;
         html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
           <button class="btn btn-ghost btn-sm" onclick="showMoreUpcoming();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
-            ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${upRemaining} remaining)</span>
+            ↓ Show 10 more <span style="opacity:.6;font-size:11px">(${upRemaining} remaining)</span>
           </button>
         </div>`;
       }
@@ -5873,6 +5892,7 @@ let ui_openTasks=new Set();
 let ui_taskPage=1;   // how many batches of 10 to show
 let ui_doneTaskPage=1; // how many batches of 10 done/not-done tasks to show
 let ui_doneTaskOpen=false; // done/not-done task list collapsed by default
+let ui_taskGroupOpen={today:true,overdue:true,tomorrow:true,upcoming:true,nodeadline:true}; // collapsible task groups — open by default
 let ui_expiredUpcomingOpen={}; // expired upcoming collapsed per section key
 let ui_storiesDoneOpen={}; // done/not-done stories collapsed per section key
 let ui_storiesShelvedOpen={}; // shelved stories collapsed per section key
@@ -6271,7 +6291,7 @@ function renderTasksSection(){
     </div></div>`:''}`;
 
   // ── Archive date view (both standalone and embedded) ──────────────────────
-  let html=`<div id="tasks-section" style="scroll-margin-top:180px">`;
+  let html=`<div id="tasks-section" style="scroll-margin-top:80px;overflow-anchor:none">`;
 
   if(!isToday){
     const archTasks=(state.archive[cur]?.tasks)||[];
@@ -6461,43 +6481,52 @@ function renderTasksSection(){
     const sorted=[...tasks].sort((a,b)=>sortKey(a)-sortKey(b));
     const _activeTasks=sorted.filter(t=>t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred');
     const _doneTasks=sorted.filter(t=>t.taskStatus==='done'||t.taskStatus==='not-done'||t.taskStatus==='transferred').sort((a,b)=>{
-      // Within done: soonest deadline first, no deadline last
-      const da=a.deadline_date?Math.abs(Math.round((new Date(a.deadline_date+'T00:00:00').getTime()-todayMs)/86400000)):Infinity;
-      const db=b.deadline_date?Math.abs(Math.round((new Date(b.deadline_date+'T00:00:00').getTime()-todayMs)/86400000)):Infinity;
-      return da-db;
+      // Most recently actioned first: doneAt / notDoneOn / updated → deadline_date desc → created desc
+      const tsA=a.doneAt||a.notDoneOn||a.updated||0;
+      const tsB=b.doneAt||b.notDoneOn||b.updated||0;
+      if(tsB!==tsA) return tsB-tsA;
+      // Fall back to deadline date descending
+      if((b.deadline_date||'')!==(a.deadline_date||'')) return (b.deadline_date||'').localeCompare(a.deadline_date||'');
+      return (b.created||0)-(a.created||0);
     });
     const taskLimit=ui_taskPage*10;
     const visibleTasks=_activeTasks.slice(0,taskLimit);
-    // Group visible tasks into: today, tomorrow, overdue, upcoming, no-deadline
-    let _lastGroup=null;
+    // Group all active tasks by bucket
+    const _groups={today:[],overdue:[],tomorrow:[],upcoming:[],nodeadline:[]};
     visibleTasks.forEach(t=>{
       const d=effectiveDate(t);
       const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000):null;
-      let group;
-      if(diff===0)       group='today';
-      else if(diff!==null&&diff<0) group='overdue';
-      else if(diff===1)  group='tomorrow';
-      else if(diff!==null&&diff>1) group='upcoming';
-      else               group='nodeadline';
-      if(group!==_lastGroup){
-        const isFirst=_lastGroup===null;
-        const label={
-          today:      '📅 Today',
-          overdue:    '⚠ Overdue',
-          tomorrow:   '🔜 Tomorrow',
-          upcoming:   '🗓 Upcoming',
-          nodeadline: '· No deadline'
-        }[group]||group;
-        html+=`<div class="task-section-divider${isFirst?' tsd-first':''}">${label}</div>`;
-        _lastGroup=group;
-      }
-      html+=renderTaskCard(t,today);
+      if(diff===0)            _groups.today.push(t);
+      else if(diff!==null&&diff<0) _groups.overdue.push(t);
+      else if(diff===1)       _groups.tomorrow.push(t);
+      else if(diff!==null&&diff>1) _groups.upcoming.push(t);
+      else                    _groups.nodeadline.push(t);
+    });
+
+    const _groupMeta={
+      today:      {label:'Today',      icon:'📅', extraCls:'tsd-today'},
+      overdue:    {label:'Overdue',    icon:'⚠',  extraCls:'tsd-overdue'},
+      tomorrow:   {label:'Tomorrow',   icon:'🔜', extraCls:''},
+      upcoming:   {label:'Upcoming',   icon:'🗓', extraCls:''},
+      nodeadline: {label:'No deadline',icon:'·',  extraCls:'tsd-nodeadline'},
+    };
+    let isFirstGroup=true;
+    ['today','overdue','tomorrow','upcoming','nodeadline'].forEach(gKey=>{
+      const arr=_groups[gKey]; if(!arr.length) return;
+      const {label,icon,extraCls}=_groupMeta[gKey];
+      const isOpen=ui_taskGroupOpen[gKey]!==false; // default open
+      const bodyId='tg-body-'+gKey;
+      html+=`<div class="task-section-divider ${extraCls}${isFirstGroup?' tsd-first':''}" onclick="ui_taskGroupOpen['${gKey}']=!ui_taskGroupOpen['${gKey}'];const b=document.getElementById('${bodyId}');const c=document.getElementById('tg-chev-${gKey}');if(b)b.style.display=ui_taskGroupOpen['${gKey}']?'block':'none';if(c)c.textContent=ui_taskGroupOpen['${gKey}']?'▾':'▸'">${icon} ${label} <span class="tsd-count">(${arr.length})</span><span id="tg-chev-${gKey}" class="tsd-chev">${isOpen?'▾':'▸'}</span></div>`;
+      html+=`<div id="${bodyId}" style="display:${isOpen?'block':'none'}">`;
+      arr.forEach(t=>{ html+=renderTaskCard(t,today); });
+      html+=`</div>`;
+      isFirstGroup=false;
     });
     if(_activeTasks.length>taskLimit){
       const remaining=_activeTasks.length-taskLimit;
       html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
         <button class="btn btn-ghost btn-sm" onclick="showMoreTasks();event.stopPropagation()" style="color:var(--week);border-color:rgba(99,102,241,.3);font-size:12px">
-          ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${remaining} remaining)</span>
+          ↓ Show 10 more <span style="opacity:.6;font-size:11px">(${remaining} remaining)</span>
         </button>
       </div>`;
     }
@@ -6505,24 +6534,17 @@ function renderTasksSection(){
       const doneLimit=ui_doneTaskPage*10;
       const visibleDone=_doneTasks.slice(0,doneLimit);
       const doneRemaining=_doneTasks.length-visibleDone.length;
-      html+=`<div style="border-top:1px dashed var(--border);margin-top:4px">
-        <div style="display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;user-select:none" onclick="ui_doneTaskOpen=!ui_doneTaskOpen;render()">
-          <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${_doneTasks.length} done / not done</span>
-          <span style="font-size:10px;color:var(--text3);margin-left:auto">${ui_doneTaskOpen?'▾':'▸'}</span>
-        </div>
-      </div>`;
-      if(ui_doneTaskOpen){
-        html+=`<div>`;
-        visibleDone.forEach(t=>{ html+=renderTaskCard(t,today); });
-        if(doneRemaining>0){
-          html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
-            <button class="btn btn-ghost btn-sm" onclick="showMoreDoneTasks();event.stopPropagation()" style="color:var(--text3);border-color:var(--border);font-size:12px">
-              ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${doneRemaining} remaining)</span>
-            </button>
-          </div>`;
-        }
-        html+=`</div>`;
+      html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:8px" onclick="ui_doneTaskOpen=!ui_doneTaskOpen;const b=document.getElementById('tg-body-done');const c=document.getElementById('tg-chev-done');if(b)b.style.display=ui_doneTaskOpen?'block':'none';if(c)c.textContent=ui_doneTaskOpen?'▾':'▸'">✓ Done / not done <span class="tsd-count">(${_doneTasks.length})</span><span id="tg-chev-done" class="tsd-chev">${ui_doneTaskOpen?'▾':'▸'}</span></div>`;
+      html+=`<div id="tg-body-done" style="display:${ui_doneTaskOpen?'block':'none'}">`;
+      visibleDone.forEach(t=>{ html+=renderTaskCard(t,today); });
+      if(doneRemaining>0){
+        html+=`<div style="text-align:center;padding:10px 14px;border-top:0.5px dashed var(--border);margin-top:4px">
+          <button class="btn btn-ghost btn-sm" onclick="showMoreDoneTasks();event.stopPropagation()" style="color:var(--text3);border-color:var(--border);font-size:12px">
+            ↓ Show 10 more <span style="opacity:.6;font-family:var(--mono);font-size:11px">(${doneRemaining} remaining)</span>
+          </button>
+        </div>`;
       }
+      html+=`</div>`;
     }
   }
 
@@ -6818,18 +6840,26 @@ function renderCombinedAccordion(archKey){
       const grp=_byDate[dl];
       const g_uc=grp.filter(s=>s.status==='urgent').length;
       const g_ip=grp.filter(s=>s.status==='in-progress').length;
-      html+=`<div style="font-size:11px;font-weight:600;color:${isToday?'var(--accent)':'var(--text2)'};padding:0 2px 5px;border-bottom:1px solid var(--border);margin:4px 0 8px">${dlLabel}</div>${grp.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
+      html+=`<div class="sec-date-label${isToday?' sdl-today':''}">${dlLabel}</div>${grp.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
     });
-    if(_noDate.length) html+=`<div style="font-size:11px;font-weight:600;color:var(--text3);padding:0 2px 5px;border-bottom:1px solid var(--border);margin:4px 0 8px">No deadline</div>${_noDate.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
+    if(_noDate.length) html+=`<div class="sec-date-label sdl-muted">No deadline</div>${_noDate.map(s=>renderCard(s._subsec||'ibu',s,archKey)).join('')}`;
   }
 
   // Resolved — sub-group labels directly, no RESOLVED header
   if(resolvedAll.length){
-    const _rDone=resolvedAll.filter(s=>s.status==='completed');
-    const _rHold=resolvedAll.filter(s=>s.status==='on-hold');
-    const _rNotDone=resolvedAll.filter(s=>s.status==='not-done');
-    const _rPostponed=resolvedAll.filter(s=>s.status==='postponed');
-    const _rShelved=resolvedAll.filter(s=>s.status==='shelved');
+    // Sort helper: most recently actioned first.
+    // Key: updated (ms) → deadline_date (desc) → created (ms)
+    const _resolvedSortKey=s=>{
+      if(s.updated) return -s.updated;
+      if(s.deadline_date) return -(new Date(s.deadline_date+'T00:00:00').getTime());
+      return -(s.created||0);
+    };
+    const _sortResolved=arr=>[...arr].sort((a,b)=>_resolvedSortKey(a)-_resolvedSortKey(b));
+    const _rDone=_sortResolved(resolvedAll.filter(s=>s.status==='completed'));
+    const _rHold=_sortResolved(resolvedAll.filter(s=>s.status==='on-hold'));
+    const _rNotDone=_sortResolved(resolvedAll.filter(s=>s.status==='not-done'));
+    const _rPostponed=_sortResolved(resolvedAll.filter(s=>s.status==='postponed'));
+    const _rShelved=_sortResolved(resolvedAll.filter(s=>s.status==='shelved'));
     html+='<div style="margin-top:4px;border-top:1px solid var(--border);padding-top:8px">';
     if(!ui._resolvedGroupOpen) ui._resolvedGroupOpen={};
     const _rGroup=(label,icon,color,arr,key)=>{
@@ -9392,7 +9422,7 @@ function init(){
       setTimeout(()=>{
         const hasOpenForm=ui.openForms.size>0||_te.open;
         // Also block if a form was very recently opened (iOS keyboard triggers visibilitychange)
-        const formJustOpened=(Date.now()-(window._lastFormOpenTs||0))<2000;
+        const formJustOpened=(Date.now()-(window._lastFormOpenTs||0))<4000;
         if(!hasOpenForm&&!formJustOpened){ setSyncUI('syncing'); startRealtimeSync(); }
       },500);
     }
@@ -9440,6 +9470,9 @@ function init(){
     window.addEventListener('resize',()=>{
       // When keyboard opens, window height shrinks significantly
       const keyboardOpen=window.innerHeight<window.screen.height*0.75;
+      // Don't hide nav if a form is actively open — avoids layout jump mid-edit
+      const hasOpenForm=ui.openForms.size>0||_te.open||ui_taskForm||ui_meetingForm||ui_leaveForm;
+      if(keyboardOpen && hasOpenForm) return; // keep nav hidden but don't change anything
       bnb.style.display=keyboardOpen?'none':'';
     });
   }
