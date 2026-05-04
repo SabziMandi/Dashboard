@@ -934,6 +934,20 @@ body {
 .uc-date-box-day.overdue { color: var(--urgent); }
 .uc-date-box-cnt  { font-size: 10px; color: var(--text3); font-family: var(--mono); line-height: 1.2; margin-top: 2px; }
 .uc-date-box-type { font-size: 9.5px; color: var(--text3); font-family: var(--font); line-height: 1.2; margin-top: 1px; opacity: .8; }
+/* Task date box — same shape as uc-date-box, amber palette */
+.task-date-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(217,119,6,.06); border: 0.5px solid rgba(217,119,6,.2);
+  border-radius: 7px; width: 72px; min-width: 72px; height: 44px; text-align: center; flex-shrink: 0;
+}
+.task-date-box.tdb-overdue { background: var(--urgent-bg); border-color: rgba(220,38,38,.2); }
+.task-date-box.tdb-today   { background: rgba(207,102,64,.08); border-color: rgba(207,102,64,.3); }
+.task-date-box.tdb-done    { background: rgba(22,163,74,.06); border-color: rgba(22,163,74,.2); opacity:.75; }
+.task-date-box-day { font-size: 11px; font-weight: 600; color: var(--progress); font-family: var(--mono); line-height: 1.2; }
+.task-date-box-day.tdb-overdue { color: var(--urgent); }
+.task-date-box-day.tdb-today   { color: var(--accent); }
+.task-date-box-day.tdb-done    { color: var(--done); }
+.task-date-box-cnt { font-size: 10px; color: var(--text3); font-family: var(--mono); line-height: 1.2; margin-top: 2px; }
 .uc-chip { font-size: 11px; color: var(--text3); font-family: var(--font); white-space: nowrap; }
 .uc-chip.uc-chip-due { color: var(--upcoming); }
 .uc-chip.uc-chip-overdue { color: var(--urgent); font-weight: 600; }
@@ -1328,7 +1342,7 @@ button.tasks-tab-btn {
 .meeting-card.mc-done { border-left-color:var(--done); opacity:.8; }
 .meeting-card.mc-cancelled { border-left-color:#94a3b8; opacity:.6; }
 .meeting-top { display:flex; align-items:center; gap:10px; padding:11px 14px; cursor:pointer; }
-.meeting-time-block { display:flex; flex-direction:column; align-items:center; background:rgba(99,102,241,.08); border-radius:7px; padding:5px 10px; flex-shrink:0; min-width:52px; }
+.meeting-time-block { display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(99,102,241,.08); border-radius:7px; padding:5px 10px; flex-shrink:0; min-width:62px; height:44px; border:0.5px solid rgba(99,102,241,.2); }
 .meeting-time-hr { font-size:15px; font-weight:700; color:#6366f1; font-family:var(--mono); line-height:1; }
 .meeting-time-date { font-size:9px; color:var(--text3); font-family:var(--mono); margin-top:2px; }
 .meeting-title-wrap { flex:1; min-width:0; }
@@ -3084,14 +3098,14 @@ function moveStoryToSection(fromSec, id, toSec, archKey, mode){
 }
 function markNotDone(sec,id,archKey){
   updateStory(sec,id,{status:'in-progress',completion_note:'',completion_links:'',carriedForward:false},archKey);
-  toast('Marked as In Progress');
+  toast('Marked as In progress');
   render();
 }
 function markStoryNotDone(sec,id,archKey){
   const arr=getArr(sec,archKey); const prev=arr?.find(s=>s.id===id); if(!prev) return;
   const snapshot={status:prev.status,notDoneOn:prev.notDoneOn,carriedForward:prev.carriedForward};
   updateStory(sec,id,{status:'not-done',carriedForward:false,notDoneOn:Date.now()},archKey);
-  toast('⚫ Not Done', ()=>{ updateStory(sec,id,snapshot,archKey); saveAndPush(); renderDateStrip(); render(); });
+  toast('⚫ Not done', ()=>{ updateStory(sec,id,snapshot,archKey); saveAndPush(); renderDateStrip(); render(); });
   saveAndPush(); renderDateStrip(); render();
 }
 
@@ -5222,7 +5236,7 @@ function renderArchiveHTML(key){
           const td=live||t;
           const isLive=!!live&&!td._deleted;
           const isOpen2=ui_openTasks.has(td.id);
-          const st2=td._deleted?'🗑 Deleted':td.taskStatus==='done'?'✅ Done':td.taskStatus==='not-done'?'⚫ Not Done':td.taskStatus==='transferred'?'⇄ Transferred':'⏳ Pending';
+          const st2=td._deleted?'🗑 Deleted':td.taskStatus==='done'?'✅ Done':td.taskStatus==='not-done'?'⚫ Not done':td.taskStatus==='transferred'?'⇄ Transferred':'⏳ Pending';
           const strike=td._deleted||td.taskStatus==='done'?'text-decoration:line-through;':'';
           const op2=td._deleted?'opacity:.6;':'';
           if(isLive){
@@ -6655,15 +6669,35 @@ function renderTaskCard(t, today){
   const carriedChip='';
   const doneChip=t.taskStatus==='done'&&t.doneAt?`<span class="task-chip" style="color:var(--done)">Done ${new Date(t.doneAt).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>`:'';
 
+  // Build task date box (matches uc-date-box pattern, amber palette)
+  let taskDateBox='';
+  if(t.deadline_date && !t.isRecurring){
+    const _dbox_diff=_daysFromToday;
+    const isDone=t.taskStatus==='done';
+    const isOvd=isOverdue;
+    const shortDate=new Date(t.deadline_date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    let cntLabel='';
+    if(isDone)           cntLabel='done';
+    else if(_dbox_diff===0)  cntLabel='today';
+    else if(_dbox_diff===1)  cntLabel='tomorrow';
+    else if(_dbox_diff===-1) cntLabel='yesterday';
+    else if(isOvd)       cntLabel=Math.abs(_dbox_diff)+'d overdue';
+    else if(_dbox_diff!==null&&_dbox_diff>1) cntLabel='in '+_dbox_diff+'d';
+    const boxCls='task-date-box'+(isOvd?' tdb-overdue':_dbox_diff===0?' tdb-today':isDone?' tdb-done':'');
+    const dayCls='task-date-box-day'+(isOvd?' tdb-overdue':_dbox_diff===0?' tdb-today':isDone?' tdb-done':'');
+    taskDateBox=`<div class="${boxCls}"><div class="${dayCls}">${shortDate}</div>${cntLabel?`<div class="task-date-box-cnt">${cntLabel}</div>`:''}</div>`;
+  }
+
   const recurBadge=t.isRecurring?`<span class="recurring-badge">🔁 ${recurSchedule}</span>`:'';
   return`<div class="${cardCls}" data-id="${t.id}">
   <div class="task-top" onclick="toggleTaskOpen('${t.id}')">
     <div style="flex:1;min-width:0">
       <div class="task-title${t.taskStatus==='done'?' done-title':''}">${esc(t.title||'Untitled')}</div>
       <div class="task-chips">
-        ${deadlineChip}${postponeChip}${carriedChip}${doneChip}${recurBadge}
+        ${postponeChip}${carriedChip}${doneChip}${recurBadge}
       </div>
     </div>
+    ${taskDateBox}
     <div class="task-right">
       <span class="${sbCls}">${sbTxt}</span>
     </div>
@@ -6684,7 +6718,7 @@ function renderTaskCard(t, today){
         ? `<span style="font-size:11px;color:var(--text3);font-family:var(--font)">→ Transferred to ${esc(t.transferredTo||'')}</span>
            <button class="btn btn-ghost btn-sm" onclick="setTaskStatus('${t.id}','pending');event.stopPropagation()">↩ Reopen here</button>`
         : `<button class="btn btn-done-active btn-sm" onclick="setTaskStatus('${t.id}','done');event.stopPropagation()">✅ Mark Done</button>
-           <button class="btn btn-not-done btn-sm" onclick="setTaskStatus('${t.id}','not-done');event.stopPropagation()">⚫ Not Done</button>`
+           <button class="btn btn-not-done btn-sm" onclick="setTaskStatus('${t.id}','not-done');event.stopPropagation()">⚫ Not done</button>`
       }
       ${t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred'
         ? `<button class="btn btn-ghost btn-sm" onclick="openPostponeDialog('${t.id}');event.stopPropagation()">⏸ Postpone…</button>`
@@ -9075,7 +9109,7 @@ function renderStoryCard(sec,s,archKey){
         ? `<button class="btn btn-done-active btn-sm" disabled>✅ Done</button>
            <button class="btn btn-not-done btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Reopen</button>`
         : s.status==='not-done'
-        ? `<button class="btn btn-ghost btn-sm" style="color:#64748b;border-color:rgba(100,116,139,.3)" disabled>⚫ Not Done</button>
+        ? `<button class="btn btn-ghost btn-sm" style="color:#64748b;border-color:rgba(100,116,139,.3)" disabled>⚫ Not done</button>
            <button class="btn btn-ghost btn-sm" onclick="markNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Reopen</button>`
         : s.status==='postponed'
         ? `<button class="btn btn-postpone btn-sm" disabled>⏸ Postponed${s.postponeTo?' to '+s.postponeTo:''}</button>
@@ -9084,7 +9118,7 @@ function renderStoryCard(sec,s,archKey){
         ? `<button class="btn btn-shelve btn-sm" disabled>🗄 Shelved</button>
            <button class="btn btn-ghost btn-sm" onclick="unshelveStory('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">↩ Unshelf</button>`
         : `<button class="btn btn-done btn-sm" onclick="toggleComplForm('${s.id}');event.stopPropagation()">Mark Done</button>
-           <button class="btn btn-not-done btn-sm" onclick="markStoryNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">⚫ Not Done</button>
+           <button class="btn btn-not-done btn-sm" onclick="markStoryNotDone('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">⚫ Not done</button>
            <button class="btn btn-postpone btn-sm" onclick="openStoryPostponeDialog('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">⏸ Postpone…</button>
            <button class="btn btn-shelve btn-sm" onclick="shelveStory('${sec}','${s.id}',${archKeyJS});event.stopPropagation()">🗄 Shelve</button>`
       }
@@ -9223,11 +9257,11 @@ function renderForm(sec,archKey){
               <select class="fselect" id="f-status${sfx}">
                 <option value="">– Select –</option>
                 <option value="urgent"${editStoryObj?.status==='urgent'?' selected':''}>🔴 Urgent</option>
-                <option value="in-progress"${editStoryObj?.status==='in-progress'?' selected':''}>🟡 In Progress</option>
+                <option value="in-progress"${editStoryObj?.status==='in-progress'?' selected':''}>🟡 In progress</option>
                 <option value="completed"${editStoryObj?.status==='completed'?' selected':''}>🟢 Completed</option>
-                <option value="not-done"${editStoryObj?.status==='not-done'?' selected':''}>⚫ Not Done</option>
+                <option value="not-done"${editStoryObj?.status==='not-done'?' selected':''}>⚫ Not done</option>
                 <option value="postponed"${editStoryObj?.status==='postponed'?' selected':''}>🔵 Postponed</option>
-                <option value="on-hold"${editStoryObj?.status==='on-hold'?' selected':''}>🟣 On Hold</option>
+                <option value="on-hold"${editStoryObj?.status==='on-hold'?' selected':''}>🟣 On hold</option>
                 <option value="shelved"${editStoryObj?.status==='shelved'?' selected':''}>🗄 Shelved</option>
               </select>
             </div>
@@ -9328,10 +9362,10 @@ function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
     <div class="fgroup"><label class="flabel">Correspondent</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
     <div class="fgroup"><label class="flabel">Status</label>
       <select class="fselect" id="f-status${sfx}">
-        <option value="not-started"${(ev.status||'not-started')==='not-started'?' selected':''}>⚪ Not Started</option>
-        <option value="in-progress"${ev.status==='in-progress'?' selected':''}>🟡 In Progress</option>
+        <option value="not-started"${(ev.status||'not-started')==='not-started'?' selected':''}>⚪ Not started</option>
+        <option value="in-progress"${ev.status==='in-progress'?' selected':''}>🟡 In progress</option>
         <option value="urgent"${ev.status==='urgent'?' selected':''}>🔴 Urgent</option>
-        <option value="on-hold"${ev.status==='on-hold'?' selected':''}>🟣 On Hold</option>
+        <option value="on-hold"${ev.status==='on-hold'?' selected':''}>🟣 On hold</option>
         <option value="completed"${ev.status==='completed'?' selected':''}>🟢 Completed</option>
       </select>
     </div>
