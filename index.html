@@ -6835,13 +6835,14 @@ function renderCombinedAccordion(archKey){
   // Resolved — sub-group labels directly, no RESOLVED header
   if(resolvedAll.length){
     // Sort helper: most recently actioned first.
-    // Key: updated (ms) → deadline_date (desc) → created (ms)
-    const _resolvedSortKey=s=>{
-      if(s.updated) return -s.updated;
-      if(s.deadline_date) return -(new Date(s.deadline_date+'T00:00:00').getTime());
-      return -(s.created||0);
-    };
-    const _sortResolved=arr=>[...arr].sort((a,b)=>_resolvedSortKey(a)-_resolvedSortKey(b));
+    // Sort: deadline_date desc (newest broadcast first) → completedOn/notDoneOn/updated desc → created desc
+    const _sortResolved=arr=>[...arr].sort((a,b)=>{
+      const dd=(b.deadline_date||'').localeCompare(a.deadline_date||'');
+      if(dd!==0) return dd;
+      const tsA=a.completedOn||a.notDoneOn||a.updated||a.created||0;
+      const tsB=b.completedOn||b.notDoneOn||b.updated||b.created||0;
+      return tsB-tsA;
+    });
     const _rDone=_sortResolved(resolvedAll.filter(s=>s.status==='completed'));
     const _rHold=_sortResolved(resolvedAll.filter(s=>s.status==='on-hold'));
     const _rNotDone=_sortResolved(resolvedAll.filter(s=>s.status==='not-done'));
