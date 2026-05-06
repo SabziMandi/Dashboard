@@ -5537,11 +5537,12 @@ function renderAccordion(sec,archKey){
     if(!stories.length&&!isFormOpen) html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No stories yet — click <strong>+ Add</strong></div></div>`;
     else {
       const _live=stories.filter(s=>!['completed','not-done'].includes(s.status));
-      const _done=stories.filter(s=>['completed','not-done'].includes(s.status)).sort((a,b)=>{
-        const tsA=a.completedOn||a.notDoneOn||a.updated||0;
-        const tsB=b.completedOn||b.notDoneOn||b.updated||0;
-        if(tsB!==tsA) return tsB-tsA;
-        return (b.deadline_date||'').localeCompare(a.deadline_date||'');
+      const _done=all.filter(s=>['completed','not-done'].includes(s.status)&&s.status!=='shelved').sort((a,b)=>{
+        const dd=(b.deadline_date||'').localeCompare(a.deadline_date||'');
+        if(dd!==0) return dd;
+        const tsA=a.completedOn||a.notDoneOn||a.updated||a.created||0;
+        const tsB=b.completedOn||b.notDoneOn||b.updated||b.created||0;
+        return tsB-tsA;
       });
       if(_live.length){ _live.forEach(s=>{ html+=renderCard(sec.key,s,archKey); }); }
       else html+='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No active entries</div></div>';
