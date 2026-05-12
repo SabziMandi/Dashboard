@@ -1813,6 +1813,13 @@ function ensureSignedIn(cfg){
   });
 }
 
+// ── Allowlist: only these Google accounts can access the dashboard ──────────
+const ALLOWED_EMAILS = [
+  'neyaz.jmi@gmail.com',
+];
+// To add a colleague later: add their Google email as a new line above the ];
+// ────────────────────────────────────────────────────────────────────────────
+
 function googleSignIn(){
   // Called only from a button click — browsers allow popups from user gestures
   if(typeof firebase === 'undefined'){ toast('Firebase not available'); return; }
@@ -1825,7 +1832,19 @@ function googleSignIn(){
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider)
     .then(result => {
-      toast('✓ Signed in as '+result.user.email);
+      const email = result.user.email;
+      // ── Allowlist check ──────────────────────────────────────────────────
+      if(ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)){
+        auth.signOut();
+        const banner = document.getElementById('auth-banner');
+        if(banner){
+          banner.querySelector('p').textContent = '⛔ Access restricted. This dashboard is not available for ' + email + '. Please contact your bureau admin.';
+        }
+        toast('⛔ Access restricted for '+email);
+        return; // stop here — do not initialise Firebase or hide the banner
+      }
+      // ────────────────────────────────────────────────────────────────────
+      toast('✓ Signed in as '+email);
       const cfg=getFireConfig();
       if(cfg && !fireDb){ initFirebase(cfg, true); }
       else if(fireDb){ startRealtimeSync(); setSyncUI('syncing'); }
@@ -2124,7 +2143,15 @@ function setSyncUI(s){
   applySync(d,l,false);
   applySync(dm,lm,true);
 }
-function saveAndPush(){ clearTimeout(window._mergeBackPushTimer); saveLocal(); if(fireDb){ setSyncUI('syncing'); pushToCloud(); } }
+function saveAndPush(){
+  clearTimeout(window._mergeBackPushTimer);
+  saveLocal();
+  if(fireDb){
+    setSyncUI('syncing');
+    clearTimeout(window._saveAndPushDebounce);
+    window._saveAndPushDebounce = setTimeout(()=>{ pushToCloud(); }, 800);
+  }
+}
 function checkDateChange(){
   const today=todayStr();
   if(state.lastActiveDate && state.lastActiveDate!==today){
@@ -4586,7 +4613,14 @@ function openSyncModal(){
     <ol class="setup-ol">
       <li class="setup-li">Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → sign in with Google.</li>
       <li class="setup-li"><strong>Create a project</strong> → name it anything → skip Analytics → Continue.</li>
-      <li class="setup-li">Sidebar → <strong>Firestore Database</strong> → Create database → <strong>test mode</strong> → any region → Enable. <span style="color:#B45309;font-weight:600">⚠ Security note:</span> Test mode allows anyone with your Project ID to read and write your data. After setup, go to <strong>Firestore → Rules</strong> and restrict access (e.g. allow only your IP or add authentication). <a href="https://firebase.google.com/docs/firestore/security/get-started" target="_blank" style="color:var(--accent)">Learn about Firestore security rules →</a></li>
+      <li class="setup-li">Sidebar → <strong>Firestore Database</strong> → Create database → <strong>test mode</strong> → any region → Enable. Then immediately go to <strong>Firestore → Rules</strong> and replace the default rule with:<br><code style="display:block;margin:6px 0 4px;background:var(--bg2);padding:6px 10px;border-radius:6px;font-size:11px;white-space:pre">rules_version = &apos;2&apos;;
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</code>This ensures only signed-in Google users can read or write data. <a href="https://firebase.google.com/docs/firestore/security/get-started" target="_blank" style="color:var(--accent)">Learn about Firestore security rules →</a></li>
       <li class="setup-li">Project Overview → <strong>web icon &lt;/&gt;</strong> → name app → copy the <code>firebaseConfig</code> values below.</li>
     </ol>
     <div class="fb-grid">
