@@ -8857,13 +8857,13 @@ function renderLeavesSection(){
 
   // ── By-person tab content ──
   let byPersonHtml='';
-  if(ui_leavesTab==='byPerson'&&isStandaloneLeave){
+  if(ui_leavesTab==='byPerson'){
     byPersonHtml=renderLeavesByPerson(state.leaves,today);
   }
 
   const bodyHtml=`<div id="leaves-section" style="scroll-margin-top:180px">
     ${formHtml}
-    ${ui_leavesTab==='byPerson'&&isStandaloneLeave ? byPersonHtml : statusHtml}
+    ${ui_leavesTab==='byPerson' ? byPersonHtml : statusHtml}
   </div>`;
 
   if(isStandaloneLeave){
@@ -8879,15 +8879,14 @@ function renderLeavesSection(){
       </div>
     </div>`;
   }
-  // Accordion (today view / dashboard) — show status only, no tabs, compact toolbar
+  // Accordion (today view / dashboard) — show tabs + toolbar same as standalone
+  const accordionBodyContent=ui_leavesTab==='byPerson'
+    ? renderLeavesByPerson(state.leaves,today)
+    : statusHtml;
   let html=`<div id="leaves-section" style="scroll-margin-top:180px">
-  <div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
-    <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailLeaves()" title="Email">✉<span class="bim-text"> Email</span></button>
-    <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportLeavesTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
-    <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)" title="Add leave">+<span class="bim-text"> Add</span></button>
-  </div>
+  ${leavesToolbarHTML(false)}
   ${formHtml}
-  ${statusHtml}
+  ${accordionBodyContent}
   </div>`;
   return accHeaderL+html+'</div></div>';
 }
