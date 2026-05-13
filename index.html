@@ -8691,7 +8691,8 @@ function renderLeavesByPerson(leaves,today){
     const initials=name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
     const totals=leaveCalcForPerson(name);
     const isOpen=ui_openPersonLeaves.has(name);
-    const eCount=entries.length;
+    const fyEntries=entries.filter(l=>l.dateFrom>=fyStart);
+    const eCount=fyEntries.length; // count only entries from 1 Apr of current FY
     // ── Tile strip: 5 equal-width flex tiles, always shown ──
     const makeTile=(num,lbl,bg,bd,col)=>`<div style="flex:1;text-align:center;padding:5px 2px;border-radius:7px;background:${bg};border:0.5px solid ${bd}"><div style="font-size:16px;font-weight:700;color:${col};line-height:1;font-family:var(--font)">${num}</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;font-family:var(--font)">${lbl}</div></div>`;
     const tileRow=`<div style="display:flex;gap:5px;padding:8px 12px 11px">
@@ -8702,7 +8703,7 @@ function renderLeavesByPerson(leaves,today){
       ${makeTile(totals.otherdept,'Other','rgba(180,83,9,.08)','rgba(180,83,9,.2)','#B45309')}
     </div>`;
     // Sort entries newest first
-    const sorted=[...entries].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom));
+    const sorted=[...entries].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)); // newest first — latest on top
     // ── Line 1: avatar · name, N entries from 1 Apr · chevron ──
     // "from 1 Apr" — omit year if name is long (>18 chars)
     const fromLabel=name.length>18?`, ${eCount} entr${eCount===1?'y':'ies'} from 1 Apr`:`, ${eCount} entr${eCount===1?'y':'ies'} from 1 Apr ${fyYear}`;
@@ -8726,10 +8727,11 @@ function renderLeavesByPerson(leaves,today){
         const d=leaveDays(l.dateFrom,l.dateTo);
         const dateStr=l.dateFrom===l.dateTo?fmtD(l.dateFrom):`${fmtD(l.dateFrom)} – ${fmtD(l.dateTo)}`;
         const isPast=l.dateTo<today;
+        const isPreFY=l.dateFrom<fyStart; // before current FY — shown for reference, dimmed
         const stIcon=l.status==='approved'?`<span style="color:#15803D;font-size:10px">✓</span>`:`<span style="color:#B45309;font-size:10px">⏳</span>`;
         const approveBtn=l.status==='pending'?`<button class="btn btn-ghost btn-xs" title="Approve" style="background:rgba(22,163,74,.08);color:#15803D;border-color:rgba(22,163,74,.3);margin-right:3px" onclick="updateLeave('${l.id}',{status:'approved'});render();event.stopPropagation()">✅</button>`:'';
         // Grid row: 4 columns — badge | date | days | status+edit
-        rows+=`<div style="display:contents;${isPast?'opacity:.65':''}">
+        rows+=`<div style="display:contents;${isPast||isPreFY?'opacity:.55':''}">
           <div style="padding:5px 6px 5px 0;border-bottom:0.5px solid var(--border);display:flex;align-items:center">
             <span class="leave-type-badge ${ti.cls}" style="font-size:9px;padding:1px 5px;white-space:nowrap">${ti.label}</span>
           </div>
