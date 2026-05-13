@@ -1164,6 +1164,14 @@ button.tasks-tab-btn {
 .ltb-earned   { background: rgba(22,163,74,.1); color: var(--done); border: 1px solid rgba(22,163,74,.2); }
 .ltb-sick     { background: rgba(239,68,68,.1); color: var(--urgent); border: 1px solid rgba(239,68,68,.2); }
 .ltb-casual   { background: rgba(124,58,237,.1); color: var(--onhold); border: 1px solid rgba(124,58,237,.2); }
+.ltb-comp     { background: rgba(13,148,136,.1); color: #0D9488; border: 1px solid rgba(13,148,136,.25); }
+.ltb-otherdept{ background: rgba(180,83,9,.1); color: #B45309; border: 1px solid rgba(180,83,9,.25); }
+/* btn-icon-mobile: on mobile hides button text, shows only the icon character */
+@media(max-width:720px){
+  .btn-icon-mobile { padding: 0 !important; width: 30px !important; height: 30px !important; font-size: 14px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+  .btn-icon-mobile .bim-text { display: none !important; }
+}
+.bim-text { }
 .leave-status-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;font-family:var(--font);padding:3px 9px;border-radius:20px;white-space:nowrap; }
 .lsb-approved { background:rgba(22,163,74,.09);  color:#15803D; border:0.5px solid rgba(22,163,74,.3); }
 .lsb-pending  { background:rgba(217,119,6,.09);  color:#B45309; border:0.5px solid rgba(217,119,6,.3); }
@@ -5063,9 +5071,9 @@ function renderUpcomingView(){
     </div>
     <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
       <div class="fi-form-footer">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('upcoming',null)">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('upcoming',null)">↓ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('upcoming',null)">+ Add</button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailSection('upcoming',null)" title="Email">✉<span class="bim-text"> Email</span></button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportSectionTxt('upcoming',null)" title="Export">↓<span class="bim-text"> Export</span></button>
+        <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="toggleForm('upcoming',null)" title="Add">+<span class="bim-text"> Add</span></button>
       </div>`;
 
     if(isFormOpen) html+=renderForm('upcoming',null);
@@ -5204,8 +5212,8 @@ function renderArchiveHTML(key){
       <div class="avh-meta">${cnt} stories${state.archive[key]?.created?' · Saved '+new Date(state.archive[key].created).toLocaleDateString('en-GB'):''}</div>
     </div>
     <div class="avh-actions">
-      <button class="btn btn-ghost btn-sm" onclick="doEmailAll()">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTxt()">↓ Export</button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailAll()" title="Email">✉<span class="bim-text"> Email</span></button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
       ${!isTomm?`<button class="btn btn-ghost btn-sm btn-danger" onclick="deleteArchiveEntry('${key}')">🗑 Delete</button>`:''}
     </div>
   </div>`;
@@ -5511,9 +5519,9 @@ function renderAccordion(sec,archKey){
     html+=`<div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
       ${wwTabs}
       <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('${sec.key}',${archKeyJS});event.stopPropagation()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('${sec.key}',${archKeyJS});event.stopPropagation()">↓ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('${sec.key}',${archKeyJS});event.stopPropagation()">+ Add</button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailSection('${sec.key}',${archKeyJS});event.stopPropagation()" title="Email">✉<span class="bim-text"> Email</span></button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportSectionTxt('${sec.key}',${archKeyJS});event.stopPropagation()" title="Export">↓<span class="bim-text"> Export</span></button>
+        <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="toggleForm('${sec.key}',${archKeyJS});event.stopPropagation()" title="Add story">+<span class="bim-text"> Add</span></button>
       </div>
     </div>`;
   }
@@ -6313,9 +6321,9 @@ function renderTasksSection(){
     })()}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-tasks">
     ${!isStandalone?`<div class="sec-head"><div style="margin-left:auto;display:flex;gap:6px">
-      <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">↓ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailTasks()" title="Email">✉<span class="bim-text"> Email</span></button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportTasksTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+      <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)" title="Add task">+<span class="bim-text"> Add</span></button>
     </div></div>`:''}`;
 
   // ── Archive date view (both standalone and embedded) ──────────────────────
@@ -6417,9 +6425,9 @@ function renderTasksSection(){
   </div>
   <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
     <div class="fi-form-footer">
-      <button class="btn btn-ghost btn-sm" onclick="doEmailTasks()">✉ Email</button>
-      <button class="btn btn-ghost btn-sm" onclick="doExportTasksTxt()">↓ Export</button>
-      <button class="btn btn-accent btn-sm" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)">+ Add</button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailTasks()" title="Email">✉<span class="bim-text"> Email</span></button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportTasksTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+      <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_taskForm=!ui_taskForm;ui_editTaskId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('tf-title')?.focus(),60)" title="Add task">+<span class="bim-text"> Add</span></button>
     </div>`;
   }
 
@@ -6803,9 +6811,9 @@ function renderCombinedAccordion(archKey){
     ${_storiesStrip}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-ibu">
       <div class="sec-head" style="flex-wrap:wrap;gap:6px;align-items:center">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()">↓ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()">+ Add</button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailSection('ibu',${archKeyJS});event.stopPropagation()" title="Email">✉<span class="bim-text"> Email</span></button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportSectionTxt('ibu',${archKeyJS});event.stopPropagation()" title="Export">↓<span class="bim-text"> Export</span></button>
+        <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="toggleForm('ibu',${archKeyJS});event.stopPropagation()" title="Add story">+<span class="bim-text"> Add</span></button>
       </div>
       ${_ibuForm}${_otherForm}`;
 
@@ -7538,9 +7546,9 @@ function renderMeetingsSection(){
 
   let body=`<div id="meetings-section">`;
   body+=`${!isStandaloneMeet?`<div style="display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-    <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
-    <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">↓ Export</button>
-    <button class="btn btn-accent btn-sm" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
+    <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailMeetings()" title="Email">✉<span class="bim-text"> Email</span></button>
+    <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportMeetingsTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+    <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_meetingForm=!ui_meetingForm;ui_editMeetingId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)" title="Add meeting">+<span class="bim-text"> Add</span></button>
   </div>`:''}`;
   if(ui_meetingForm) body+=renderMeetingForm();
   if(!meetings.length&&!ui_meetingForm){
@@ -7567,9 +7575,9 @@ function renderMeetingsSection(){
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div class="fi-form-footer">
-          <button class="btn btn-ghost btn-sm" onclick="doEmailMeetings()">✉ Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="doExportMeetingsTxt()">↓ Export</button>
-          <button class="btn btn-accent btn-sm" onclick="ui_meetForm=!ui_meetForm;ui_editMeetId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)">+ Add</button>
+          <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailMeetings()" title="Email">✉<span class="bim-text"> Email</span></button>
+          <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportMeetingsTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+          <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_meetForm=!ui_meetForm;ui_editMeetId=null;render();setTimeout(()=>document.getElementById('mf-name')?.focus(),60)" title="Add meeting">+<span class="bim-text"> Add</span></button>
         </div>
         ${body}
       </div>
@@ -7717,9 +7725,9 @@ function renderRemarksAccordion(){
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
         <div class="fi-form-footer">
-          <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">↓ Export</button>
-          <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
+          <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailNotes()" title="Email">✉<span class="bim-text"> Email</span></button>
+          <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportNotesTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+          <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)" title="Add note">+<span class="bim-text"> Add</span></button>
         </div>
         ${body}
       </div>
@@ -7766,9 +7774,9 @@ function renderRemarksAccordion(){
     })()}
     <div class="acc-body${isOpen?' open':''}" id="acc-body-remarks">
       <div class="sec-head">
-        <button class="btn btn-ghost btn-sm" onclick="doEmailNotes()">✉ Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="doExportNotesTxt()">↓ Export</button>
-        <button class="btn btn-accent btn-sm" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)">+ Add</button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailNotes()" title="Email">✉<span class="bim-text"> Email</span></button>
+        <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportNotesTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+        <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_noteForm=!ui_noteForm;render();setTimeout(()=>document.getElementById('nf-headline')?.focus(),60)" title="Add note">+<span class="bim-text"> Add</span></button>
       </div>
       ${body}
     </div>
@@ -7792,13 +7800,16 @@ function getLeaveEmployeeOptions(){
 }
 
 const LEAVE_TYPES=[
-  {key:'earned',   label:'Earned Leave',              cls:'ltb-earned'},
-  {key:'sick',     label:'Sick Leave',                cls:'ltb-sick'},
-  {key:'casual',   label:'Casual / Comp Leave',       cls:'ltb-casual'},
-  {key:'deployed', label:'Other Department',         cls:'ltb-earned'},
+  {key:'earned',    label:'Earned Leave',     cls:'ltb-earned'},
+  {key:'sick',      label:'Sick Leave',       cls:'ltb-sick'},
+  {key:'casual',    label:'Casual / Comp',    cls:'ltb-casual'},
+  {key:'comp',      label:'Comp Off',         cls:'ltb-comp'},
+  {key:'otherdept', label:'Other Department', cls:'ltb-otherdept'},
 ];
 let ui_leaveForm=false, ui_editLeaveId=null;
 let ui_openLeaves=new Set(), ui_showLeaveSettings=false, ui_showPastLeaves=false;
+let ui_leavesTab='status'; // 'status' | 'byPerson'
+let ui_openPersonLeaves=new Set(); // tracks expanded person cards in byPerson tab
 
 function leaveDays(from,to){
   if(!from||!to) return 0;
@@ -7856,7 +7867,9 @@ function submitLeaveForm(){
     reason:       g('lf-reason').trim(),
   };
   if(!data.employeeName){ toast('Please select an employee'); return; }
-  if(!data.dateFrom||!data.dateTo){ toast('Please set start and end dates'); return; }
+  if(!data.dateFrom){ toast('Please set at least a start date'); return; }
+  // If only From is entered, treat as single-day leave
+  if(!data.dateTo) data.dateTo = data.dateFrom;
   if(data.dateTo<data.dateFrom){ toast('End date must be on or after start date'); return; }
   if(ui_editLeaveId){ updateLeave(ui_editLeaveId,data); toast('Leave updated ✓'); ui_editLeaveId=null; }
   else { addLeave(data); toast('Leave added ✓'); }
@@ -8610,6 +8623,126 @@ function jumpToTravel(storyId){
   },80);
 }
 
+/* ── Leave calculator helper: totals per person since 1 Apr of current FY ── */
+function leaveCalcForPerson(name){
+  if(!state.leaves) return {earned:0,sick:0,casual:0,comp:0,otherdept:0,total:0};
+  const today=todayStr();
+  // FY starts 1 April — find current FY start
+  const now=new Date(today+'T00:00:00');
+  const fyStart=now.getMonth()>=3 // April=3
+    ? `${now.getFullYear()}-04-01`
+    : `${now.getFullYear()-1}-04-01`;
+  const entries=(state.leaves||[]).filter(l=>
+    (l.employeeName||'').toLowerCase()===name.toLowerCase() &&
+    l.dateFrom >= fyStart
+  );
+  const totals={earned:0,sick:0,casual:0,comp:0,otherdept:0};
+  entries.forEach(l=>{
+    const d=leaveDays(l.dateFrom,l.dateTo);
+    if(l.leaveType==='earned') totals.earned+=d;
+    else if(l.leaveType==='sick') totals.sick+=d;
+    else if(l.leaveType==='casual') totals.casual+=d;
+    else if(l.leaveType==='comp') totals.comp+=d;
+    else if(l.leaveType==='otherdept') totals.otherdept+=d;
+  });
+  totals.total=totals.earned+totals.sick+totals.casual+totals.comp+totals.otherdept;
+  return totals;
+}
+
+/* ── By-person leave tab ── */
+function renderLeavesByPerson(leaves,today){
+  if(!leaves||!leaves.length) return `<div class="empty-state"><div class="empty-icon">🌴</div><div class="empty-msg">No leave records yet — click <strong>+ Add</strong></div></div>`;
+  // Group by employee name (case-insensitive, preserve original casing)
+  const nameMap={};
+  leaves.forEach(l=>{
+    const k=(l.employeeName||'Unknown').toLowerCase();
+    if(!nameMap[k]) nameMap[k]={name:l.employeeName||'Unknown',entries:[]};
+    nameMap[k].entries.push(l);
+  });
+  // FY start for display
+  const now=new Date(today+'T00:00:00');
+  const fyYear=now.getMonth()>=3?now.getFullYear():now.getFullYear()-1;
+  const fyLabel=`FY ${fyYear}–${String(fyYear+1).slice(2)} · from 1 Apr ${fyYear}`;
+  let html='';
+  Object.values(nameMap).sort((a,b)=>a.name.localeCompare(b.name)).forEach(({name,entries})=>{
+    const initials=name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    const totals=leaveCalcForPerson(name);
+    const isOpen=ui_openPersonLeaves.has(name);
+    // Build tile HTML — only show types with >0 days or always show earned/sick/casual
+    const tileEarned=`<div style="text-align:center;padding:3px 8px;border-radius:6px;background:rgba(22,163,74,.08);border:0.5px solid rgba(22,163,74,.2)"><div style="font-size:14px;font-weight:700;color:#15803D;line-height:1">${totals.earned}</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Earned</div></div>`;
+    const tileSick=`<div style="text-align:center;padding:3px 8px;border-radius:6px;background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.2)"><div style="font-size:14px;font-weight:700;color:#DC2626;line-height:1">${totals.sick}</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Sick</div></div>`;
+    const tileCasual=`<div style="text-align:center;padding:3px 8px;border-radius:6px;background:rgba(124,58,237,.08);border:0.5px solid rgba(124,58,237,.2)"><div style="font-size:14px;font-weight:700;color:#7C3AED;line-height:1">${totals.casual}</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Casual</div></div>`;
+    const tileComp=totals.comp>0?`<div style="text-align:center;padding:3px 8px;border-radius:6px;background:rgba(13,148,136,.08);border:0.5px solid rgba(13,148,136,.2)"><div style="font-size:14px;font-weight:700;color:#0D9488;line-height:1">${totals.comp}</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Comp</div></div>`:'';
+    const tileOther=totals.otherdept>0?`<div style="text-align:center;padding:3px 8px;border-radius:6px;background:rgba(180,83,9,.08);border:0.5px solid rgba(180,83,9,.2)"><div style="font-size:14px;font-weight:700;color:#B45309;line-height:1">${totals.otherdept}</div><div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Other</div></div>`:'';
+    // Sort entries newest first for display
+    const sorted=[...entries].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom));
+    // FY entries only for footer count
+    const fyEntries=entries.filter(l=>{ const fyStart=`${fyYear}-04-01`; return l.dateFrom>=fyStart; });
+    html+=`<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:9px;margin-bottom:8px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer" onclick="if(ui_openPersonLeaves.has('${esc(name)}'))ui_openPersonLeaves.delete('${esc(name)}');else ui_openPersonLeaves.add('${esc(name)}');render()">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--surface2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">${esc(initials)}</div>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(name)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px">${entries.length} entr${entries.length===1?'y':'ies'} · ${fyLabel}</div>
+        </div>
+        <div style="display:flex;gap:5px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end">${tileEarned}${tileSick}${tileCasual}${tileComp}${tileOther}</div>
+        <span style="color:var(--text3);font-size:12px;flex-shrink:0;margin-left:4px">${isOpen?'▾':'▸'}</span>
+      </div>`;
+    if(isOpen){
+      html+=`<div style="border-top:0.5px solid var(--border);padding:10px 13px 12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Leave history — all records</div>
+        <table style="width:100%;border-collapse:collapse">`;
+      sorted.forEach(l=>{
+        const ti=LEAVE_TYPES.find(t=>t.key===l.leaveType)||LEAVE_TYPES[0];
+        const d=leaveDays(l.dateFrom,l.dateTo);
+        const fmtD=dt=>{if(!dt)return'—';try{const x=new Date(dt+'T00:00:00');return x.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return dt;}};
+        const dateStr=l.dateFrom===l.dateTo?fmtD(l.dateFrom):`${fmtD(l.dateFrom)} – ${fmtD(l.dateTo)}`;
+        const stHtml=l.status==='approved'?`<span style="color:#15803D;font-size:10px">✓ Approved</span>`:`<span style="color:#B45309;font-size:10px">⏳ Pending</span>`;
+        const approveBtn=l.status==='pending'?`<button class="btn btn-ghost btn-xs" title="Approve" style="background:rgba(22,163,74,.08);color:#15803D;border-color:rgba(22,163,74,.3)" onclick="updateLeave('${l.id}',{status:'approved'});render();event.stopPropagation()">✅</button>`:'';
+        // Edit only in by-person view — delete via Status tab
+        html+=`<tr style="${l.dateTo<today?'opacity:.65':''}">
+          <td style="padding:5px 6px;border-bottom:0.5px solid var(--border);width:80px"><span class="leave-type-badge ${ti.cls}" style="font-size:10px;padding:1px 7px">${ti.label}</span></td>
+          <td style="padding:5px 6px;border-bottom:0.5px solid var(--border);font-family:var(--mono);color:var(--text2);font-size:12px">${esc(dateStr)}</td>
+          <td style="padding:5px 6px;border-bottom:0.5px solid var(--border);font-weight:600;font-family:var(--mono);font-size:12px;text-align:right;width:30px">${d}d</td>
+          <td style="padding:5px 6px;border-bottom:0.5px solid var(--border);text-align:right;width:75px">${stHtml}</td>
+          <td style="padding:5px 6px;border-bottom:0.5px solid var(--border);text-align:right;width:52px">${approveBtn}<button class="btn btn-ghost btn-xs" title="Edit" onclick="editLeave('${l.id}');event.stopPropagation()">✏</button></td>
+        </tr>`;
+      });
+      // Footer totals
+      const summaryParts=[];
+      if(totals.earned) summaryParts.push(`${totals.earned}d earned`);
+      if(totals.sick)   summaryParts.push(`${totals.sick}d sick`);
+      if(totals.casual) summaryParts.push(`${totals.casual}d casual`);
+      if(totals.comp)   summaryParts.push(`${totals.comp}d comp`);
+      if(totals.otherdept) summaryParts.push(`${totals.otherdept}d other dept`);
+      html+=`</table>
+        <div style="font-size:10px;color:var(--text3);text-align:right;margin-top:7px;border-top:0.5px solid var(--border);padding-top:6px">
+          Total taken this FY: <strong style="color:var(--text2)">${totals.total} days</strong>${summaryParts.length?' · '+summaryParts.join(' · '):''}
+        </div>
+      </div>`;
+    }
+    html+='</div>';
+  });
+  return html;
+}
+
+/* ── shared toolbar HTML ── */
+function leavesToolbarHTML(isStandalone){
+  const addOnclick=`ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)`;
+  const tabs=`<div style="display:flex;background:var(--surface2);border-radius:8px;padding:2px;gap:2px">
+    <button class="btn btn-ghost btn-sm" style="border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:500;${ui_leavesTab==='status'?'background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.08);color:var(--text)':'color:var(--text2);background:transparent'}" onclick="ui_leavesTab='status';render()">📅 <span class="bim-text">Status</span></button>
+    <button class="btn btn-ghost btn-sm" style="border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:500;${ui_leavesTab==='byPerson'?'background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.08);color:var(--text)':'color:var(--text2);background:transparent'}" onclick="ui_leavesTab='byPerson';render()">👤 <span class="bim-text">By person</span></button>
+  </div>`;
+  return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    ${tabs}
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailLeaves()" title="Email">✉<span class="bim-text"> Email</span></button>
+      <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportLeavesTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+      <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="${addOnclick}" title="Add leave">+<span class="bim-text"> Add</span></button>
+    </div>
+  </div>`;
+}
+
 function renderLeavesSection(){
   if(!state.leaves)state.leaves=[];
   const isStandaloneLeave=ui.view==='leaves';
@@ -8658,16 +8791,11 @@ function renderLeavesSection(){
       return `<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${_dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${_name}</span><span style="font-size:10px;font-weight:400;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${_meta}</span></div>`;
     })()}
     <div class="acc-body${isOpenL?' open':''}" id="acc-body-leaves">`;
-  let html=`<div id="leaves-section" style="scroll-margin-top:180px">
-  ${!isStandaloneLeave?`<div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
-    <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
-    <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">↓ Export</button>
-    <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
-  </div>`:''}`;
 
-  // Add / edit form
+  // ── Add/Edit form ──
+  let formHtml='';
   if(ui_leaveForm){
-    html+=`<div class="form-wrap" id="leave-form-wrap">
+    formHtml=`<div class="form-wrap" id="leave-form-wrap">
       <div class="form-title">${ui_editLeaveId?'✏ Edit':'+ Add Leave'}</div>
       <div class="form-grid">
         <div class="fgroup">
@@ -8683,7 +8811,7 @@ function renderLeavesSection(){
           </select>
         </div>
         <div class="fgroup"><label class="flabel">From</label><input class="finput" type="date" id="lf-from"></div>
-        <div class="fgroup"><label class="flabel">To</label><input class="finput" type="date" id="lf-to"></div>
+        <div class="fgroup"><label class="flabel">To <span style="font-weight:400;color:var(--text3)">(leave blank for single day)</span></label><input class="finput" type="date" id="lf-to"></div>
         <div class="fgroup">
           <label class="flabel">Status</label>
           <select class="fselect" id="lf-status">
@@ -8700,23 +8828,45 @@ function renderLeavesSection(){
     </div>`;
   }
 
-  // Active / upcoming leaves
-  if(!activeLeaves.length&&!ui_leaveForm){
-    html+=`<div class="empty-state"><div class="empty-icon">🌴</div><div class="empty-msg">No active or upcoming leaves — click <strong>+ Add</strong></div></div>`;
-  } else {
-    [...activeLeaves].sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,false); });
+  // ── Status tab content ──
+  let statusHtml='';
+  if(ui_leavesTab==='status'||!isStandaloneLeave){
+    if(!activeLeaves.length&&!ui_leaveForm){
+      statusHtml+=`<div class="empty-state"><div class="empty-icon">🌴</div><div class="empty-msg">No active or upcoming leaves — click <strong>+ Add</strong></div></div>`;
+    } else {
+      // On leave today group
+      const onToday=[...activeLeaves].filter(l=>l.dateFrom<=today).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
+      const upcoming=[...activeLeaves].filter(l=>l.dateFrom>today).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
+      if(onToday.length){
+        statusHtml+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);display:flex;align-items:center;gap:5px;margin-bottom:7px"><span style="width:6px;height:6px;border-radius:50%;background:#D97706;display:inline-block;flex-shrink:0"></span>On leave today</div>`;
+        onToday.forEach(l=>{ statusHtml+=renderLeaveCard(l,today,false); });
+      }
+      if(upcoming.length){
+        statusHtml+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);display:flex;align-items:center;gap:5px;margin-bottom:7px;margin-top:${onToday.length?'12px':'0'}"><span style="width:6px;height:6px;border-radius:50%;background:#1D4ED8;display:inline-block;flex-shrink:0"></span>Upcoming</div>`;
+        upcoming.forEach(l=>{ statusHtml+=renderLeaveCard(l,today,false); });
+      }
+    }
+    // Past leaves
+    if(pastLeaves.length){
+      statusHtml+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_showPastLeaves=!ui_showPastLeaves;const b=document.getElementById('past-leaves-body');const c=document.getElementById('past-leaves-chev');if(b)b.style.display=ui_showPastLeaves?'block':'none';if(c)c.textContent=ui_showPastLeaves?'▾':'▸'">↩ ${pastLeaves.length} past leaves <span id="past-leaves-chev" class="tsd-chev">${ui_showPastLeaves?'▾':'▸'}</span></div>`;
+      statusHtml+=`<div id="past-leaves-body" style="display:${ui_showPastLeaves?'block':'none'}">`;
+      [...pastLeaves].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)).forEach(l=>{ statusHtml+=renderLeaveCard(l,today,true); });
+      statusHtml+=`</div>`;
+    }
   }
 
-  // Past leaves
-  if(pastLeaves.length){
-    html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:6px" onclick="ui_showPastLeaves=!ui_showPastLeaves;const b=document.getElementById('past-leaves-body');const c=document.getElementById('past-leaves-chev');if(b)b.style.display=ui_showPastLeaves?'block':'none';if(c)c.textContent=ui_showPastLeaves?'▾':'▸'">↩ ${pastLeaves.length} past leaves <span id="past-leaves-chev" class="tsd-chev">${ui_showPastLeaves?'▾':'▸'}</span></div>`;
-    html+=`<div id="past-leaves-body" style="display:${ui_showPastLeaves?'block':'none'}">`;
-    [...pastLeaves].sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom)).forEach(l=>{ html+=renderLeaveCard(l,today,true); });
-    html+=`</div>`;
+  // ── By-person tab content ──
+  let byPersonHtml='';
+  if(ui_leavesTab==='byPerson'&&isStandaloneLeave){
+    byPersonHtml=renderLeavesByPerson(state.leaves,today);
   }
-  html+=`</div>`;
+
+  const bodyHtml=`<div id="leaves-section" style="scroll-margin-top:180px">
+    ${formHtml}
+    ${ui_leavesTab==='byPerson'&&isStandaloneLeave ? byPersonHtml : statusHtml}
+  </div>`;
+
   if(isStandaloneLeave){
-    const lCount=activeLeaves.length;
     return`<div style="padding-bottom:80px">
       <div class="acc-header" style="border-radius:10px 10px 0 0;border:0.5px solid var(--border);border-bottom:0">
         <span class="acc-icon">🌴</span>
@@ -8724,15 +8874,21 @@ function renderLeavesSection(){
         <div class="acc-meta">${onLeaveToday.length?`<span class="sbadge sb-urgent">${onLeaveToday.length} on leave</span>`:''} ${upcomingLeaves.length?`<span class="sbadge sb-in-progress">${upcomingLeaves.length} upcoming</span>`:''}</div>
       </div>
       <div style="border:0.5px solid var(--border);border-top:0;border-radius:0 0 10px 10px;padding:12px 16px 14px;margin-bottom:14px;">
-        <div class="fi-form-footer">
-          <button class="btn btn-ghost btn-sm" onclick="doEmailLeaves()">✉ Email</button>
-          <button class="btn btn-ghost btn-sm" onclick="doExportLeavesTxt()">↓ Export</button>
-          <button class="btn btn-accent btn-sm" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)">+ Add</button>
-        </div>
-        ${html}
+        ${leavesToolbarHTML(true)}
+        ${bodyHtml}
       </div>
     </div>`;
   }
+  // Accordion (today view / dashboard) — show status only, no tabs, compact toolbar
+  let html=`<div id="leaves-section" style="scroll-margin-top:180px">
+  <div style="display:flex;justify-content:flex-end;gap:7px;margin-bottom:10px;flex-wrap:wrap">
+    <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doEmailLeaves()" title="Email">✉<span class="bim-text"> Email</span></button>
+    <button class="btn btn-ghost btn-sm btn-icon-mobile" onclick="doExportLeavesTxt()" title="Export">↓<span class="bim-text"> Export</span></button>
+    <button class="btn btn-accent btn-sm btn-icon-mobile" onclick="ui_leaveForm=!ui_leaveForm;ui_editLeaveId=null;window._lastFormOpenTs=Date.now();render();setTimeout(()=>document.getElementById('lf-employee')?.focus(),60)" title="Add leave">+<span class="bim-text"> Add</span></button>
+  </div>
+  ${formHtml}
+  ${statusHtml}
+  </div>`;
   return accHeaderL+html+'</div></div>';
 }
 
