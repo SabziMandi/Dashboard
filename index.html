@@ -8417,7 +8417,7 @@ function _teRenderBody(){
   const today=todayStr();
   const dismissed=state.travelDismissed||[];
   const stories=_teGetStories().filter(({s})=>!dismissed.includes(s.id)).sort((a,b)=>{const da=a.s.deadline_date||'9999-99-99',db=b.s.deadline_date||'9999-99-99';if(da<today&&db<today)return da.localeCompare(db);if(da<today)return -1;if(db<today)return 1;return da.localeCompare(db);});
-  let html=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px"><div style="flex:1"></div><button onclick="doEmailTravel()" class="btn btn-ghost btn-sm">✉ Email</button><button onclick="doExportTravelTxt()" class="btn btn-ghost btn-sm">↓ Export</button><button onclick="_teOpenForm({})" class="btn btn-accent btn-sm">+ Add</button></div>`;
+  let html=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px"><div style="flex:1"></div><button onclick="doEmailTravel()" class="btn btn-ghost btn-sm btn-icon-mobile" title="Email">✉<span class="bim-text"> Email</span></button><button onclick="doExportTravelTxt()" class="btn btn-ghost btn-sm btn-icon-mobile" title="Export">↓<span class="bim-text"> Export</span></button><button onclick="_teOpenForm({})" class="btn btn-accent btn-sm btn-icon-mobile" title="Add">+<span class="bim-text"> Add</span></button></div>`;
   if(_te.open) html+=_teBuildForm();
   stories.forEach(({sec,s})=>{
     const entries=_teEntriesForStory(s.id),expenses=entries.filter(e=>e.type==='expense'),unclaimed=expenses.filter(e=>_teGetClaimed(e)!=='yes').length,allClaimed=expenses.length>0&&unclaimed===0;
