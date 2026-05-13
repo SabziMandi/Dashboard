@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Dashboard">
+<meta name="apple-mobile-web-app-title" content="My Dashboard">
 <meta name="theme-color" content="#F5F1EB">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="description" content="BBC Dashboard — newsroom planning tool">
-<title>Dashboard</title>
+<meta name="description" content="My Dashboard — newsroom planning tool">
+<title>My Dashboard</title>
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -176,7 +176,7 @@ body {
 @media(max-width:720px){
   .header-row1 { flex-direction: column; gap: 0; padding: 0; }
 
-  /* Row 1 — title bar: + · BBC Dashboard · 🔍 */
+  /* Row 1 — title bar: + · My Dashboard · 🔍 */
   .mobile-title-bar {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 100%; padding: 0; box-sizing: border-box;
@@ -1377,12 +1377,12 @@ button.tasks-tab-btn {
   <div class="header-row1">
     <!-- Desktop layout: 3 rows -->
     <!-- Desktop: 3-row header -->
-    <!-- Row 1: BBC Dashboard centred -->
+    <!-- Row 1: My Dashboard centred -->
     <div class="hide-mobile" style="background:var(--surface);display:flex;justify-content:center;padding:14px 22px 6px;">
       <div style="width:100%;max-width:1200px;display:flex;justify-content:center;">
         <div style="position:relative;display:flex;align-items:center;justify-content:center;">
           <span class="wordmark-dot" style="position:absolute;left:-19px;"></span>
-          <span onclick="goHome()" style="font-family:var(--serif);font-size:26px;font-weight:700;color:var(--text);letter-spacing:-.4px;cursor:pointer;" title="Go to Today">BBC Dashboard</span>
+          <span onclick="goHome()" style="font-family:var(--serif);font-size:26px;font-weight:700;color:var(--text);letter-spacing:-.4px;cursor:pointer;" title="Go to Today">My Dashboard</span>
         </div>
       </div>
     </div>
@@ -1430,11 +1430,11 @@ button.tasks-tab-btn {
       </div>
     </div>
     <!-- Mobile layout -->
-    <!-- Row 1: BBC Dashboard + times (Option B: two centred lines) -->
+    <!-- Row 1: My Dashboard + times (Option B: two centred lines) -->
     <div class="mobile-title-bar" style="flex-direction:column;align-items:center;justify-content:center;gap:3px;border-bottom:0.5px solid var(--border);padding:10px 16px 9px;">
       <div style="position:relative;display:flex;align-items:center;justify-content:center;">
         <span class="wordmark-dot" style="width:7px;height:7px;position:absolute;left:-14px;top:50%;transform:translateY(-50%);"></span>
-        <span class="mobile-wordmark" onclick="goHome()" title="Go to Today" style="cursor:pointer;">BBC Dashboard</span>
+        <span class="mobile-wordmark" onclick="goHome()" title="Go to Today" style="cursor:pointer;">My Dashboard</span>
       </div>
       <div id="mobile-times" style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);font-family:var(--mono);font-weight:500;letter-spacing:.2px;">
         <span id="mobile-time-bst">--:-- BST</span>
@@ -3356,7 +3356,7 @@ function scheduleReminder(s){
   if(delay>0 && delay<2147483647){  // setTimeout max ~24.8 days
     reminderTimers[s.id]=setTimeout(()=>{
       if(Notification.permission==='granted'){
-        new Notification('Dashboard',{body, icon:'./icon-192.png'});
+        new Notification('My Dashboard',{body, icon:'./icon-192.png'});
       } else {
         toast(body);
       }
@@ -3632,7 +3632,7 @@ function storyToText(s){
 function buildFullText(){
   const hr='─'.repeat(56);
   const now=new Date().toLocaleString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  const ln=['BBC Dashboard',now,'═'.repeat(56),''];
+  const ln=['My Dashboard',now,'═'.repeat(56),''];
 
   // Active sections
   SECTIONS.forEach(sec=>{
@@ -3729,7 +3729,7 @@ function doExportJSON(){
   const exportData={
     _version: 'nd_v5',
     _exported: new Date().toISOString(),
-    _label: 'BBC Dashboard data export',
+    _label: 'My Dashboard data export',
     sections:    state.sections,
     remarks:     state.remarks,
     archive:     state.archive,
@@ -3947,7 +3947,7 @@ function doEmailTasks(){
   if(!tasks.length){ toast('No tasks to email'); return; }
   const lines=['TASKS','─'.repeat(44),''];
   tasks.forEach(t=>{lines.push(taskToText(t));lines.push('');});
-  sendMailto('[BBC Dashboard] Tasks — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+  sendMailto('[My Dashboard] Tasks — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
 }
 function doExportTasksTxt(){
   const tasks=state.tasks||[];
@@ -3967,7 +3967,7 @@ function doEmailMeetings(){
   const hr='─'.repeat(44);
   const lines=['MEETINGS',hr,''];
   [...meetings].sort((a,b)=>((a.date||'')+(a.time||'')).localeCompare((b.date||'')+(b.time||''))).forEach(m=>{ lines.push(meetingToText(m)); lines.push(''); });
-  sendMailto('[BBC Dashboard] Meetings — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+  sendMailto('[My Dashboard] Meetings — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
 }
 function doExportMeetingsTxt(){
   const meetings=state.meetings||[];
@@ -3992,7 +3992,7 @@ function doEmailNotes(){
     if(n.deadline_date) lines.push('  Deadline : '+n.deadline_date);
     lines.push('');
   });
-  sendMailto('[BBC Dashboard] Notes — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+  sendMailto('[My Dashboard] Notes — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
 }
 function doExportNotesTxt(){
   const notes=state.notes||[];
@@ -4022,7 +4022,7 @@ function doEmailLeaves(){
   const past=leaves.filter(l=>l.dateTo<today).sort((a,b)=>b.dateFrom.localeCompare(a.dateFrom));
   if(active.length){ lines.push('ACTIVE & UPCOMING'); active.forEach(l=>{ lines.push('  '+l.employeeName+' — '+l.leaveType+' ['+l.status+'] '+l.dateFrom+' to '+l.dateTo); if(l.reason) lines.push('  Reason: '+l.reason); lines.push(''); }); }
   if(past.length){ lines.push('PAST LEAVES'); past.forEach(l=>{ lines.push('  '+l.employeeName+' — '+l.leaveType+' '+l.dateFrom+' to '+l.dateTo); lines.push(''); }); }
-  sendMailto('[BBC Dashboard] Leaves — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+  sendMailto('[My Dashboard] Leaves — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
 }
 function doExportLeavesTxt(){
   const leaves=state.leaves||[];
@@ -4080,7 +4080,7 @@ function doEmailSection(sec,archKey){
   sendMailto('[Newsroom] '+name+' — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
 }
 function doEmailAll(){
-  sendMailto('[Newsroom Dashboard] '+new Date().toLocaleDateString('en-GB'), buildFullText());
+  sendMailto('[My Dashboard] '+new Date().toLocaleDateString('en-GB'), buildFullText());
 }
 /* ════════════════════════════════════════
    SCROLL-COLLAPSE HEADER (mobile)
@@ -8009,7 +8009,7 @@ let _teOpen={};   // entryId → expanded bool
 let _teDismissed=null; // mirror of state.travelDismissed for quick access
 
 // ── Helpers ───────────────────────────────────────────────
-const _payLabel=v=>({account:'Account','bbc-direct':'BBC Direct',card:'Card',cash:'Cash',unpaid:'Unpaid',upi:'UPI'}[v]||v||'—');
+const _payLabel=v=>({account:'Account','bbc-direct':'Office Direct',card:'Card',cash:'Cash',unpaid:'Unpaid',upi:'UPI'}[v]||v||'—');
 const _typeIco={cab:'🚕',flight:'✈️',hotel:'🏨',expense:'💳',fixer:'🤝',other:'📦'};
 const _typeName={cab:'Cab',flight:'Flight',hotel:'Hotel',expense:'Expense',fixer:'Fixer',other:'Other'};
 const _typeCol={cab:'#D97706',flight:'#2563EB',hotel:'#7C3AED',expense:'#DC2626',fixer:'#0D9488',other:'#F97316'};
@@ -8612,7 +8612,7 @@ function doExportTravelTxt(){
   const gen=byStory['__general'];
   if(gen){ lines.push(''); lines.push('GENERAL'); lines.push(hr); gen.forEach(e=>{ /* same as above */ }); }
 
-  lines.push(''); lines.push(hr); lines.push('Generated by Newsroom Dashboard');
+  lines.push(''); lines.push(hr); lines.push('Generated by My Dashboard');
   const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='travel-expenses-'+new Date().toISOString().slice(0,10)+'.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -8632,7 +8632,7 @@ function doEmailTravel(){
     lines.push('');
   });
   const gen=byStory['__general']; if(gen){ lines.push('GENERAL'); gen.forEach(e=>{ const d=e.data||{}; lines.push('  '+(_typeIco[e.type]||'')+' '+(d.what||d.from||d.hotelName||'')); }); }
-  sendMailto('[BBC Dashboard] Travel & Expenses — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
+  sendMailto('[My Dashboard] Travel & Expenses — '+new Date().toLocaleDateString('en-GB'), lines.join('\n'));
 }
 
 // Also expose for story card badge (🗺)
