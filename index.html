@@ -3179,6 +3179,25 @@ function sweepStaleTerminalStories(){
   const TERM=['completed','not-done','shelved'];
   let sweptCount=0;
   if(!state.deletedIds) state.deletedIds={};
+
+  // Archive a story to the correct date entry before removing it from the board,
+  // so it always remains visible in the done/resolved list.
+  const archiveBeforeSweep=(s,sec)=>{
+    const resDate=s.completedOn?dateStr(new Date(s.completedOn)):
+      s.notDoneOn?dateStr(new Date(s.notDoneOn)):
+      s.shelvedAt?dateStr(new Date(s.shelvedAt)):
+      s.created?dateStr(new Date(s.created)):today;
+    const archDate=resDate<today?resDate:today;
+    if(!state.archive[archDate]){
+      state.archive[archDate]={type:'day',label:archiveLabel(archDate),sections:{},notes:'',created:Date.now()};
+      SECTIONS.forEach(ss=>{state.archive[archDate].sections[ss.key]=[];});
+    }
+    if(!state.archive[archDate].sections[sec]) state.archive[archDate].sections[sec]=[];
+    if(!state.archive[archDate].sections[sec].some(x=>x.id===s.id)){
+      state.archive[archDate].sections[sec].push({...s, autoArchivedOn:today});
+    }
+  };
+
   const keepFn=(s,key)=>{
     if(!TERM.includes(s.status)) return true;
     // Keep if created today (user just marked it)
@@ -3189,6 +3208,8 @@ function sweepStaleTerminalStories(){
       s.notDoneOn?dateStr(new Date(s.notDoneOn)):
       s.shelvedAt?dateStr(new Date(s.shelvedAt)):null;
     if(resDate&&resDate>=today) return true;
+    // Archive before removing so it remains visible in the done list
+    archiveBeforeSweep(s,key);
     sweptCount++; return false;
   };
   SECTIONS.filter(s=>!s.isUpcoming&&!s.isCombined&&s.key!=='ibu').forEach(({key})=>{
@@ -8021,7 +8042,7 @@ function _teGetClaimed(e){ return e.data?.claimed||'no'; }
 function _teGetStories(){
   const out=[];
   const seen=new Set();
-  // Step 1: scan live board sections
+  // Step 1: scan live board first
   ['ibu','other','requests'].forEach(sec=>{
     (state.sections[sec]||[]).forEach(s=>{
       if(seen.has(s.id)) return;
@@ -8031,14 +8052,13 @@ function _teGetStories(){
       out.push({sec,s});
     });
   });
-  // Step 2: also scan archive for any story IDs that have T&E entries but
-  // are no longer on the live board (completed/archived stories).
-  // This ensures dismissed stories remain visible in the resolved section.
+  // Step 2: for any T&E entry linked to a story not found on the live board
+  // (e.g. completed and archived), find it in the archive so the resolved
+  // section can still show it.
   const linkedIds=new Set((state.travelEntries||[]).map(e=>e.storyId).filter(Boolean));
+  const archKeys=Object.keys(state.archive||{}).sort().reverse(); // newest first
   linkedIds.forEach(sid=>{
-    if(seen.has(sid)) return; // already found on live board
-    // Search archive sections newest-first
-    const archKeys=Object.keys(state.archive||{}).sort().reverse();
+    if(seen.has(sid)) return;
     for(const key of archKeys){
       const arch=state.archive[key];
       if(!arch?.sections) continue;
