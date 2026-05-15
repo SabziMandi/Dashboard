@@ -8021,17 +8021,33 @@ function _teGetClaimed(e){ return e.data?.claimed||'no'; }
 function _teGetStories(){
   const out=[];
   const seen=new Set();
-  const RESOLVED_STATUSES=new Set(['completed','not-done','shelved','postponed','on-hold']);
+  // Step 1: scan live board sections
   ['ibu','other','requests'].forEach(sec=>{
     (state.sections[sec]||[]).forEach(s=>{
       if(seen.has(s.id)) return;
       seen.add(s.id);
-      // Exclude resolved stories unless they have T&E entries linked
-      // (user may want to review T&E even after resolving the story)
       const hasEntries=(state.travelEntries||[]).some(e=>e.storyId===s.id);
       if(!hasEntries) return;
       out.push({sec,s});
     });
+  });
+  // Step 2: also scan archive for any story IDs that have T&E entries but
+  // are no longer on the live board (completed/archived stories).
+  // This ensures dismissed stories remain visible in the resolved section.
+  const linkedIds=new Set((state.travelEntries||[]).map(e=>e.storyId).filter(Boolean));
+  linkedIds.forEach(sid=>{
+    if(seen.has(sid)) return; // already found on live board
+    // Search archive sections newest-first
+    const archKeys=Object.keys(state.archive||{}).sort().reverse();
+    for(const key of archKeys){
+      const arch=state.archive[key];
+      if(!arch?.sections) continue;
+      for(const sec of ['ibu','other','requests']){
+        const found=(arch.sections[sec]||[]).find(s=>s.id===sid&&!s._deleted);
+        if(found){ seen.add(sid); out.push({sec,s:found}); break; }
+      }
+      if(seen.has(sid)) break;
+    }
   });
   return out;
 }
@@ -8395,16 +8411,7 @@ function _teBuildExpensesInner(sid){
   const allExp=(isGen?_teEntriesGeneral():_teEntriesForStory(sid)).filter(e=>e.type==='expense');
   if(!allExp.length) return '<div style="font-size:12px;color:var(--text3);padding:6px 2px">No expenses yet.</div>';
   const page=ui_teExpensesPage[sid]||1,limit=page*10,visible=allExp.slice(0,limit),remaining=allExp.length-limit;
-  let h=visible.map(e=>{
-    const d=e.data||{},col=_typeCol[e.type]||'var(--border)',isOpen=_teOpen[e.id];
-    const payL=_payLabel(d.payment);
-    const sum=[esc(d.what||''),d.amount?'Rs '+esc(String(d.amount)):'',payL&&payL!=='—'?payL:''].filter(Boolean).join(' · ');
-    const fld=(l,v)=>v?`<div style="display:grid;grid-template-columns:110px 1fr;gap:4px;margin-bottom:3px"><span style="font-size:11.5px;color:var(--text3)">${l}</span><span style="font-size:12px;color:var(--text)">${esc(String(v))}</span></div>`:'';
-    const det=fld('What',d.what)+fld('Date',_fmtD(d.when))+fld('Location',d.where)+fld('Amount',d.amount)+fld('Paid by',d.paidBy)+fld('Payment',payL);
-    const remHTML=_teBuildEntryRemarksHTML(e);
-    const sIdJS=e.storyId?`'${e.storyId}'`:'null',sSecJS=e.storySec?`'${e.storySec}'`:'null';
-    return `<div style="border:1px solid var(--border);border-left:3px solid ${col};border-radius:7px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;${isOpen?'background:var(--surface2)':''}" onclick="_teToggle('${e.id}');event.stopPropagation()"><span style="font-size:16px;flex-shrink:0;width:22px;text-align:center">💳</span><span style="font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sum||'(no details)'}</span>${d.payment==='unpaid'?'<span style="font-size:10px;font-weight:600;color:#B91C1C;flex-shrink:0">UNPAID</span>':''}<span id="te-chev-${e.id}" style="font-size:11px;color:var(--text3);flex-shrink:0">${isOpen?'▲':'▼'}</span></div><div id="te-det-${e.id}" style="display:${isOpen?'block':'none'};padding:10px 13px;border-top:1px solid var(--border)"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Expense</div>${det}${remHTML}<div style="display:flex;gap:7px;justify-content:flex-end;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)"><button class="btn btn-ghost btn-sm" onclick="_teOpenForm({type:'expense',storyId:${sIdJS},storySec:${sSecJS},editId:'${e.id}'});event.stopPropagation()">✏ Edit</button><button class="btn btn-ghost btn-sm btn-danger" onclick="_teDelete('${e.id}');event.stopPropagation()">🗑 Delete</button></div></div></div>`;
-  }).join('');
+  let h=visible.map(e=>_teRenderEntry(e)).join('');
   if(remaining>0) h+=`<div style="text-align:center;padding:7px 0;border-top:1px solid var(--border)"><button class="btn btn-ghost btn-sm" onclick="_teShowMoreExpenses('${sid}');event.stopPropagation()" style="color:var(--accent);border-color:rgba(207,102,64,.3);font-size:11.5px">Show ${Math.min(remaining,10)} more <span style="opacity:.6;font-size:11px">(${remaining} remaining)</span></button></div>`;
   const total=allExp.reduce((s,e)=>{const _m=String(e.data?.amount||'').match(/[0-9]+(?:\.[0-9]+)?/);const n=_m?parseFloat(_m[0]):0;return s+(isNaN(n)?0:n);},0);
   if(total>0) h+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 11px;background:rgba(13,148,136,.05);border-top:1px solid rgba(13,148,136,.2);margin-top:2px"><span style="font-size:12px;font-weight:600;color:var(--working)">Total</span><span style="font-size:14px;font-weight:700;color:var(--working)">Rs ${total.toLocaleString('en-IN')}</span></div>`;
