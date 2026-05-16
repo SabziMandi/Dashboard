@@ -8140,11 +8140,48 @@ function _teDeleteStory(sid){
   _teRefresh();
 }
 function _teRefresh(){
+  // Update body content (preserves sub-panel open/closed state in ui_teBookingsOpen/ui_teExpensesOpen)
   const tb=document.getElementById('acc-body-travel');
   if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
-  // Also refresh accordion header
-  const acc=document.getElementById('acc-travel');
-  if(acc){ const h=renderTravelSection(); const tmp=document.createElement('div'); tmp.innerHTML=h; const newAcc=tmp.firstChild; if(newAcc&&acc.parentNode) acc.parentNode.replaceChild(newAcc,acc); }
+
+  // Update header badges and strip in-place — no replaceChild so DOM state is preserved
+  const allEntries=state.travelEntries||[];
+  const allExp=allEntries.filter(e=>e.type==='expense');
+  const notClaimedCount=allExp.filter(e=>_teGetClaimed(e)!=='yes').length;
+  const allClaimed=allExp.length>0&&notClaimedCount===0;
+  const allBookings=allEntries.filter(e=>['cab','flight','hotel','fixer','other'].includes(e.type));
+  const allBookUnpaid=allBookings.filter(e=>e.type==='fixer'?_teGetClaimed(e)!=='yes':e.data?.payment==='unpaid').length;
+  const allBookPaid=allBookings.length>0&&allBookUnpaid===0;
+
+  const metaEl=document.getElementById('acc-travel-meta');
+  if(metaEl){
+    metaEl.innerHTML=
+      (allBookUnpaid?`<span class="sbadge sb-in-progress">${allBookUnpaid} unpaid</span>`:'')+
+      (allBookPaid?`<span class="sbadge sb-in-progress">All paid</span>`:'')+
+      (notClaimedCount?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${notClaimedCount} unclaimed</span>`:'')+
+      (allClaimed?`<span class="sbadge sb-in-progress">All claimed</span>`:'');
+  }
+
+  const today=todayStr();
+  const stories=_teGetStories().filter(({s})=>!(state.travelDismissed||[]).includes(s.id));
+  const summary=stories.length?esc((stories[0].s.title||'').slice(0,32)):'';
+  const sumEl=document.getElementById('acc-travel-summary');
+  if(sumEl) sumEl.textContent=stories.length?(stories[0].s.title||'').slice(0,32):'';
+
+  const dotCol=notClaimedCount?'#D97706':allClaimed?'#16A34A':'#94a3b8';
+  const firstStory=stories[0]?.s;
+  let meta='';
+  if(firstStory?.deadline_date){
+    const dl=firstStory.deadline_date;
+    const dlWord=_stripDateWord(dl,today);
+    meta=`<span style="font-size:10px;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">${dl<today?'Overdue':'Due'} ${dlWord}</span>`;
+  } else if(stories.length>1){
+    meta=`<span style="font-size:10px;color:#888;font-family:var(--font);flex-shrink:0;margin-left:4px">+${stories.length-1} more</span>`;
+  }
+  const stripEl=document.getElementById('acc-travel-strip');
+  if(stripEl){
+    stripEl.innerHTML=summary?`<div class="acc-info-strip"><span style="width:5px;height:5px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block"></span><span style="font-size:10px;color:var(--text2);font-style:italic;font-family:var(--font);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:5px">${summary}</span>${meta}</div>`:'';
+  }
 }
 
 // ── Form ──────────────────────────────────────────────────
@@ -8493,47 +8530,53 @@ function _teRenderBody(){
   const genDismissed=!!state.travelGeneralDismissed;
   const totalResolved=dismissedStories.length+(genDismissed?1:0);
   if(totalResolved>0){
-    const resolvedId='te-resolved-'+Date.now();
     html+=`<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--border)">
       <div style="display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;user-select:none" onclick="(function(el){const items=el.nextElementSibling;const open=items.style.display==='none'||!items.style.display;items.style.display=open?'block':'none';el.querySelector('.te-res-chev').textContent=open?'▾':'▸';})(this)">
         <span style="font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font)">${totalResolved} resolved</span>
         <span class="te-res-chev" style="font-size:10px;color:var(--text3);margin-left:auto">▸</span>
       </div>
       <div style="display:none">`;
-    dismissedStories.forEach(({s})=>{
-      const eCount=_teEntriesForStory(s.id).length;
-      const rowId='te-res-'+s.id.replace(/[^a-z0-9]/gi,'');
-      html+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;overflow:hidden;opacity:.85">
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer" onclick="(function(el){const body=el.nextElementSibling;const open=body.style.display==='none'||!body.style.display;body.style.display=open?'block':'none';el.querySelector('.te-rc').style.transform=open?'rotate(90deg)':'';})(this)">
-          <span style="font-size:11.5px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.title||'Untitled')}</span>
-          ${eCount?`<span style="font-size:10.5px;color:var(--text3)">${eCount} entr${eCount===1?'y':'ies'}</span>`:''}
-          <span class="te-rc" style="font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0">›</span>
+    dismissedStories.forEach(({s,sec})=>{
+      const entries=_teEntriesForStory(s.id);
+      const expenses=entries.filter(e=>e.type==='expense');
+      const bookings=entries.filter(e=>['cab','flight','hotel','fixer','other'].includes(e.type));
+      const unclaimed=expenses.filter(e=>_teGetClaimed(e)!=='yes').length;
+      const allClaimed=expenses.length>0&&unclaimed===0;
+      const bookUnpaid=bookings.filter(e=>e.type==='fixer'?_teGetClaimed(e)!=='yes':e.data?.payment==='unpaid').length;
+      const allBookPaid=bookings.length>0&&bookUnpaid===0;
+      const bookPayBadge=allBookPaid?`<span class="sbadge sb-in-progress">All paid</span>`:bookUnpaid?`<span class="sbadge sb-in-progress">${bookUnpaid} unpaid</span>`:'';
+      const claimBadge=allClaimed?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:unclaimed?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${unclaimed} unclaimed</span>`:'';
+      // Render all entries flat (not inside collapsible sub-accordions)
+      const allEntriesHtml=entries.map(e=>_teRenderEntry(e)).join('');
+      html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;opacity:.9">
+        <div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(100,116,139,.06);border-bottom:1px solid rgba(100,116,139,.15);flex-wrap:wrap">
+          <span style="font-size:13px">📡</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:80px">${esc(s.title||'Untitled')}</span>
+          ${bookPayBadge}${claimBadge}
+          <button onclick="_teRestoreStory('${s.id}')" style="padding:2px 8px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer;flex-shrink:0" title="Restore to active list">↩ Restore</button>
+          <button onclick="if(confirm('Permanently delete this story and all its entries?'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0">🗑</button>
         </div>
-        <div style="display:none;padding:8px 10px 10px;border-top:1px solid var(--border);background:var(--surface)">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">${esc(s.title||'Untitled')}</div>
-          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Resolved · ${eCount} entr${eCount===1?'y':'ies'}</div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <button onclick="_teRestoreStory('${s.id}')" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer">↩ Restore</button>
-            <button onclick="if(confirm('Permanently delete this story and all its entries?'))_teDeleteStory('${s.id}')" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer">🗑 Delete</button>
-          </div>
+        <div style="padding:10px 13px;display:flex;flex-direction:column;gap:6px">
+          ${allEntriesHtml||`<div style="font-size:12px;color:var(--text3);padding:4px 0">No entries</div>`}
         </div>
       </div>`;
     });
     if(genDismissed){
-      const genCount=_teEntriesGeneral().length;
-      html+=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:4px;overflow:hidden;opacity:.85">
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer" onclick="(function(el){const body=el.nextElementSibling;const open=body.style.display==='none'||!body.style.display;body.style.display=open?'block':'none';el.querySelector('.te-rc').style.transform=open?'rotate(90deg)':'';})(this)">
-          <span style="font-size:11.5px;color:var(--text2);flex:1">General</span>
-          ${genCount?`<span style="font-size:10.5px;color:var(--text3)">${genCount} entr${genCount===1?'y':'ies'}</span>`:''}
-          <span class="te-rc" style="font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0">›</span>
+      const genEntries2=_teEntriesGeneral();
+      const genExp2=genEntries2.filter(e=>e.type==='expense');
+      const genUnclaimed2=genExp2.filter(e=>_teGetClaimed(e)!=='yes').length;
+      const genBadge2=genUnclaimed2?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${genUnclaimed2} unclaimed</span>`:(genExp2.length?`<span class="sbadge sb-completed"><span class="badge-dot" style="background:var(--done)"></span>Claimed</span>`:'');
+      const genAllEntriesHtml=genEntries2.map(e=>_teRenderEntry(e)).join('');
+      html+=`<div style="margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;opacity:.9">
+        <div style="display:flex;align-items:center;gap:7px;padding:9px 13px;background:rgba(79,70,229,.05);border-bottom:1px solid rgba(79,70,229,.12)">
+          <span style="font-size:13px">📋</span>
+          <span style="font-size:13px;font-weight:600;color:var(--week);flex:1">General</span>
+          ${genBadge2}
+          <button onclick="_teRestoreGeneral()" style="padding:2px 8px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer;flex-shrink:0">↩ Restore</button>
+          <button onclick="if(confirm('Permanently delete all General entries?'))_teDeleteGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer;flex-shrink:0">🗑</button>
         </div>
-        <div style="display:none;padding:8px 10px 10px;border-top:1px solid var(--border);background:var(--surface)">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">General</div>
-          <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px">Resolved · ${genCount} entr${genCount===1?'y':'ies'}</div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <button onclick="_teRestoreGeneral()" style="padding:2px 8px;font-size:10.5px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--accent);cursor:pointer">↩ Restore</button>
-            <button onclick="if(confirm('Permanently delete all General entries?'))_teDeleteGeneral()" style="padding:2px 7px;font-size:10px;border:1px solid rgba(220,38,38,.3);border-radius:5px;background:transparent;color:#DC2626;cursor:pointer">🗑 Delete</button>
-          </div>
+        <div style="padding:10px 13px;display:flex;flex-direction:column;gap:6px">
+          ${genAllEntriesHtml||`<div style="font-size:12px;color:var(--text3);padding:4px 0">No entries</div>`}
         </div>
       </div>`;
     }
@@ -8586,8 +8629,8 @@ function renderTravelSection(){
     <div class="acc-header" onclick="toggleAccordion('travel')">
       <span class="acc-icon">🗺</span>
       <span class="acc-name">Travel &amp; Expenses</span>
-      <span class="acc-summary">${summary}</span>
-      <div class="acc-meta">
+      <span class="acc-summary" id="acc-travel-summary">${summary}</span>
+      <div class="acc-meta" id="acc-travel-meta">
         ${allBookUnpaid?`<span class="sbadge sb-in-progress">${allBookUnpaid} unpaid</span>`:''}
         ${allBookPaid?`<span class="sbadge sb-in-progress">All paid</span>`:''}
         ${notClaimedCount?`<span class="sbadge sb-in-progress"><span class="badge-dot" style="background:var(--progress)"></span>${notClaimedCount} unclaimed</span>`:''}
@@ -8595,7 +8638,7 @@ function renderTravelSection(){
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-travel">▾</span>
     </div>
-    ${travelStrip}
+    <div id="acc-travel-strip">${travelStrip}</div>
     <div class="acc-body${isOpen?' open':''}" id="acc-body-travel">
       ${isOpen?_teRenderBody():''}
     </div>
