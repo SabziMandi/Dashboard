@@ -7678,19 +7678,19 @@ function renderRemarksAccordion(){
     </div>`;
   }
 
-  // Active notes — sort: due today → overdue (closest first) → upcoming (soonest first) → no deadline (newest created first)
+  // Active notes — sorted and grouped by deadline category (mirrors task grouping)
   const todayMs=new Date(today+'T00:00:00').getTime();
   const noteSortKey=n=>{
     if(!n.deadline_date) return Infinity;
     const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
-    if(diff===0) return -1;           // due today → very top
-    if(diff<0)   return (-diff)/100000; // overdue: closest to today first (-1 before -3)
-    return diff;                      // upcoming: 1,2,3 … soonest first
+    if(diff===0) return -1;
+    if(diff<0)   return (-diff)/100000;
+    return diff;
   };
   const activeSorted=[...active].sort((a,b)=>{
     const ka=noteSortKey(a), kb=noteSortKey(b);
     if(ka!==kb) return ka-kb;
-    return (b.created||0)-(a.created||0); // tie-break: newest created first
+    return (b.created||0)-(a.created||0);
   });
   if(!activeSorted.length && !ui_noteForm){
     body+=`<div class="empty-state" style="padding:16px 0"><div class="empty-icon">📝</div><div class="empty-msg">No notes yet — click <strong>+ Add</strong></div></div>`;
@@ -7698,21 +7698,45 @@ function renderRemarksAccordion(){
     const noteLimit=ui_notePage*10;
     const visibleNotes=activeSorted.slice(0,noteLimit);
     const noteRemaining=activeSorted.length-visibleNotes.length;
+    let _lastNoteGroup=null;
+    const _noteGroup=n=>{
+      if(!n.deadline_date) return 'nodeadline';
+      const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
+      if(diff<-1)  return 'overdue';
+      if(diff===-1)return 'overdue';
+      if(diff===0) return 'today';
+      if(diff===1) return 'tomorrow';
+      return 'upcoming';
+    };
+    const _noteGroupMeta={
+      overdue:  {label:'Overdue',       cls:'tsd-overdue',   icon:'⚠'},
+      today:    {label:'Due today',     cls:'tsd-today',     icon:'📅'},
+      tomorrow: {label:'Due tomorrow',  cls:'tsd-tomorrow',  icon:'🔜'},
+      upcoming: {label:'Upcoming',      cls:'tsd-upcoming',  icon:'🗓'},
+      nodeadline:{label:'No deadline',  cls:'tsd-nodeadline',icon:'📝'},
+    };
     visibleNotes.forEach(n=>{
+      const grp=_noteGroup(n);
+      if(grp!==_lastNoteGroup){
+        const isFirst=_lastNoteGroup===null;
+        const meta=_noteGroupMeta[grp];
+        body+=`<div class="task-section-divider ${meta.cls}${isFirst?' tsd-first':''}">${meta.icon} ${meta.label}</div>`;
+        _lastNoteGroup=grp;
+      }
       const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
       let dlChip='';
       if(n.deadline_date){
-        const diff=new Date(n.deadline_date+'T00:00:00').getTime()-new Date(today+'T00:00:00').getTime();
-        const days=Math.round(diff/86400000);
-        if(days===-1)    dlChip=`<span class="note-deadline-chip">⚠ Due yesterday</span>`;
-        else if(days<0)  dlChip=`<span class="note-deadline-chip">⚠ Overdue by ${Math.abs(days)}d</span>`;
-        else if(days===0)dlChip=`<span class="note-deadline-chip">⚠ Due today</span>`;
-        else             dlChip=`<span class="note-deadline-chip ok">📅 Due in ${days}d (${fmtDate(n.deadline_date)})</span>`;
+        const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
+        if(diff<-1)    dlChip=`<span class="note-deadline-chip">⚠ Overdue by ${Math.abs(diff)}d</span>`;
+        else if(diff===-1) dlChip=`<span class="note-deadline-chip">⚠ Due yesterday</span>`;
+        else if(diff===0)  dlChip=`<span class="note-deadline-chip">⚠ Due today</span>`;
+        else if(diff===1)  dlChip=`<span class="note-deadline-chip ok">🔜 Due tomorrow</span>`;
+        else               dlChip=`<span class="note-deadline-chip ok">📅 Due in ${diff}d (${fmtDate(n.deadline_date)})</span>`;
       }
       const carriedChip=n.carriedForward?`<span class="carry-badge">↻ +${n.carriedDays||1}d</span>`:'';
       body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
         ${n.headline?`<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;font-family:var(--font)">${esc(n.headline)}</div>`:''}
-        <div class="note-text">${esc(n.text)}</div>
+        ${n.text?`<div class="note-text">${esc(n.text)}</div>`:''}
         <div class="note-meta">
           <span>🗓 ${created}</span>
           ${dlChip}
@@ -7727,7 +7751,7 @@ function renderRemarksAccordion(){
       </div>`;
     });
     if(noteRemaining>0){
-      body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:4px" onclick="showMoreNotes();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${noteRemaining} remaining)</span><span class="tsd-chev">+</span></div>`;
+      body+=`<div style="border-top:1px dashed var(--border);margin-top:4px;padding:8px 2px 4px;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text3);font-family:var(--font)" onclick="showMoreNotes();event.stopPropagation()">↓ Show more <span style="opacity:.6;font-family:var(--mono)">(${noteRemaining} remaining)</span></div>`;
     }
   }
 
@@ -9582,53 +9606,91 @@ function renderForm(sec,archKey){
 
 function renderUpcomingForm(sec,archKey,isEdit,sfx,archKeyJS,editStoryObj){
   const ev=editStoryObj||{};
+  // Detect which sections have data (open in edit mode if populated)
+  const hasWhen=!!(ev.expected_date||ev.expected_type);
+  const hasDeadline=!!(ev.deadline_date||ev.deadline_uk);
+  const hasPeople=!!(ev.correspondent||ev.requested_by||ev.status&&ev.status!=='not-started');
+  const hasRemarks=!!(ev.remarks||ev.links);
+  const _secToggle=(bid)=>`(function(t){const b=document.getElementById('${bid}');const c=t.querySelector('.fsec-chev');const isHidden=b.classList.contains('hidden');b.classList.toggle('hidden',!isHidden);c.classList.toggle('open',isHidden);})(this)`;
   return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}">
-  <div class="form-title">${isEdit?'✏ Edit Upcoming Story':'+ New Upcoming Story'}</div>
+  <div class="form-title">${isEdit?'✏ Edit Event':'+ New Event'}</div>
   <div class="form-master-grid">
-    <div class="fgroup full"><label class="flabel">Title *</label><input class="finput" id="f-title${sfx}" placeholder="Story title or working title…" autocomplete="off" value="${esc(ev.title||'')}"></div>
-    <div class="fgroup full"><label class="flabel">Detail</label><textarea class="ftextarea" id="f-detail${sfx}" placeholder="Background, what the story is about, key details…">${esc(ev.detail||'')}</textarea></div>
-    <div class="fsec-header">
-      <span class="fsec-label">When Expected</span>
-      <span class="fsec-chev" style="margin-left:auto">▸</span>
+
+    <div class="fgroup full"><label class="flabel">Title *</label><input class="finput" id="f-title${sfx}" placeholder="Event title or working title…" autocomplete="off" value="${esc(ev.title||'')}"></div>
+    <div class="fgroup full"><label class="flabel">Detail</label><textarea class="ftextarea" id="f-detail${sfx}" placeholder="Background, what the story is about, key details…" style="min-height:60px">${esc(ev.detail||'')}</textarea></div>
+
+    <!-- Accordion 1: When Expected -->
+    <div class="fsec-header" onclick="${_secToggle('fsec-when-'+sfx.slice(1))}">
+      <span class="fsec-label">When expected</span>
+      <span class="fsec-summary">${ev.expected_date?fmtDate(ev.expected_date):''}</span>
+      <span class="fsec-chev${hasWhen?' open':''}">▸</span>
     </div>
-    <div class="fgroup"><label class="flabel">Type</label>
-      <select class="fselect" id="f-expected-type${sfx}" onchange="updateExpectedInput('${sec}',${archKeyJS})">
-        <option value="date"${(ev.expected_type||'date')==='date'?' selected':''}>Specific date</option>
-        <option value="week"${ev.expected_type==='week'?' selected':''}>Week of</option>
-        <option value="month"${ev.expected_type==='month'?' selected':''}>Month</option>
-      </select>
+    <div id="fsec-when-${sfx.slice(1)}" class="fsec-fields${hasWhen?'':' hidden'}">
+      <div class="fgroup"><label class="flabel">Type</label>
+        <select class="fselect" id="f-expected-type${sfx}" onchange="updateExpectedInput('${sec}',${archKeyJS})">
+          <option value="date"${(ev.expected_type||'date')==='date'?' selected':''}>Specific date</option>
+          <option value="week"${ev.expected_type==='week'?' selected':''}>Week of</option>
+          <option value="month"${ev.expected_type==='month'?' selected':''}>Month</option>
+        </select>
+      </div>
+      <div class="fgroup"><label class="flabel">Start date</label><input class="finput" type="date" id="f-expected-date${sfx}" value="${esc(ev.expected_date||'')}"></div>
+      <div class="fgroup"><label class="flabel">End date <span class="flabel-hint">(optional)</span></label><input class="finput" type="date" id="f-expected-date-to${sfx}" value="${esc(ev.expected_date_to||'')}"></div>
+      <div class="fgroup"><label class="flabel">Requested by</label><input class="finput" id="f-requested-by${sfx}" placeholder="Name or team…" value="${esc(ev.requested_by||'')}"></div>
     </div>
-    <div class="fgroup"><label class="flabel">Start date</label><input class="finput" type="date" id="f-expected-date${sfx}" value="${esc(ev.expected_date||'')}"></div>
-    <div class="fgroup"><label class="flabel">End date <span class="flabel-hint">(optional)</span></label><input class="finput" type="date" id="f-expected-date-to${sfx}" value="${esc(ev.expected_date_to||'')}"></div>
-    <div class="fgroup"><label class="flabel">Requested by <span class="flabel-hint">(optional)</span></label><input class="finput" id="f-requested-by${sfx}" placeholder="Name or team requesting coverage…" value="${esc(ev.requested_by||'')}"></div>
-    <div class="fsec-header">
+
+    <!-- Accordion 2: Deadline -->
+    <div class="fsec-header" onclick="${_secToggle('fsec-dl-'+sfx.slice(1))}">
       <span class="fsec-label">Deadline</span>
-      <span class="fsec-chev" style="margin-left:auto">▸</span>
+      <span class="fsec-summary">${ev.deadline_date?fmtDate(ev.deadline_date)+(ev.deadline_uk?' · '+ev.deadline_uk+' '+ukLabel():''):''}</span>
+      <span class="fsec-chev${hasDeadline?' open':''}">▸</span>
     </div>
-    <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
-    <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
-    <div class="fgroup"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
-    <div class="fsec-header">
-      <span class="fsec-label">People &amp; Status</span>
-      <span class="fsec-chev" style="margin-left:auto">▸</span>
+    <div id="fsec-dl-${sfx.slice(1)}" class="fsec-fields${hasDeadline?'':' hidden'}">
+      <div class="fgroup"><label class="flabel">Date</label><input class="finput" type="date" id="f-deadline-date${sfx}" value="${esc(ev.deadline_date||'')}"></div>
+      <div class="fgroup"><label class="flabel">${ukLabel()}</label><input class="finput" id="f-deadline-uk${sfx}" placeholder="17:00" oninput="onDeadlineUKChange('${sec}',${archKeyJS})" onblur="onDeadlineUKBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_uk||'')}"></div>
+      <div class="fgroup"><label class="flabel">IST</label><input class="finput" id="f-deadline-ist${sfx}" placeholder="22:30" oninput="onDeadlineISTChange('${sec}',${archKeyJS})" onblur="onDeadlineISTBlur('${sec}',${archKeyJS})" value="${esc(ev.deadline_ist||'')}"></div>
     </div>
-    <div class="fgroup"><label class="flabel">Correspondent</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" value="${esc(ev.correspondent||'')}"></div>
-    <div class="fgroup"><label class="flabel">Status</label>
-      <select class="fselect" id="f-status${sfx}">
-        <option value="not-started"${(ev.status||'not-started')==='not-started'?' selected':''}>⚪ Not started</option>
-        <option value="in-progress"${ev.status==='in-progress'?' selected':''}>🟡 In progress</option>
-        <option value="urgent"${ev.status==='urgent'?' selected':''}>🔴 Urgent</option>
-        <option value="on-hold"${ev.status==='on-hold'?' selected':''}>🟣 On hold</option>
-        <option value="completed"${ev.status==='completed'?' selected':''}>🟢 Completed</option>
-      </select>
+
+    <!-- Accordion 3: People & Status -->
+    <div class="fsec-header" onclick="${_secToggle('fsec-ps-'+sfx.slice(1))}">
+      <span class="fsec-label">People &amp; status</span>
+      <span class="fsec-summary">${[ev.correspondent,ev.status&&ev.status!=='not-started'?ev.status:''].filter(Boolean).join(' · ')}</span>
+      <span class="fsec-chev${hasPeople?' open':''}">▸</span>
     </div>
-    <div class="fgroup"><label class="flabel">Reminder</label>
-      <select class="fselect" id="f-reminder${sfx}">
-        <option value="off"${(ev.reminder||'off')==='off'?' selected':''}>Off</option><option value="15min"${ev.reminder==='15min'?' selected':''}>15 min</option><option value="30min"${ev.reminder==='30min'?' selected':''}>30 min</option><option value="1hr"${ev.reminder==='1hr'?' selected':''}>1 hour</option><option value="4hr"${ev.reminder==='4hr'?' selected':''}>4 hours</option><option value="1day"${ev.reminder==='1day'?' selected':''}>1 day</option><option value="1week"${ev.reminder==='1week'?' selected':''}>1 week</option>
-      </select>
+    <div id="fsec-ps-${sfx.slice(1)}" class="fsec-fields${hasPeople?'':' hidden'}">
+      <div class="fgroup"><label class="flabel">Correspondent</label><input class="finput" id="f-correspondent${sfx}" placeholder="Name" list="dl-correspondents" autocomplete="off" value="${esc(ev.correspondent||'')}"></div>
+      <div class="fgroup"><label class="flabel">Status</label>
+        <select class="fselect" id="f-status${sfx}">
+          <option value="not-started"${(ev.status||'not-started')==='not-started'?' selected':''}>⚪ Not started</option>
+          <option value="in-progress"${ev.status==='in-progress'?' selected':''}>🟡 In progress</option>
+          <option value="urgent"${ev.status==='urgent'?' selected':''}>🔴 Urgent</option>
+          <option value="on-hold"${ev.status==='on-hold'?' selected':''}>🟣 On hold</option>
+          <option value="completed"${ev.status==='completed'?' selected':''}>🟢 Completed</option>
+        </select>
+      </div>
+      <div class="fgroup"><label class="flabel">Reminder</label>
+        <select class="fselect" id="f-reminder${sfx}">
+          <option value="off"${(ev.reminder||'off')==='off'?' selected':''}>Off</option>
+          <option value="15min"${ev.reminder==='15min'?' selected':''}>15 min</option>
+          <option value="30min"${ev.reminder==='30min'?' selected':''}>30 min</option>
+          <option value="1hr"${ev.reminder==='1hr'?' selected':''}>1 hour</option>
+          <option value="4hr"${ev.reminder==='4hr'?' selected':''}>4 hours</option>
+          <option value="1day"${ev.reminder==='1day'?' selected':''}>1 day</option>
+          <option value="1week"${ev.reminder==='1week'?' selected':''}>1 week</option>
+        </select>
+      </div>
     </div>
-    <div class="fgroup full"><label class="flabel">Remarks &amp; Any Relevant Detail</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Context, previous coverage, contacts, logistics…" style="white-space:pre-wrap;min-height:80px">${esc(ev.remarks||'')}</textarea></div>
-    <div class="fgroup full"><label class="flabel">Reference Links <span class="flabel-hint">(comma-separated)</span></label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(ev.links||'')}"></div>
+
+    <!-- Accordion 4: Remarks & Links -->
+    <div class="fsec-header" onclick="${_secToggle('fsec-rl-'+sfx.slice(1))}">
+      <span class="fsec-label">Remarks &amp; links</span>
+      <span class="fsec-summary">${ev.remarks?(ev.remarks.slice(0,40)+(ev.remarks.length>40?'…':'')):ev.links?'Has links':''}</span>
+      <span class="fsec-chev${hasRemarks?' open':''}">▸</span>
+    </div>
+    <div id="fsec-rl-${sfx.slice(1)}" class="fsec-fields${hasRemarks?'':' hidden'}">
+      <div class="fgroup full"><label class="flabel">Remarks</label><textarea class="ftextarea" id="f-remarks${sfx}" placeholder="Context, previous coverage, contacts, logistics…" style="white-space:pre-wrap;min-height:72px">${esc(ev.remarks||'')}</textarea></div>
+      <div class="fgroup full"><label class="flabel">Reference links <span class="flabel-hint">(comma-separated)</span></label><input class="finput" id="f-links${sfx}" placeholder="https://…" value="${esc(ev.links||'')}"></div>
+    </div>
+
   </div>
   <div class="form-footer">
     <button class="btn btn-accent" onclick="submitForm('${sec}',${archKeyJS})">${isEdit?'Update':'Add'}</button>
