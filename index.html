@@ -1785,6 +1785,24 @@ function loadLocal(){
     state._travelMigrated=true;
     saveLocal();
   }
+  // One-time repair: restore non-completed upcoming events that were auto-migrated
+  // to archive by the old checkDateChange logic. They should stay on the live board
+  // in the "expired" section until the user explicitly resolves them.
+  if(!state._upcomingRepaired){
+    const seen=new Set((state.sections.upcoming||[]).map(s=>s.id));
+    Object.values(state.archive||{}).forEach(entry=>{
+      (entry.sections?.upcoming||[]).forEach(s=>{
+        if(s._deleted||s.status==='completed'||seen.has(s.id)) return;
+        if(!s.autoMigratedOn) return; // only restore auto-migrated ones, not manually archived
+        state.sections.upcoming.push({...s});
+        seen.add(s.id);
+        // Remove from archive so it doesn't show twice
+        entry.sections.upcoming=entry.sections.upcoming.filter(x=>x.id!==s.id);
+      });
+    });
+    state._upcomingRepaired=true;
+    saveLocal();
+  }
   if(!state.staffNames) state.staffNames={correspondents:[],producers:[],shootEdit:[]};
   if(!state.staffNames.correspondents) state.staffNames.correspondents=[];
   if(!state.staffNames.producers) state.staffNames.producers=[];
@@ -2322,18 +2340,18 @@ function checkDateChange(){
       if(otherSecCnt) parts.push(otherSecCnt+' other');
       toast(`📦 Auto-archived: ${parts.join(', ')}`);
     }
-    // Auto-migrate Upcoming stories whose date has arrived
+    // Auto-migrate Upcoming stories whose date has arrived — completed only.
+    // Expired but not-yet-actioned events stay on the board in the "expired" section
+    // so the user can still see and action them.
     let upcomingMigrated=0;
     const upcomingToRemove=[];
     (state.sections.upcoming||[]).forEach(story=>{
-      if(story.status==='completed'||story.status==='on-hold') return;
+      if(story.status!=='completed') return; // only migrate completed events
       if(!story.expected_date) return;
       let targetDate=story.expected_date;
-      // For week/month, compute first day
       if(story.expected_type==='week') targetDate=weekMondayStr(story.expected_date);
       else if(story.expected_type==='month') targetDate=story.expected_date+'-01';
-      if(targetDate < today){   // strictly past — events due TODAY stay visible all day
-        // Move to archive entry for target date
+      if(targetDate < today){
         const archKey=story.expected_type==='week'?weekKey(targetDate):story.expected_type==='month'?monthKey(story.expected_date):targetDate;
         if(!state.archive[archKey]){
           state.archive[archKey]={type:story.expected_type||'day',label:archiveLabel(archKey),sections:{ibu:[],other:[],requests:[],upcoming:[]},notes:'',created:Date.now()};
