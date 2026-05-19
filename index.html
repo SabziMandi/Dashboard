@@ -1,8 +1,10 @@
 <!DOCTYPE html>
+<!-- BBC Dashboard nd_v5 | built 2026-05-19 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="My Dashboard">
@@ -4372,7 +4374,7 @@ function toggleAccordion(key){
   if(b) b.classList.toggle('open',ui.openSections.has(key));
   if(cv) cv.classList.toggle('open',ui.openSections.has(key));
   if(a) a.classList.toggle('acc-open',ui.openSections.has(key));
-  if(key==='travel'&&opening&&b&&!b.innerHTML.trim()) b.innerHTML=_teRenderBody();
+  if(key==='travel'&&opening&&b) b.innerHTML=_teRenderBody();
 }
 function setFilter(f,el){
   ui.filter=f;
@@ -8249,16 +8251,10 @@ function _teDeleteStory(sid){
   _teRefresh();
 }
 function _teRefresh(){
-  // Update body content if open; if closed, clear it so toggleAccordion always repopulates fresh
+  // If accordion is open: update body content in-place (preserves sub-panel open state)
+  // If accordion is closed: do nothing — toggleAccordion always calls _teRenderBody() fresh on open
   const tb=document.getElementById('acc-body-travel');
-  if(tb){
-    if(tb.classList.contains('open')){
-      tb.innerHTML=_teRenderBody();
-    } else {
-      // Clear body so next open always calls _teRenderBody() with fresh state
-      tb.innerHTML='';
-    }
-  }
+  if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
 
   // Update header badges and strip in-place — no replaceChild so DOM state is preserved
   const allEntries=state.travelEntries||[];
@@ -8305,11 +8301,18 @@ function _teOpenForm(opts){
   _te={open:true,type:opts.type||'cab',storyId:opts.storyId||null,storySec:opts.storySec||null,editId:opts.editId||null};
   window._lastFormOpenTs=Date.now();
   const tb=document.getElementById('acc-body-travel');
-  if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
-  else { ui.openSections.add('travel'); render(); setTimeout(()=>{ const t=document.getElementById('acc-body-travel'); if(t){ t.innerHTML=_teRenderBody(); t.classList.add('open'); } },50); }
+  if(tb&&tb.classList.contains('open')){
+    // Accordion already open — update body in-place
+    tb.innerHTML=_teRenderBody();
+  } else {
+    // Accordion closed — open it and let render() populate the body via renderTravelSection
+    ui.openSections.add('travel');
+    render();
+    // Scroll into view after render
+    setTimeout(()=>{ document.getElementById('acc-travel')?.scrollIntoView({behavior:'smooth',block:'start'}); },80);
+  }
   setTimeout(()=>{
     document.getElementById('te-story')?.focus();
-    // Ghost-tap guard: disable save button briefly after form opens
     const btn=document.getElementById('te-submit-btn');
     if(btn){ btn.disabled=true; btn.style.opacity='.5'; setTimeout(()=>{ btn.disabled=false; btn.style.opacity=''; },600); }
   },80);
@@ -8329,9 +8332,22 @@ function _teSubmit(){
   const g=id=>{ const el=document.getElementById('te-'+id); return el?(el.type==='checkbox'?el.checked:(el.value||'').trim()):''; };
   const type=_te.type;
   const storyId=g('story')||null;
-  // Find storySec from storyId
+  // Resolve storySec — check live board first, then archive
   let storySec=null;
-  if(storyId){ for(const s of SECTIONS){ if((state.sections[s.key]||[]).find(x=>x.id===storyId)){storySec=s.key;break;} } }
+  if(storyId){
+    for(const s of SECTIONS){
+      if((state.sections[s.key]||[]).find(x=>x.id===storyId)){ storySec=s.key; break; }
+    }
+    if(!storySec){
+      // Story may have been archived — find it there
+      outer: for(const archKey of Object.keys(state.archive||{}).sort().reverse()){
+        const arch=state.archive[archKey];
+        for(const sec of ['ibu','other','requests']){
+          if((arch.sections?.[sec]||[]).find(x=>x.id===storyId)){ storySec=sec; break outer; }
+        }
+      }
+    }
+  }
 
   let data={};
   if(type==='cab') data={from:g('from'),pickDate:g('pickdate'),pickTime:g('picktime'),to:g('to'),dropDate:g('dropdate'),dropTime:g('droptime'),driver:g('driver'),phone:g('phone'),cabNum:g('cabnum'),payment:g('payment'),paidBy:g('paidby'),cabNotes:(document.getElementById('te-cabnotes')?.value||'').trim()};
@@ -9840,12 +9856,13 @@ function init(){
 
   // ── Service Worker registration ──────────────────────────────
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./service-worker.js', {scope:'./'})
+    navigator.serviceWorker.register('./service-worker.js', {scope:'./', updateViaCache:'none'})
       .then(reg=>{
         navigator.serviceWorker.ready.then(()=>{ scheduleAllReminders(); });
+        reg.update(); // always check for a new SW version on load
         setInterval(()=>_swMsg({type:'PING'}), 30 * 60 * 1000);
       })
-      .catch(()=>{}); // silently skip if SW script not available (e.g. single-file deployment)
+      .catch(()=>{}); // silently skip if SW script not available
   }
 
   scheduleAllReminders();
