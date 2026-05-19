@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BBC Dashboard — Data Recovery</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #f5f1eb; color: #1a1714; padding: 20px; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #888; margin-bottom: 20px; }
+  .section { background: #fff; border: 1px solid #e4ddd2; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .section-hd { padding: 12px 16px; background: #faf7f3; border-bottom: 1px solid #e4ddd2; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .section-body { padding: 14px 16px; display: none; }
+  .section-body.open { display: block; }
+  .entry { border: 1px solid #e4ddd2; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; font-size: 12px; }
+  .entry-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .entry-meta { color: #5c5248; font-size: 11px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .b-urgent { background: rgba(220,38,38,.1); color: #dc2626; }
+  .b-progress { background: rgba(217,119,6,.1); color: #d97706; }
+  .b-done { background: rgba(22,163,74,.1); color: #16a34a; }
+  .b-default { background: rgba(100,116,139,.1); color: #64748b; }
+  .b-upcoming { background: rgba(37,99,235,.1); color: #2563eb; }
+  .empty { color: #9a8c7e; font-size: 12px; padding: 6px 0; }
+  .stat { font-size: 22px; font-weight: 700; color: #cf6640; }
+  .stat-label { font-size: 11px; color: #9a8c7e; }
+  .stats { display: flex; gap: 20px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid #e4ddd2; }
+  .stat-block { text-align: center; }
+  textarea { width: 100%; height: 120px; font-size: 11px; font-family: monospace; border: 1px solid #e4ddd2; border-radius: 6px; padding: 8px; box-sizing: border-box; resize: vertical; }
+  button { padding: 8px 16px; background: #cf6640; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; margin-right: 8px; margin-bottom: 8px; }
+  button.ghost { background: transparent; color: #cf6640; border: 1px solid #cf6640; }
+  .warn { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2); border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #dc2626; margin-bottom: 14px; }
+  .ok { background: rgba(22,163,74,.08); border: 1px solid rgba(22,163,74,.2); border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #16a34a; margin-bottom: 14px; }
+  .fb-section { margin-top: 16px; }
+  .tab { display: inline-block; padding: 5px 14px; border-radius: 6px 6px 0 0; font-size: 12px; cursor: pointer; background: #f0ebe3; border: 1px solid #e4ddd2; border-bottom: none; margin-right: 2px; }
+  .tab.active { background: #fff; font-weight: 600; }
+  .tab-content { border: 1px solid #e4ddd2; border-radius: 0 6px 6px 6px; padding: 14px; background: #fff; }
+  .archive-date { font-size: 11px; font-weight: 600; color: #5c5248; padding: 6px 0 4px; border-top: 1px solid #f0ebe3; margin-top: 8px; }
+  .archive-date:first-child { border-top: none; margin-top: 0; }
+</style>
+</head>
+<body>
+<h1>📦 BBC Dashboard — Data Recovery</h1>
+<div class="sub">Reads your localStorage directly. Nothing is changed unless you click Restore.</div>
+
+<div id="status"></div>
+<div id="app"></div>
+
+<script>
+const KEY = 'nd_v5';
+const BACKUP_KEY = 'nd_backups';
+
+function fmtDate(ds) {
+  if (!ds) return '—';
+  try { return new Date(ds + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch(e) { return ds; }
+}
+function fmtTs(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+  catch(e) { return String(ts); }
+}
+function statusBadge(s) {
+  const map = { urgent:'b-urgent', 'in-progress':'b-progress', completed:'b-done', 'not-done':'b-default', postponed:'b-default', 'on-hold':'b-default', shelved:'b-default', 'not-started':'b-default' };
+  return `<span class="badge ${map[s]||'b-default'}">${s||'—'}</span>`;
+}
+
+function renderEntry(s, source) {
+  const created = fmtTs(s.created);
+  const updated = fmtTs(s.updated);
+  return `<div class="entry">
+    <div class="entry-title">${esc(s.title||s.headline||s.name||'(untitled)')} ${statusBadge(s.status)}</div>
+    <div class="entry-meta">
+      <span>📅 Created: ${created}</span>
+      ${s.updated ? `<span>✏ Updated: ${updated}</span>` : ''}
+      ${s.correspondent ? `<span>👤 ${esc(s.correspondent)}</span>` : ''}
+      ${s.deadline_date ? `<span>⏰ Deadline: ${fmtDate(s.deadline_date)}</span>` : ''}
+      ${source ? `<span style="color:#cf6640">📂 ${esc(source)}</span>` : ''}
+      ${s.carriedForward ? `<span style="color:#ea580c">↻ Carried +${s.carriedDays||1}d</span>` : ''}
+      ${s._deleted ? `<span style="color:#dc2626">🗑 DELETED</span>` : ''}
+    </div>
+  </div>`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function accordion(title, content, count, open) {
+  const id = 'sec-' + Math.random().toString(36).slice(2);
+  return `<div class="section">
+    <div class="section-hd" onclick="var b=document.getElementById('${id}');b.classList.toggle('open');this.querySelector('.chev').textContent=b.classList.contains('open')?'▾':'▸'">
+      <span>${title} <span style="color:#9a8c7e;font-weight:400;font-size:12px">(${count})</span></span>
+      <span class="chev">${open?'▾':'▸'}</span>
+    </div>
+    <div class="section-body${open?' open':''}" id="${id}">${content||'<div class="empty">Nothing here</div>'}</div>
+  </div>`;
+}
+
+function renderAll(state, backups) {
+  const today = new Date().toISOString().slice(0,10);
+  let html = '';
+
+  // Stats
+  const liveStories = [...(state.sections?.ibu||[]), ...(state.sections?.other||[])].filter(s=>!s._deleted);
+  const liveRequests = (state.sections?.requests||[]).filter(s=>!s._deleted);
+  const liveUpcoming = (state.sections?.upcoming||[]).filter(s=>!s._deleted);
+  const liveTasks = (state.tasks||[]).filter(t=>!t._deleted);
+  const liveNotes = (state.notes||[]).filter(n=>!n._deleted);
+  const archiveKeys = Object.keys(state.archive||{}).sort().reverse();
+  let totalArchiveStories = 0;
+  archiveKeys.forEach(k => {
+    const a = state.archive[k];
+    ['ibu','other','requests','upcoming'].forEach(sec => {
+      totalArchiveStories += (a.sections?.[sec]||[]).filter(s=>!s._deleted).length;
+    });
+  });
+
+  html += `<div class="section"><div class="stats">
+    <div class="stat-block"><div class="stat">${liveStories.length}</div><div class="stat-label">Live stories</div></div>
+    <div class="stat-block"><div class="stat">${liveRequests.length}</div><div class="stat-label">Requests</div></div>
+    <div class="stat-block"><div class="stat">${liveUpcoming.length}</div><div class="stat-label">Upcoming</div></div>
+    <div class="stat-block"><div class="stat">${liveTasks.length}</div><div class="stat-label">Tasks</div></div>
+    <div class="stat-block"><div class="stat">${liveNotes.length}</div><div class="stat-label">Notes</div></div>
+    <div class="stat-block"><div class="stat">${archiveKeys.length}</div><div class="stat-label">Archive dates</div></div>
+    <div class="stat-block"><div class="stat">${totalArchiveStories}</div><div class="stat-label">Archived entries</div></div>
+  </div></div>`;
+
+  // Live stories
+  const liveStoriesHtml = liveStories.map(s => renderEntry(s, 'Live board')).join('');
+  html += accordion('📡 Live Stories', liveStoriesHtml, liveStories.length, true);
+
+  // Live requests
+  const liveReqHtml = liveRequests.map(s => renderEntry(s, 'Requests')).join('');
+  html += accordion('📨 Requests for Future', liveReqHtml, liveRequests.length, true);
+
+  // Live upcoming
+  const liveUpHtml = liveUpcoming.map(s => renderEntry(s, 'Upcoming')).join('');
+  html += accordion('🗓 Upcoming Events (live)', liveUpHtml, liveUpcoming.length, true);
+
+  // Archive — group by date, show all sections
+  let archHtml = '';
+  archiveKeys.slice(0, 60).forEach(key => {
+    const a = state.archive[key];
+    let dateEntries = '';
+    let dateCount = 0;
+    ['ibu','other','requests','upcoming'].forEach(sec => {
+      const entries = (a.sections?.[sec]||[]).filter(s=>!s._deleted);
+      entries.forEach(s => {
+        dateEntries += renderEntry(s, key + ' / ' + sec);
+        dateCount++;
+      });
+    });
+    if (dateCount > 0) {
+      archHtml += `<div class="archive-date">📂 ${key} (${dateCount} entries)</div>${dateEntries}`;
+      totalArchiveStories += 0; // already counted
+    }
+  });
+  html += accordion('📁 Archive (all entries, newest first)', archHtml, totalArchiveStories, false);
+
+  // Tasks
+  const tasksHtml = liveTasks.map(t => `<div class="entry">
+    <div class="entry-title">${esc(t.title||'(untitled)')} <span class="badge b-default">${t.taskStatus||'pending'}</span></div>
+    <div class="entry-meta">
+      <span>📅 Created: ${fmtTs(t.created)}</span>
+      ${t.deadline_date ? `<span>⏰ Due: ${fmtDate(t.deadline_date)}</span>` : ''}
+    </div>
+  </div>`).join('');
+  html += accordion('☑ Tasks (live)', tasksHtml, liveTasks.length, false);
+
+  // Backups
+  if (backups) {
+    let bkpHtml = '';
+    ['daily','weekly','monthly','yearly'].forEach(tier => {
+      const snaps = backups[tier] || [];
+      if (!snaps.length) return;
+      bkpHtml += `<div style="font-weight:600;font-size:12px;margin:10px 0 6px;color:#5c5248;text-transform:uppercase;letter-spacing:.05em">${tier} backups (${snaps.length})</div>`;
+      snaps.forEach((snap, i) => {
+        const storyCount = (() => {
+          try {
+            let n = 0;
+            ['ibu','other','requests'].forEach(sec => n += (snap.sections?.[sec]||[]).filter(s=>!s._deleted).length);
+            n += (snap.tasks||[]).filter(t=>!t._deleted).length;
+            return n;
+          } catch(e) { return '?'; }
+        })();
+        bkpHtml += `<div class="entry" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:600">${snap._backupMeta?.period||snap.period||snap.date||('Backup '+i)}</div>
+            <div style="font-size:11px;color:#9a8c7e">${storyCount} items · Saved ${fmtTs(snap._backupMeta?.savedAt||snap.savedAt)}</div>
+          </div>
+          <button onclick="restoreBackup('${tier}',${i})" style="font-size:11px;padding:5px 12px">↩ Restore</button>
+        </div>`;
+      });
+    });
+    html += accordion('💾 Backups (in localStorage)', bkpHtml || '<div class="empty">No backups found</div>', Object.values(backups).flat().length, false);
+  }
+
+  // Raw export
+  html += `<div class="section">
+    <div class="section-hd" onclick="var b=document.getElementById('raw-body');b.classList.toggle('open');this.querySelector('.chev').textContent=b.classList.contains('open')?'▾':'▸'">
+      <span>🔧 Raw data export / import</span><span class="chev">▸</span>
+    </div>
+    <div class="section-body" id="raw-body">
+      <p style="font-size:12px;color:#5c5248;margin:0 0 10px">Download full state as JSON, or paste a backup JSON below to restore it.</p>
+      <button onclick="downloadState()">⬇ Download full state JSON</button>
+      <button class="ghost" onclick="document.getElementById('import-area').style.display='block'">⬆ Paste & restore JSON</button>
+      <div id="import-area" style="display:none;margin-top:12px">
+        <textarea id="import-json" placeholder="Paste exported JSON here…"></textarea>
+        <button onclick="restoreFromPaste()" style="margin-top:8px">↩ Restore from pasted JSON</button>
+      </div>
+    </div>
+  </div>`;
+
+  return html;
+}
+
+function downloadState() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) { alert('No data found in localStorage'); return; }
+    const blob = new Blob([raw], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bbc-dashboard-recovery-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function restoreBackup(tier, idx) {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY);
+    if (!raw) { alert('No backups found'); return; }
+    const backups = JSON.parse(raw);
+    const snap = backups[tier]?.[idx];
+    if (!snap) { alert('Backup not found'); return; }
+    const period = snap._backupMeta?.period || snap.period || snap.date || ('backup ' + idx);
+    if (!confirm(`Restore ${tier} backup "${period}"?\n\nThis will OVERWRITE your current data.\nMake sure to download a backup first.`)) return;
+    // Get current state and merge backup into it
+    const current = JSON.parse(localStorage.getItem(KEY) || '{}');
+    const merged = { ...current, ...snap };
+    // Preserve backup snapshots
+    merged.backupSnapshots = current.backupSnapshots;
+    merged.autoBackup = current.autoBackup;
+    localStorage.setItem(KEY, JSON.stringify(merged));
+    alert('Restored! Reload the main app to see your data.');
+  } catch(e) { alert('Restore failed: ' + e.message); }
+}
+
+function restoreFromPaste() {
+  try {
+    const txt = document.getElementById('import-json').value.trim();
+    if (!txt) { alert('Paste some JSON first'); return; }
+    const data = JSON.parse(txt);
+    if (!confirm('Restore from pasted JSON? This will overwrite current data.')) return;
+    const current = JSON.parse(localStorage.getItem(KEY) || '{}');
+    const merged = { ...current, ...data };
+    merged.backupSnapshots = current.backupSnapshots;
+    merged.autoBackup = current.autoBackup;
+    localStorage.setItem(KEY, JSON.stringify(merged));
+    alert('Restored! Reload the main app.');
+  } catch(e) { alert('Invalid JSON: ' + e.message); }
+}
+
+// Main
+try {
+  const raw = localStorage.getItem(KEY);
+  const bkpRaw = localStorage.getItem(BACKUP_KEY);
+  const statusEl = document.getElementById('status');
+  const appEl = document.getElementById('app');
+
+  if (!raw) {
+    statusEl.innerHTML = '<div class="warn">⚠ No data found in localStorage under key "nd_v5". Are you opening this file from the same domain as the app?</div>';
+    appEl.innerHTML = '<div class="section"><div class="section-body open" style="display:block"><p style="font-size:13px">This recovery tool must be opened from the <strong>same GitHub Pages domain</strong> as your app (not from a local file:// URL) to access the same localStorage.</p><p style="font-size:13px">If you have a backup JSON file, use the "Paste & restore JSON" option below once you open this on your GitHub Pages domain.</p></div></div>';
+  } else {
+    const state = JSON.parse(raw);
+    const backups = bkpRaw ? JSON.parse(bkpRaw) : null;
+    const lastActive = state.lastActiveDate || '—';
+    statusEl.innerHTML = `<div class="ok">✓ Data found — last active: <strong>${lastActive}</strong> · localStorage size: <strong>${Math.round(raw.length/1024)}KB</strong>${backups ? ' · backups found' : ' · no backups in localStorage'}</div>`;
+    appEl.innerHTML = renderAll(state, backups);
+  }
+} catch(e) {
+  document.getElementById('status').innerHTML = `<div class="warn">⚠ Error reading data: ${e.message}</div>`;
+}
+</script>
+</body>
+</html>
