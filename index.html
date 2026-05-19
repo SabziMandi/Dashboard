@@ -1003,6 +1003,17 @@ body {
 .slot-row-dl-cell { padding:6px 12px 6px 6px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
 .slot-row-dl-date { font-size:11.5px; color:var(--text2); white-space:nowrap; }
 .slot-row-dl-time { font-size:10.5px; color:var(--text3); font-family:var(--mono); white-space:nowrap; }
+.slot-remark-strip {
+  grid-column: 3 / -1; /* aligns with programme name / centre column */
+  display:flex; align-items:flex-start; gap:6px;
+  padding:3px 12px 6px 0;
+  border-top:.5px dashed var(--border);
+}
+.slot-remark-dot { width:5px; height:5px; border-radius:50%; background:#6D28D9; flex-shrink:0; margin-top:5px; }
+.slot-remark-text { font-size:10.5px; color:var(--text2); font-style:italic; font-family:var(--font); line-height:1.5; min-width:0; word-break:break-word; }
+@media(max-width:720px){
+  .slot-remark-strip { grid-column: 3 / -1; padding-left:0; }
+}
 .slot-section-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.7px; color:var(--text3); }
 .staff-meta-row { display:flex; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text2); margin-bottom:8px; align-items:center; }
 .staff-meta-chip { display:flex; align-items:center; gap:4px; }
@@ -2726,7 +2737,10 @@ function captureFormState(){
     const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value||'';
     const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value||'';
     const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value||'';
-    slots.push({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc});
+    const remark=(document.getElementById('bt-remark-'+idx)||{}).value||'';
+    const slotData=_btSlotData[idx];
+    const remarksList=slotData?[...slotData.remarksList]:(remark?[{id:genId(),text:remark,created:Date.now()}]:[]);
+    slots.push({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc,remark,remarksList});
   });
   saved.__broadcastSlots=slots;
   return saved;
@@ -2772,7 +2786,7 @@ function restoreFormState(saved){
     showFieldRow(sec,archKey);
   });
   if(saved.__broadcastSlots&&saved.__broadcastSlots.length){
-    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc})=>{
+    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc,remark})=>{
       const ukEl=document.getElementById('bt-uk-'+idx);
       const istEl=document.getElementById('bt-ist-'+idx);
       const platEl=document.getElementById('bt-plat-'+idx);
@@ -2787,12 +2801,20 @@ function restoreFormState(saved){
       const comNameEl=document.getElementById('bt-com-name-'+idx);
       const comTeamEl=document.getElementById('bt-com-team-'+idx);
       const comLocEl=document.getElementById('bt-com-loc-'+idx);
+      const remarkEl=document.getElementById('bt-remark-'+idx);
       if(dlDateEl) dlDateEl.value=dl_date||'';
       if(dlUKEl)   dlUKEl.value=dl_uk||'';
       if(dlISTEl)  dlISTEl.value=dl_ist||'';
       if(comNameEl) comNameEl.value=com_name||'';
       if(comTeamEl) comTeamEl.value=com_team||'';
       if(comLocEl)  comLocEl.value=com_loc||'';
+      if(remarkEl)  remarkEl.value=remark||'';
+      // Restore remarksList into _btSlotData so CRUD functions work correctly
+      if(remarksList&&remarksList.length){
+        if(!_btSlotData[idx]) _btSlotData[idx]={remarksList:[]};
+        _btSlotData[idx].remarksList=remarksList;
+        _btSlotRemarkOpen[idx]=true;
+      }
     });
   }
 }
@@ -2812,6 +2834,8 @@ function startRename(key){
 }
 // In-memory slot counter per form session
 let _btSlotCounter=1;
+let _btSlotRemarkOpen={};   // idx → bool: note panel open in form
+let _btSlotRemarkEdit={};   // idx → remarkId being edited in form
 function getBroadcastSlots(sec,archKey){
   const slots=[];
   document.querySelectorAll('.bt-row').forEach(row=>{
@@ -2826,7 +2850,11 @@ function getBroadcastSlots(sec,archKey){
     const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value||'';
     const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value||'';
     const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value||'';
-    slots.push({ uk, ist, plat, prog, lbl:plat, dl_date, dl_uk, dl_ist, com_name, com_team, com_loc });
+    // Get remarksList from _btSlotData (accumulated via CRUD functions)
+    // Fall back to old bt-remark textarea for legacy compat
+    const slotData=_btSlotData[idx];
+    const remarksList=slotData?slotData.remarksList:(()=>{const v=(document.getElementById('bt-remark-'+idx)||{}).value||'';return v?[{id:genId(),text:v,created:Date.now()}]:[];})();
+    slots.push({ uk, ist, plat, prog, lbl:plat, dl_date, dl_uk, dl_ist, com_name, com_team, com_loc, remarksList });
   });
   return slots;
 }
@@ -2955,6 +2983,23 @@ function buildSlotRowHTML(idx,slot){
   const _platBadgeCls=(p)=>{ const lp=(p||'').toLowerCase(); if(lp.includes('tv')) return 'fspb-tv'; if(lp.includes('radio')) return 'fspb-radio'; if(lp.includes('social')) return 'fspb-social'; if(lp.includes('text')||lp.includes('online')) return 'fspb-text'; return 'fspb-other'; };
   const badgeCls=_platBadgeCls(slot.plat||'');
   const badgeLabel=slot.plat||'— select —';
+  // Upgrade legacy single-string remark to remarksList format for display
+  const remList=Array.isArray(slot.remarksList)?slot.remarksList:(slot.remark?[{id:'leg-'+idx,text:slot.remark,created:Date.now()}]:[]);
+  const panelOpen=_btSlotRemarkOpen[idx]===true||(remList.length>0);
+  const editingId=_btSlotRemarkEdit[idx]||null;
+  let remItems='';
+  remList.forEach(r=>{
+    const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    if(editingId===r.id){
+      remItems+=`<div style="margin-bottom:6px"><textarea class="ftextarea" id="bt-rem-edit-${idx}-${r.id}" style="min-height:48px;white-space:pre-wrap;width:100%;font-size:12px;box-sizing:border-box">${esc(r.text)}</textarea><div style="display:flex;gap:5px;margin-top:4px"><button class="btn btn-accent btn-xs" onclick="btSlotRemarkSaveEdit(${idx},'${r.id}')">Save</button><button class="btn btn-ghost btn-xs" onclick="delete _btSlotRemarkEdit[${idx}];btSlotRemarkRefresh(${idx})">Cancel</button></div></div>`;
+    } else {
+      remItems+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text);white-space:pre-wrap;word-break:break-word">${esc(r.text)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${dt}${r.edited?' · edited':''}</div></div><div style="display:flex;gap:3px;flex-shrink:0"><button class="btn btn-ghost btn-xs" onclick="_btSlotRemarkEdit[${idx}]='${r.id}';btSlotRemarkRefresh(${idx})" title="Edit">✏</button><button class="btn btn-ghost btn-xs btn-danger" onclick="btSlotRemarkDelete(${idx},'${r.id}')" title="Delete">🗑</button></div></div>`;
+    }
+  });
+  const hasNotes=remList.length>0;
+  const btnLabel=hasNotes?`📝 ${remList.length} note${remList.length>1?'s':''}${panelOpen?' ▾':' ▸'}`:'📝 Add notes';
+  const btnStyle=`font-size:9.5px;padding:1px 8px;border-radius:20px;color:${hasNotes||panelOpen?'#6D28D9':'var(--text3)'};border:0.5px solid ${hasNotes||panelOpen?'rgba(124,58,237,.3)':'var(--border)'};background:${hasNotes||panelOpen?'rgba(124,58,237,.06)':'transparent'};cursor:pointer;font-family:var(--font)`;
+  const remPanel=`<div id="bt-rem-panel-${idx}" style="display:${panelOpen?'block':'none'};padding:6px 0 4px"><div id="bt-rem-list-${idx}" style="margin-bottom:4px">${remItems}</div><div style="margin-top:6px;display:flex;gap:6px;align-items:flex-start"><textarea class="ftextarea" id="bt-rem-input-${idx}" placeholder="Add a note for this slot…" style="flex:1;font-size:12px;min-height:44px;resize:vertical;white-space:pre-wrap"></textarea><button class="btn btn-ghost btn-sm" onclick="btSlotRemarkAdd(${idx})" style="flex-shrink:0">+ Add</button></div></div>`;
   return`
     <div class="form-slot-header">
       <div class="form-slot-plat-picker">
@@ -2981,10 +3026,13 @@ function buildSlotRowHTML(idx,slot){
       <div class="fgroup" style="margin:0"><label class="flabel">Name</label><input class="finput" id="bt-com-name-${idx}" placeholder="Name" list="dl-staff-all" autocomplete="off" value="${esc(slot.com_name||'')}"></div>
       <div class="fgroup" style="margin:0"><label class="flabel">Team</label><input class="finput" id="bt-com-team-${idx}" placeholder="Team / unit" value="${esc(slot.com_team||'')}"></div>
       <div class="fgroup" style="margin:0"><label class="flabel">Location</label><input class="finput" id="bt-com-loc-${idx}" placeholder="City / office" value="${esc(slot.com_loc||'')}"></div>
-    </div>`;
-}
+      <div class="form-slot-sub-label" style="grid-column:1/-1;display:flex;align-items:center;gap:8px">Notes <button type="button" id="bt-rem-btn-${idx}" onclick="btSlotTogglePanel(${idx})" style="${btnStyle}">${btnLabel}</button></div>
+      <div class="fgroup full" style="margin:0;grid-column:1/-1" id="bt-rem-wrap-${idx}">${remPanel}</div>
+    </div>`;}
 function buildBroadcastSlotsHTML(existingSlots){
   _btSlotCounter=0;
+  _btSlotRemarkOpen={};
+  _btSlotRemarkEdit={};
   if(!existingSlots||!existingSlots.length) existingSlots=[{plat:'',prog:'',uk:'',ist:''}];
   let html='';
   existingSlots.forEach((slot,i)=>{
@@ -2994,6 +3042,100 @@ function buildBroadcastSlotsHTML(existingSlots){
     html+=`<div class="bt-row form-slot-card ${cardCls}" data-idx="${i}">${buildSlotRowHTML(i,normSlot)}</div>`;
   });
   return html;
+}
+
+// ── Slot remark CRUD (in-form, operates on DOM before submitForm saves) ──────
+// The remarksList for each slot lives in-memory in _btSlotData until submitForm
+// collects it via getBroadcastSlots(). We keep a parallel _btSlotData map keyed
+// by idx so individual remark operations don't require a full form re-render.
+const _btSlotData={};  // idx → {remarksList:[]}
+
+function _btEnsureSlotData(idx){
+  if(!_btSlotData[idx]) _btSlotData[idx]={remarksList:[]};
+  return _btSlotData[idx];
+}
+
+function btSlotTogglePanel(idx){
+  _btSlotRemarkOpen[idx]=!_btSlotRemarkOpen[idx];
+  const panel=document.getElementById('bt-rem-panel-'+idx);
+  const btn=document.getElementById('bt-rem-btn-'+idx);
+  if(panel){ panel.style.display=_btSlotRemarkOpen[idx]?'block':'none'; }
+  if(btn){
+    const d=_btEnsureSlotData(idx);
+    const n=d.remarksList.length;
+    btn.textContent=n?`📝 ${n} note${n>1?'s':''}${_btSlotRemarkOpen[idx]?' ▾':' ▸'}`:'📝 Add notes';
+    btn.style.color=n||_btSlotRemarkOpen[idx]?'#6D28D9':'var(--text3)';
+    btn.style.borderColor=n||_btSlotRemarkOpen[idx]?'rgba(124,58,237,.3)':'var(--border)';
+    btn.style.background=n||_btSlotRemarkOpen[idx]?'rgba(124,58,237,.06)':'transparent';
+  }
+}
+
+function btSlotRemarkRefresh(idx){
+  const d=_btEnsureSlotData(idx);
+  const editingId=_btSlotRemarkEdit[idx]||null;
+  let html='';
+  d.remarksList.forEach(r=>{
+    const dt=new Date(r.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    if(editingId===r.id){
+      html+=`<div style="margin-bottom:6px"><textarea class="ftextarea" id="bt-rem-edit-${idx}-${r.id}" style="min-height:48px;white-space:pre-wrap;width:100%;font-size:12px;box-sizing:border-box">${esc(r.text)}</textarea><div style="display:flex;gap:5px;margin-top:4px"><button class="btn btn-accent btn-xs" onclick="btSlotRemarkSaveEdit(${idx},'${r.id}')">Save</button><button class="btn btn-ghost btn-xs" onclick="delete _btSlotRemarkEdit[${idx}];btSlotRemarkRefresh(${idx})">Cancel</button></div></div>`;
+    } else {
+      html+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:0.5px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-size:12px;color:var(--text);white-space:pre-wrap;word-break:break-word">${esc(r.text)}</div><div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)">${dt}${r.edited?' · edited':''}</div></div><div style="display:flex;gap:3px;flex-shrink:0"><button class="btn btn-ghost btn-xs" onclick="_btSlotRemarkEdit[${idx}]='${r.id}';btSlotRemarkRefresh(${idx})" title="Edit">✏</button><button class="btn btn-ghost btn-xs btn-danger" onclick="btSlotRemarkDelete(${idx},'${r.id}')" title="Delete">🗑</button></div></div>`;
+    }
+  });
+  const listEl=document.getElementById('bt-rem-list-'+idx);
+  if(listEl) listEl.innerHTML=html;
+  // Update button label
+  const btn=document.getElementById('bt-rem-btn-'+idx);
+  if(btn){
+    const n=d.remarksList.length;
+    const open=_btSlotRemarkOpen[idx];
+    btn.textContent=n?`📝 ${n} note${n>1?'s':''}${open?' ▾':' ▸'}`:'📝 Add notes';
+    btn.style.color=n||open?'#6D28D9':'var(--text3)';
+    btn.style.borderColor=n||open?'rgba(124,58,237,.3)':'var(--border)';
+    btn.style.background=n||open?'rgba(124,58,237,.06)':'transparent';
+  }
+}
+
+function btSlotRemarkAdd(idx){
+  const el=document.getElementById('bt-rem-input-'+idx);
+  if(!el) return;
+  const text=el.value.trim();
+  if(!text){ toast('Enter a note first'); return; }
+  const d=_btEnsureSlotData(idx);
+  d.remarksList.push({id:genId(),text,created:Date.now()});
+  el.value='';
+  _btSlotRemarkOpen[idx]=true;
+  btSlotRemarkRefresh(idx);
+}
+
+function btSlotRemarkSaveEdit(idx,rid){
+  const el=document.getElementById('bt-rem-edit-'+idx+'-'+rid);
+  if(!el) return;
+  const text=el.value.trim();
+  if(!text){ toast('Note cannot be empty'); return; }
+  const d=_btEnsureSlotData(idx);
+  const r=d.remarksList.find(x=>x.id===rid);
+  if(r){ r.text=text; r.edited=Date.now(); }
+  delete _btSlotRemarkEdit[idx];
+  btSlotRemarkRefresh(idx);
+}
+
+function btSlotRemarkDelete(idx,rid){
+  if(!confirm('Delete this note?')) return;
+  const d=_btEnsureSlotData(idx);
+  d.remarksList=d.remarksList.filter(r=>r.id!==rid);
+  delete _btSlotRemarkEdit[idx];
+  btSlotRemarkRefresh(idx);
+}
+
+// Initialise _btSlotData from existing slot data when form opens (edit mode)
+function btSlotDataInit(existingSlots){
+  Object.keys(_btSlotData).forEach(k=>delete _btSlotData[k]);
+  (existingSlots||[]).forEach((slot,i)=>{
+    const remList=Array.isArray(slot.remarksList)?[...slot.remarksList]:(slot.remark?[{id:genId(),text:slot.remark,created:slot.created||Date.now()}]:[]);
+    _btSlotData[i]={remarksList:remList};
+    if(remList.length) _btSlotRemarkOpen[i]=true;
+  });
 }
 function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function getArr(sec,archKey){
@@ -3470,6 +3612,11 @@ function getStories(sec,archKey,includeShelved){
     const xp=_isParked(x), yp=_isParked(y);
     if(xp&&!yp) return 1;
     if(!xp&&yp) return -1;
+    // Stories created, updated, or moved today always float to the top (within parked/active group)
+    const xToday=(x.created&&dateStr(new Date(x.created))===_today)||(x.updated&&dateStr(new Date(x.updated))===_today)||(x.movedAt&&dateStr(new Date(x.movedAt))===_today);
+    const yToday=(y.created&&dateStr(new Date(y.created))===_today)||(y.updated&&dateStr(new Date(y.updated))===_today)||(y.movedAt&&dateStr(new Date(y.movedAt))===_today);
+    if(xToday&&!yToday) return -1;
+    if(!xToday&&yToday) return 1;
     // For upcoming: sort by expected_date (or deadline_date if no expected_date)
     const getDate=s=>{
       if(secObj.isUpcoming) return s.expected_date||s.deadline_date||'';
@@ -3625,6 +3772,8 @@ function storyToText(s){
       const plat=t.plat||t.lbl||('Live '+(i+1));
       const prog=t.prog?(' · '+t.prog):'';
       ln.push(`  ${(plat+prog).padEnd(14)}: GMT ${t.uk||'–'} | IST ${t.ist||'–'}`);
+      const remList=Array.isArray(t.remarksList)?t.remarksList:(t.remark?[{text:t.remark}]:[]);
+      remList.forEach(r=>{ if(r.text) ln.push(`  ${''.padEnd(14)}  📝 ${r.text}`); });
     });
   } else if(s.time_uk||s.time_ist){
     ln.push('  Broadcast     : GMT '+(s.time_uk||'–')+' | IST '+(s.time_ist||'–'));
@@ -4472,21 +4621,14 @@ function submitForm(sec,archKey){
       deadline_ist: normaliseTime(g('f-deadline-ist'+sfx)),
     };
   } else {
-    let broadcast_times=[];
-    document.querySelectorAll('.bt-row').forEach(row=>{
-      const idx=row.dataset.idx;
-      const uk=normaliseTime((document.getElementById('bt-uk-'+idx)||{}).value?.trim()||'');
-      const ist=normaliseTime((document.getElementById('bt-ist-'+idx)||{}).value?.trim()||'');
-      const plat=(document.getElementById('bt-plat-'+idx)||{}).value?.trim()||'';
-      const prog=(document.getElementById('bt-prog-'+idx)||{}).value?.trim()||'';
-      const dl_date=(document.getElementById('bt-dl-date-'+idx)||{}).value?.trim()||'';
-      const dl_uk=normaliseTime((document.getElementById('bt-dl-uk-'+idx)||{}).value?.trim()||'');
-      const dl_ist=normaliseTime((document.getElementById('bt-dl-ist-'+idx)||{}).value?.trim()||'');
-      const com_name=(document.getElementById('bt-com-name-'+idx)||{}).value?.trim()||'';
-      const com_team=(document.getElementById('bt-com-team-'+idx)||{}).value?.trim()||'';
-      const com_loc=(document.getElementById('bt-com-loc-'+idx)||{}).value?.trim()||'';
-      if(uk||ist||plat||prog) broadcast_times.push({uk,ist,plat,prog,lbl:plat,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc});
-    });
+    const broadcast_times=getBroadcastSlots(sec,archKey)
+      .filter(t=>t.uk||t.ist||t.plat||t.prog)
+      .map(t=>({...t,
+        uk:normaliseTime(t.uk||''),
+        ist:normaliseTime(t.ist||''),
+        dl_uk:normaliseTime(t.dl_uk||''),
+        dl_ist:normaliseTime(t.dl_ist||''),
+      }));
     const storyTypeCbs=[...document.querySelectorAll(`.story-type-cb${sfx}:checked`)].map(cb=>cb.value);
     const story_type=storyTypeCbs.join(',');
     data={
@@ -6882,6 +7024,19 @@ function renderCombinedAccordion(archKey){
     ...applyFilter(ibuActive).map(s=>({...s,_subsec:'ibu'})),
     ...applyFilter(otherActive).map(s=>({...s,_subsec:'other'})),
   ];
+  // Sort: today's stories (created/updated/moved today) on top, then by deadline
+  const _todayComb=todayStr();
+  combinedFiltered.sort((x,y)=>{
+    const xp=x.status==='on-hold'||x.status==='postponed';
+    const yp=y.status==='on-hold'||y.status==='postponed';
+    if(xp&&!yp) return 1; if(!xp&&yp) return -1;
+    const isToday=s=>(s.created&&dateStr(new Date(s.created))===_todayComb)||(s.updated&&dateStr(new Date(s.updated))===_todayComb)||(s.movedAt&&dateStr(new Date(s.movedAt))===_todayComb);
+    const xt=isToday(x),yt=isToday(y);
+    if(xt&&!yt) return -1; if(!xt&&yt) return 1;
+    const dx=x.deadline_date||'',dy=y.deadline_date||'';
+    if(!dx&&!dy) return 0; if(!dx) return 1; if(!dy) return -1;
+    return dx.localeCompare(dy);
+  });
 
   // Pre-compute bits that would cause template literal nesting issues
   const _types=[...new Set((ibuActive.concat(otherActive)).flatMap(s=>(s.story_type||'').split(',').map(t=>t.trim()).filter(Boolean)))];
@@ -9456,6 +9611,7 @@ function renderStoryCard(sec,s,archKey){
               ${dlDateStr?`<span class="slot-row-dl-date">${esc(dlDateStr)}</span>`:''}
               ${dlTimeStr?`<span class="slot-row-dl-time">${esc(dlTimeStr)}</span>`:''}
             </div>
+            ${(()=>{ const remList=Array.isArray(t.remarksList)?t.remarksList:(t.remark?[{id:'l'+i,text:t.remark}]:[]);return remList.map(r=>`<div class="slot-remark-strip"><span class="slot-remark-dot"></span><span class="slot-remark-text">${esc(r.text)}</span></div>`).join(''); })()}
           </div>`;
         });
       } else {
@@ -9537,6 +9693,8 @@ function renderForm(sec,archKey){
 
   // For edit, load existing broadcast_times; for new, start with one empty slot
   const existingSlots=editStoryObj?.broadcast_times||[];
+  // Initialise slot remark data store for CRUD operations
+  btSlotDataInit(existingSlots);
 
   const locPlaceholder=editStoryObj?.location==='Studio'?'Which bureau or studio?':editStoryObj?.location==='Remote'?'Platform / dial-in':'City, country or address';
   return`<div class="form-wrap" id="story-form-${sec}${archKey?'-arch':''}">
