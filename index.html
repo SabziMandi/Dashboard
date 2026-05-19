@@ -2786,7 +2786,7 @@ function restoreFormState(saved){
     showFieldRow(sec,archKey);
   });
   if(saved.__broadcastSlots&&saved.__broadcastSlots.length){
-    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc,remark})=>{
+    saved.__broadcastSlots.forEach(({idx,uk,ist,plat,prog,dl_date,dl_uk,dl_ist,com_name,com_team,com_loc,remark,remarksList})=>{
       const ukEl=document.getElementById('bt-uk-'+idx);
       const istEl=document.getElementById('bt-ist-'+idx);
       const platEl=document.getElementById('bt-plat-'+idx);
@@ -3372,6 +3372,9 @@ function sweepStaleTerminalStories(){
     if(resDate&&resDate>=today) return true;
     // Archive before removing so it remains visible in the done list
     archiveBeforeSweep(s,key);
+    // Add to deletedIds so Firebase sync doesn't restore this entry
+    if(!state.deletedIds[key]) state.deletedIds[key]=[];
+    if(!state.deletedIds[key].includes(s.id)) state.deletedIds[key].push(s.id);
     sweptCount++; return false;
   };
   SECTIONS.filter(s=>!s.isUpcoming&&!s.isCombined&&s.key!=='ibu').forEach(({key})=>{
@@ -3612,9 +3615,9 @@ function getStories(sec,archKey,includeShelved){
     const xp=_isParked(x), yp=_isParked(y);
     if(xp&&!yp) return 1;
     if(!xp&&yp) return -1;
-    // Stories created, updated, or moved today always float to the top (within parked/active group)
-    const xToday=(x.created&&dateStr(new Date(x.created))===_today)||(x.updated&&dateStr(new Date(x.updated))===_today)||(x.movedAt&&dateStr(new Date(x.movedAt))===_today);
-    const yToday=(y.created&&dateStr(new Date(y.created))===_today)||(y.updated&&dateStr(new Date(y.updated))===_today)||(y.movedAt&&dateStr(new Date(y.movedAt))===_today);
+    // Stories created today always float to the top (within parked/active group)
+    const xToday=x.created&&dateStr(new Date(x.created))===_today;
+    const yToday=y.created&&dateStr(new Date(y.created))===_today;
     if(xToday&&!yToday) return -1;
     if(!xToday&&yToday) return 1;
     // For upcoming: sort by expected_date (or deadline_date if no expected_date)
@@ -4512,8 +4515,8 @@ function updateDateHeader(){
 function toggleAccordion(key){
   const opening=!ui.openSections.has(key);
   if(opening) ui.openSections.add(key); else ui.openSections.delete(key);
-  if(opening&&key==='tasks') { ui_taskPage=1; ui_doneTaskPage=1; ui_doneTaskOpen=false; ui_taskGroupOpen={}; }
-  if(opening&&key==='remarks') { ui_notePage=1; ui_noteGroupOpen={}; }
+  if(opening&&key==='tasks') { ui_taskPage=1; ui_doneTaskPage=1; ui_doneTaskOpen=false; ui_taskGroupOpen={}; ui_taskGroupPage={}; }
+  if(opening&&key==='remarks') { ui_notePage=1; ui_noteGroupOpen={}; ui_noteGroupPage={}; }
   if(opening&&key==='upcoming') { ui_upcomingPage=1; ui_upcomingGroupOpen={}; }
   if(opening&&(key==='ibu'||key==='upcoming')) ui_upcomingPage=1;
   if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
@@ -5275,6 +5278,8 @@ function renderUpcomingView(){
     const expiredUpcoming = stories
       .filter(s=>s.expected_date && s.expected_date < today && s.status!=='completed')
       .sort((a,b)=>(b.expected_date||'').localeCompare(a.expected_date||''));
+
+    const allActive=[...activeUpcoming,...completedUpcoming];
 
     if(!allActive.length && !isFormOpen && !expiredUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
@@ -6168,7 +6173,9 @@ let ui_taskPage=1;   // how many batches of 10 to show
 let ui_doneTaskPage=1; // how many batches of 10 done/not-done tasks to show
 let ui_doneTaskOpen=false; // done/not-done task list collapsed by default
 let ui_taskGroupOpen={}; // collapsible task groups — first non-empty opens by default, rest closed
+let ui_taskGroupPage={}; // per-group pagination for tasks
 let ui_noteGroupOpen={}; // collapsible note groups — first non-empty opens by default, rest closed
+let ui_noteGroupPage={}; // per-group pagination for notes
 let ui_expiredUpcomingOpen={}; // expired upcoming collapsed per section key
 let ui_storiesDoneOpen={}; // done/not-done stories collapsed per section key
 let ui_storiesShelvedOpen={}; // shelved stories collapsed per section key
@@ -6769,11 +6776,9 @@ function renderTasksSection(){
       if((b.deadline_date||'')!==(a.deadline_date||'')) return (b.deadline_date||'').localeCompare(a.deadline_date||'');
       return (b.created||0)-(a.created||0);
     });
-    const taskLimit=ui_taskPage*10;
-    const visibleTasks=_activeTasks.slice(0,taskLimit);
-    // Group all active tasks by bucket
+    // Group ALL active tasks by bucket — per-group pagination handles the slicing
     const _groups={today:[],overdue:[],tomorrow:[],upcoming:[],nodeadline:[]};
-    visibleTasks.forEach(t=>{
+    _activeTasks.forEach(t=>{
       const d=effectiveDate(t);
       const diff=d?Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000):null;
       if(diff===0)            _groups.today.push(t);
@@ -6790,7 +6795,8 @@ function renderTasksSection(){
       upcoming:   {label:'Upcoming',   icon:'⏳', extraCls:'tsd-upcoming'},
       nodeadline: {label:'No deadline',icon:'—',  extraCls:'tsd-nodeadline'},
     };
-    // Only the first non-empty group opens by default; rest start collapsed
+    // Per-group pagination — each group has its own page counter
+    if(!ui_taskGroupPage) ui_taskGroupPage={};
     const _firstNonEmptyTask=['today','overdue','tomorrow','upcoming','nodeadline'].find(k=>_groups[k].length>0)||'today';
     let isFirstGroup=true;
     ['today','overdue','tomorrow','upcoming','nodeadline'].forEach(gKey=>{
@@ -6799,16 +6805,17 @@ function renderTasksSection(){
       const defaultOpen=gKey===_firstNonEmptyTask;
       const isOpen=ui_taskGroupOpen[gKey]!==undefined?ui_taskGroupOpen[gKey]:defaultOpen;
       const bodyId='tg-body-'+gKey;
+      const page=ui_taskGroupPage[gKey]||1;
+      const limit=page*10;
+      const visible=arr.slice(0,limit);
+      const remaining=arr.length-visible.length;
       html+=`<div class="task-section-divider ${extraCls}${isFirstGroup?' tsd-first':''}" onclick="ui_taskGroupOpen['${gKey}']=!ui_taskGroupOpen['${gKey}'];const b=document.getElementById('${bodyId}');const c=document.getElementById('tg-chev-${gKey}');if(b)b.style.display=ui_taskGroupOpen['${gKey}']?'block':'none';if(c)c.textContent=ui_taskGroupOpen['${gKey}']?'▾':'▸'">${icon} ${label} <span class="tsd-count">(${arr.length})</span><span id="tg-chev-${gKey}" class="tsd-chev">${isOpen?'▾':'▸'}</span></div>`;
       html+=`<div id="${bodyId}" style="display:${isOpen?'block':'none'}">`;
-      arr.forEach(t=>{ html+=renderTaskCard(t,today); });
+      visible.forEach(t=>{ html+=renderTaskCard(t,today); });
+      if(remaining>0) html+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:2px" onclick="if(!ui_taskGroupPage)ui_taskGroupPage={};ui_taskGroupPage['${gKey}']=(ui_taskGroupPage['${gKey}']||1)+1;render();event.stopPropagation()">↓ Show ${Math.min(remaining,10)} more <span class="tsd-count">(${remaining} remaining)</span><span class="tsd-chev">+</span></div>`;
       html+=`</div>`;
       isFirstGroup=false;
     });
-    if(_activeTasks.length>taskLimit){
-      const remaining=_activeTasks.length-taskLimit;
-      html+=`<div class="task-section-divider tsd-nodeadline" onclick="showMoreTasks();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${remaining} remaining)</span><span class="tsd-chev">+</span></div>`;
-    }
     if(_doneTasks.length){
       const doneLimit=ui_doneTaskPage*10;
       const visibleDone=_doneTasks.slice(0,doneLimit);
@@ -7932,9 +7939,6 @@ function renderRemarksAccordion(){
   if(!activeSorted.length && !ui_noteForm){
     body+=`<div class="empty-state" style="padding:16px 0"><div class="empty-icon">📝</div><div class="empty-msg">No notes yet — click <strong>+ Add</strong></div></div>`;
   } else {
-    const noteLimit=ui_notePage*10;
-    const visibleNotes=activeSorted.slice(0,noteLimit);
-    const noteRemaining=activeSorted.length-visibleNotes.length;
     const _noteGroup=n=>{
       if(!n.deadline_date) return 'nodeadline';
       const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
@@ -7950,20 +7954,25 @@ function renderRemarksAccordion(){
       upcoming:  {label:'Upcoming',     cls:'tsd-upcoming',  icon:'🗓'},
       nodeadline:{label:'No deadline',  cls:'tsd-nodeadline',icon:'📝'},
     };
-    // Bucket notes into groups
+    // Bucket ALL active notes — per-group pagination handles slicing
     const _noteGroups={today:[],overdue:[],tomorrow:[],upcoming:[],nodeadline:[]};
-    visibleNotes.forEach(n=>_noteGroups[_noteGroup(n)].push(n));
-    // First non-empty group opens by default; rest collapsed
+    activeSorted.forEach(n=>_noteGroups[_noteGroup(n)].push(n));
+    // Per-group pagination
+    if(!ui_noteGroupPage) ui_noteGroupPage={};
     const _firstNonEmptyNote=['today','overdue','tomorrow','upcoming','nodeadline'].find(k=>_noteGroups[k].length>0)||'today';
     ['today','overdue','tomorrow','upcoming','nodeadline'].forEach((gKey,gi)=>{
       const arr=_noteGroups[gKey]; if(!arr.length) return;
       const meta=_noteGroupMeta[gKey];
       const defaultOpen=gKey===_firstNonEmptyNote;
       const isOpen=ui_noteGroupOpen[gKey]!==undefined?ui_noteGroupOpen[gKey]:defaultOpen;
+      const page=ui_noteGroupPage[gKey]||1;
+      const limit=page*10;
+      const visible=arr.slice(0,limit);
+      const remaining=arr.length-visible.length;
       const bodyId='ng-body-'+gKey;
       body+=`<div class="task-section-divider ${meta.cls}${gi===0?' tsd-first':''}" onclick="ui_noteGroupOpen['${gKey}']=!ui_noteGroupOpen['${gKey}'];const b=document.getElementById('${bodyId}');const c=document.getElementById('ng-chev-${gKey}');if(b)b.style.display=ui_noteGroupOpen['${gKey}']?'block':'none';if(c)c.textContent=ui_noteGroupOpen['${gKey}']?'▾':'▸'">${meta.icon} ${meta.label} <span class="tsd-count">(${arr.length})</span><span id="ng-chev-${gKey}" class="tsd-chev">${isOpen?'▾':'▸'}</span></div>`;
       body+=`<div id="${bodyId}" style="display:${isOpen?'block':'none'}">`;
-      arr.forEach(n=>{
+      visible.forEach(n=>{
         const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
         let dlChip='';
         if(n.deadline_date){
@@ -7991,10 +8000,9 @@ function renderRemarksAccordion(){
         </div>`;
       });
       body+=`</div>`;
+      if(remaining>0) body+=`<div class="task-section-divider tsd-nodeadline" style="margin-top:2px;display:${isOpen?'flex':'none'}" id="ng-more-${gKey}" onclick="if(!ui_noteGroupPage)ui_noteGroupPage={};ui_noteGroupPage['${gKey}']=(ui_noteGroupPage['${gKey}']||1)+1;render();event.stopPropagation()">↓ Show ${Math.min(remaining,10)} more <span class="tsd-count">(${remaining} remaining)</span><span class="tsd-chev">+</span></div>`;
     });
-    if(noteRemaining>0){
-      body+=`<div style="border-top:1px dashed var(--border);margin-top:4px;padding:8px 2px 4px;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text3);font-family:var(--font)" onclick="showMoreNotes();event.stopPropagation()">↓ Show more <span style="opacity:.6;font-family:var(--mono)">(${noteRemaining} remaining)</span></div>`;
-    }
+    // noteRemaining no longer needed — pagination is per-group
   }
 
   // Resolved notes — collapsed by default, click header to expand
