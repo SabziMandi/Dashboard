@@ -4361,7 +4361,9 @@ function updateDateHeader(){
 function toggleAccordion(key){
   const opening=!ui.openSections.has(key);
   if(opening) ui.openSections.add(key); else ui.openSections.delete(key);
-  if(opening&&key==='tasks') { ui_taskPage=1; ui_doneTaskPage=1; ui_doneTaskOpen=false; }
+  if(opening&&key==='tasks') { ui_taskPage=1; ui_doneTaskPage=1; ui_doneTaskOpen=false; ui_taskGroupOpen={}; }
+  if(opening&&key==='remarks') { ui_notePage=1; ui_noteGroupOpen={}; }
+  if(opening&&key==='upcoming') { ui_upcomingPage=1; ui_upcomingGroupOpen={}; }
   if(opening&&(key==='ibu'||key==='upcoming')) ui_upcomingPage=1;
   if(!opening&&key==='travel') _te={open:false,type:'cab',storyId:null,storySec:null,editId:null};
   const b=document.getElementById('acc-body-'+key);
@@ -5130,12 +5132,12 @@ function renderUpcomingView(){
       .filter(s=>s.expected_date && s.expected_date < today && s.status!=='completed')
       .sort((a,b)=>(b.expected_date||'').localeCompare(a.expected_date||''));
 
-    const allActive=[...activeUpcoming,...completedUpcoming];
-
     if(!allActive.length && !isFormOpen && !expiredUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
     } else {
-      allActive.forEach(s=>{ html+=renderCard('upcoming',s,null); });
+      html+=_renderUpcomingActiveGrouped(activeUpcoming,'upcoming',null,today);
+      // Completed entries appended after active groups
+      completedUpcoming.forEach(s=>{ html+=renderCard('upcoming',s,null); });
     }
 
     if(expiredUpcoming.length){
@@ -5453,6 +5455,62 @@ function buildMigrateSourceHTML(){
 
 /* ─── ACCORDION ─── */
 
+/* ── Shared helper: render active upcoming entries grouped by date bucket ──
+   Used by both renderAccordion (today board) and renderUpcomingView (mobile tab).
+   Returns HTML string. archKey is null for live board, string for archive view.  */
+let ui_upcomingGroupOpen={}; // collapsible upcoming groups per key
+function _renderUpcomingActiveGrouped(activeUpcoming, sec, archKey, today){
+  if(!activeUpcoming.length) return '';
+  const todayMs=new Date(today+'T00:00:00').getTime();
+  // Sort: today → overdue → tomorrow → upcoming (by date) → no date
+  const upSortKey=s=>{
+    const d=s.expected_date;
+    if(!d) return 500000;
+    const diff=Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000);
+    if(diff===0) return 0;
+    if(diff<0)   return 1+Math.abs(diff)/100000;
+    if(diff===1) return 2;
+    return 2+diff;
+  };
+  const sorted=[...activeUpcoming].sort((a,b)=>upSortKey(a)-upSortKey(b));
+  // Bucket
+  const groups={today:[],overdue:[],tomorrow:[],upcoming:[],nodeadline:[]};
+  sorted.forEach(s=>{
+    const d=s.expected_date;
+    if(!d){ groups.nodeadline.push(s); return; }
+    const diff=Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000);
+    if(diff===0)       groups.today.push(s);
+    else if(diff<0)    groups.overdue.push(s);
+    else if(diff===1)  groups.tomorrow.push(s);
+    else               groups.upcoming.push(s);
+  });
+  const meta={
+    today:     {label:'Today',      cls:'tsd-today',     icon:'📅'},
+    overdue:   {label:'Overdue',    cls:'tsd-overdue',   icon:'⚠'},
+    tomorrow:  {label:'Tomorrow',   cls:'tsd-tomorrow',  icon:'→'},
+    upcoming:  {label:'Upcoming',   cls:'tsd-upcoming',  icon:'🗓'},
+    nodeadline:{label:'No date',    cls:'tsd-nodeadline',icon:'—'},
+  };
+  const prefix=(archKey||'live')+'-'+(sec||'upcoming')+'-';
+  const firstNonEmpty=['today','overdue','tomorrow','upcoming','nodeadline'].find(k=>groups[k].length>0)||'today';
+  let html='';
+  let isFirst=true;
+  ['today','overdue','tomorrow','upcoming','nodeadline'].forEach(gKey=>{
+    const arr=groups[gKey]; if(!arr.length) return;
+    const m=meta[gKey];
+    const stateKey=prefix+gKey;
+    const defaultOpen=gKey===firstNonEmpty;
+    const isOpen=ui_upcomingGroupOpen[stateKey]!==undefined?ui_upcomingGroupOpen[stateKey]:defaultOpen;
+    const bodyId='upg-body-'+stateKey.replace(/[^a-z0-9]/gi,'-');
+    html+=`<div class="task-section-divider ${m.cls}${isFirst?' tsd-first':''}" onclick="ui_upcomingGroupOpen['${stateKey}']=!ui_upcomingGroupOpen['${stateKey}'];const b=document.getElementById('${bodyId}');const c=document.getElementById('upg-chev-${stateKey.replace(/[^a-z0-9]/gi,'-')}');if(b)b.style.display=ui_upcomingGroupOpen['${stateKey}']?'block':'none';if(c)c.textContent=ui_upcomingGroupOpen['${stateKey}']?'▾':'▸'">${m.icon} ${m.label} <span class="tsd-count">(${arr.length})</span><span id="upg-chev-${stateKey.replace(/[^a-z0-9]/gi,'-')}" class="tsd-chev">${isOpen?'▾':'▸'}</span></div>`;
+    html+=`<div id="${bodyId}" style="display:${isOpen?'block':'none'}">`;
+    arr.forEach(s=>{ html+=renderCard(sec||'upcoming',s,archKey); });
+    html+=`</div>`;
+    isFirst=false;
+  });
+  return html;
+}
+
 function renderAccordion(sec,archKey){
   const secObj=SECTIONS.find(s=>s.key===sec.key)||sec;
   // Skip hidden sections (they're rendered inside the combined accordion)
@@ -5545,7 +5603,11 @@ function renderAccordion(sec,archKey){
   return esc(eligible[0].title||'');
 })()}</span>
       <div class="acc-meta">
-        ${activeStories.length?`<span class="sbadge sb-in-progress">${activeStories.length} pending</span>`:''}
+        ${(() => {
+          const today2=todayStr();
+          const nonExpiredPending=activeStories.filter(s=>s.status!=='completed'&&(!s.expected_date||s.expected_date>=today2)).length;
+          return nonExpiredPending?`<span class="sbadge sb-in-progress">${nonExpiredPending} pending</span>`:'';
+        })()}
       </div>
       <span class="acc-chevron${isOpen?' open':''}" id="acc-chev-${sec.key}">▾</span>
     </div>
@@ -5591,13 +5653,7 @@ function renderAccordion(sec,archKey){
     if(!activeUpcoming.length && !isFormOpen && !completedUpcoming.length && !expiredUpcoming.length){
       html+=`<div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-msg">No upcoming events yet — click <strong>+ Add</strong></div></div>`;
     } else {
-      const upcomingLimit=ui_upcomingPage*10;
-      const visibleUpcoming=activeUpcoming.slice(0,upcomingLimit);
-      visibleUpcoming.forEach(s=>{ html+=renderCard(sec.key,s,archKey); });
-      if(activeUpcoming.length>upcomingLimit){
-        const upRemaining=activeUpcoming.length-upcomingLimit;
-        html+=`<div class="task-section-divider tsd-nodeadline" onclick="showMoreUpcoming();event.stopPropagation()">↓ Show 10 more <span class="tsd-count">(${upRemaining} remaining)</span><span class="tsd-chev">+</span></div>`;
-      }
+      html+=_renderUpcomingActiveGrouped(activeUpcoming, sec.key, archKey, today);
     }
 
     // Completed entries — faded, struck-through, sorted newest first
@@ -5967,7 +6023,8 @@ let ui_openTasks=new Set();
 let ui_taskPage=1;   // how many batches of 10 to show
 let ui_doneTaskPage=1; // how many batches of 10 done/not-done tasks to show
 let ui_doneTaskOpen=false; // done/not-done task list collapsed by default
-let ui_taskGroupOpen={today:true,overdue:true,tomorrow:true,upcoming:true,nodeadline:true}; // collapsible task groups — open by default
+let ui_taskGroupOpen={}; // collapsible task groups — first non-empty opens by default, rest closed
+let ui_noteGroupOpen={}; // collapsible note groups — first non-empty opens by default, rest closed
 let ui_expiredUpcomingOpen={}; // expired upcoming collapsed per section key
 let ui_storiesDoneOpen={}; // done/not-done stories collapsed per section key
 let ui_storiesShelvedOpen={}; // shelved stories collapsed per section key
@@ -6547,14 +6604,15 @@ function renderTasksSection(){
       return t.deadline_date;
     };
     const sortKey=t=>{
-      if(t.taskStatus==='done'||t.taskStatus==='not-done'||t.taskStatus==='transferred') return Infinity; // terminal tasks always sink
+      if(t.taskStatus==='done'||t.taskStatus==='not-done'||t.taskStatus==='transferred') return Infinity;
       const d=effectiveDate(t);
-      if(!d) return 500000;          // no deadline → below all deadline tasks, above done
+      if(!d) return 500000;
       const diff=Math.round((new Date(d+'T00:00:00').getTime()-todayMs)/86400000);
-      if(diff===0) return -1;              // due today → top
-      if(diff<0)   return (-diff)/100000; // overdue: closest to today first (yesterday=0.00001 before 3-days-ago=0.00003)
-      if(t.taskStatus==='postponed-to') return 400000+diff; // postponed sink below active
-      return diff;                   // upcoming: 1,2,3 …
+      if(diff===0) return 0;                    // today → top
+      if(diff<0)   return 1+Math.abs(diff)/100000; // overdue: just after today, closest first
+      if(diff===1) return 2;                    // tomorrow
+      if(t.taskStatus==='postponed-to') return 400000+diff;
+      return 2+diff;                            // upcoming: 4,5,6…
     };
     const sorted=[...tasks].sort((a,b)=>sortKey(a)-sortKey(b));
     const _activeTasks=sorted.filter(t=>t.taskStatus!=='done'&&t.taskStatus!=='not-done'&&t.taskStatus!=='transferred');
@@ -6588,11 +6646,14 @@ function renderTasksSection(){
       upcoming:   {label:'Upcoming',   icon:'⏳', extraCls:'tsd-upcoming'},
       nodeadline: {label:'No deadline',icon:'—',  extraCls:'tsd-nodeadline'},
     };
+    // Only the first non-empty group opens by default; rest start collapsed
+    const _firstNonEmptyTask=['today','overdue','tomorrow','upcoming','nodeadline'].find(k=>_groups[k].length>0)||'today';
     let isFirstGroup=true;
     ['today','overdue','tomorrow','upcoming','nodeadline'].forEach(gKey=>{
       const arr=_groups[gKey]; if(!arr.length) return;
       const {label,icon,extraCls}=_groupMeta[gKey];
-      const isOpen=ui_taskGroupOpen[gKey]!==false; // default open
+      const defaultOpen=gKey===_firstNonEmptyTask;
+      const isOpen=ui_taskGroupOpen[gKey]!==undefined?ui_taskGroupOpen[gKey]:defaultOpen;
       const bodyId='tg-body-'+gKey;
       html+=`<div class="task-section-divider ${extraCls}${isFirstGroup?' tsd-first':''}" onclick="ui_taskGroupOpen['${gKey}']=!ui_taskGroupOpen['${gKey}'];const b=document.getElementById('${bodyId}');const c=document.getElementById('tg-chev-${gKey}');if(b)b.style.display=ui_taskGroupOpen['${gKey}']?'block':'none';if(c)c.textContent=ui_taskGroupOpen['${gKey}']?'▾':'▸'">${icon} ${label} <span class="tsd-count">(${arr.length})</span><span id="tg-chev-${gKey}" class="tsd-chev">${isOpen?'▾':'▸'}</span></div>`;
       html+=`<div id="${bodyId}" style="display:${isOpen?'block':'none'}">`;
@@ -7699,11 +7760,12 @@ function renderRemarksAccordion(){
   // Active notes — sorted and grouped by deadline category (mirrors task grouping)
   const todayMs=new Date(today+'T00:00:00').getTime();
   const noteSortKey=n=>{
-    if(!n.deadline_date) return Infinity;
+    if(!n.deadline_date) return 500000;
     const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
-    if(diff===0) return -1;
-    if(diff<0)   return (-diff)/100000;
-    return diff;
+    if(diff===0) return 0;                      // today → top
+    if(diff<0)   return 1+Math.abs(diff)/100000;// overdue: just after today, closest first
+    if(diff===1) return 2;                      // tomorrow
+    return 2+diff;                              // upcoming: 4,5,6…
   };
   const activeSorted=[...active].sort((a,b)=>{
     const ka=noteSortKey(a), kb=noteSortKey(b);
@@ -7716,57 +7778,62 @@ function renderRemarksAccordion(){
     const noteLimit=ui_notePage*10;
     const visibleNotes=activeSorted.slice(0,noteLimit);
     const noteRemaining=activeSorted.length-visibleNotes.length;
-    let _lastNoteGroup=null;
     const _noteGroup=n=>{
       if(!n.deadline_date) return 'nodeadline';
       const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
-      if(diff<-1)  return 'overdue';
-      if(diff===-1)return 'overdue';
       if(diff===0) return 'today';
+      if(diff<0)   return 'overdue';
       if(diff===1) return 'tomorrow';
       return 'upcoming';
     };
     const _noteGroupMeta={
-      overdue:  {label:'Overdue',       cls:'tsd-overdue',   icon:'⚠'},
-      today:    {label:'Due today',     cls:'tsd-today',     icon:'📅'},
-      tomorrow: {label:'Due tomorrow',  cls:'tsd-tomorrow',  icon:'🔜'},
-      upcoming: {label:'Upcoming',      cls:'tsd-upcoming',  icon:'🗓'},
+      today:     {label:'Due today',    cls:'tsd-today',     icon:'📅'},
+      overdue:   {label:'Overdue',      cls:'tsd-overdue',   icon:'⚠'},
+      tomorrow:  {label:'Due tomorrow', cls:'tsd-tomorrow',  icon:'🔜'},
+      upcoming:  {label:'Upcoming',     cls:'tsd-upcoming',  icon:'🗓'},
       nodeadline:{label:'No deadline',  cls:'tsd-nodeadline',icon:'📝'},
     };
-    visibleNotes.forEach(n=>{
-      const grp=_noteGroup(n);
-      if(grp!==_lastNoteGroup){
-        const isFirst=_lastNoteGroup===null;
-        const meta=_noteGroupMeta[grp];
-        body+=`<div class="task-section-divider ${meta.cls}${isFirst?' tsd-first':''}">${meta.icon} ${meta.label}</div>`;
-        _lastNoteGroup=grp;
-      }
-      const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      let dlChip='';
-      if(n.deadline_date){
-        const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
-        if(diff<-1)    dlChip=`<span class="note-deadline-chip">⚠ Overdue by ${Math.abs(diff)}d</span>`;
-        else if(diff===-1) dlChip=`<span class="note-deadline-chip">⚠ Due yesterday</span>`;
-        else if(diff===0)  dlChip=`<span class="note-deadline-chip">⚠ Due today</span>`;
-        else if(diff===1)  dlChip=`<span class="note-deadline-chip ok">🔜 Due tomorrow</span>`;
-        else               dlChip=`<span class="note-deadline-chip ok">📅 Due in ${diff}d (${fmtDate(n.deadline_date)})</span>`;
-      }
-      const carriedChip=n.carriedForward?`<span class="carry-badge">↻ +${n.carriedDays||1}d</span>`:'';
-      body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
-        ${n.headline?`<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;font-family:var(--font)">${esc(n.headline)}</div>`:''}
-        ${n.text?`<div class="note-text">${esc(n.text)}</div>`:''}
-        <div class="note-meta">
-          <span>🗓 ${created}</span>
-          ${dlChip}
-          ${carriedChip}
-        </div>
-        <div class="note-btns">
-          <button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${n.id}','done');event.stopPropagation()">✅ Done</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="setNoteStatus('${n.id}','pass');event.stopPropagation()">↪ Pass</button>
-          <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}');event.stopPropagation()">✏ Edit</button>
-          <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteNote('${n.id}');event.stopPropagation()">🗑</button>
-        </div>
-      </div>`;
+    // Bucket notes into groups
+    const _noteGroups={today:[],overdue:[],tomorrow:[],upcoming:[],nodeadline:[]};
+    visibleNotes.forEach(n=>_noteGroups[_noteGroup(n)].push(n));
+    // First non-empty group opens by default; rest collapsed
+    const _firstNonEmptyNote=['today','overdue','tomorrow','upcoming','nodeadline'].find(k=>_noteGroups[k].length>0)||'today';
+    ['today','overdue','tomorrow','upcoming','nodeadline'].forEach((gKey,gi)=>{
+      const arr=_noteGroups[gKey]; if(!arr.length) return;
+      const meta=_noteGroupMeta[gKey];
+      const defaultOpen=gKey===_firstNonEmptyNote;
+      const isOpen=ui_noteGroupOpen[gKey]!==undefined?ui_noteGroupOpen[gKey]:defaultOpen;
+      const bodyId='ng-body-'+gKey;
+      body+=`<div class="task-section-divider ${meta.cls}${gi===0?' tsd-first':''}" onclick="ui_noteGroupOpen['${gKey}']=!ui_noteGroupOpen['${gKey}'];const b=document.getElementById('${bodyId}');const c=document.getElementById('ng-chev-${gKey}');if(b)b.style.display=ui_noteGroupOpen['${gKey}']?'block':'none';if(c)c.textContent=ui_noteGroupOpen['${gKey}']?'▾':'▸'">${meta.icon} ${meta.label} <span class="tsd-count">(${arr.length})</span><span id="ng-chev-${gKey}" class="tsd-chev">${isOpen?'▾':'▸'}</span></div>`;
+      body+=`<div id="${bodyId}" style="display:${isOpen?'block':'none'}">`;
+      arr.forEach(n=>{
+        const created=new Date(n.created).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        let dlChip='';
+        if(n.deadline_date){
+          const diff=Math.round((new Date(n.deadline_date+'T00:00:00').getTime()-todayMs)/86400000);
+          if(diff<0)        dlChip=`<span class="note-deadline-chip">⚠ Overdue by ${Math.abs(diff)}d</span>`;
+          else if(diff===0) dlChip=`<span class="note-deadline-chip">⚠ Due today</span>`;
+          else if(diff===1) dlChip=`<span class="note-deadline-chip ok">🔜 Due tomorrow</span>`;
+          else              dlChip=`<span class="note-deadline-chip ok">📅 Due in ${diff}d (${fmtDate(n.deadline_date)})</span>`;
+        }
+        const carriedChip=n.carriedForward?`<span class="carry-badge">↻ +${n.carriedDays||1}d</span>`:'';
+        body+=`<div class="note-card${n.carriedForward?' note-carried':''}">
+          ${n.headline?`<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;font-family:var(--font)">${esc(n.headline)}</div>`:''}
+          ${n.text?`<div class="note-text">${esc(n.text)}</div>`:''}
+          <div class="note-meta">
+            <span>🗓 ${created}</span>
+            ${dlChip}
+            ${carriedChip}
+          </div>
+          <div class="note-btns">
+            <button class="btn btn-done-active btn-sm" onclick="setNoteStatus('${n.id}','done');event.stopPropagation()">✅ Done</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="setNoteStatus('${n.id}','pass');event.stopPropagation()">↪ Pass</button>
+            <button class="btn btn-ghost btn-sm" onclick="editNote('${n.id}');event.stopPropagation()">✏ Edit</button>
+            <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteNote('${n.id}');event.stopPropagation()">🗑</button>
+          </div>
+        </div>`;
+      });
+      body+=`</div>`;
     });
     if(noteRemaining>0){
       body+=`<div style="border-top:1px dashed var(--border);margin-top:4px;padding:8px 2px 4px;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text3);font-family:var(--font)" onclick="showMoreNotes();event.stopPropagation()">↓ Show more <span style="opacity:.6;font-family:var(--mono)">(${noteRemaining} remaining)</span></div>`;
@@ -8182,9 +8249,16 @@ function _teDeleteStory(sid){
   _teRefresh();
 }
 function _teRefresh(){
-  // Update body content (preserves sub-panel open/closed state in ui_teBookingsOpen/ui_teExpensesOpen)
+  // Update body content if open; if closed, clear it so toggleAccordion always repopulates fresh
   const tb=document.getElementById('acc-body-travel');
-  if(tb&&tb.classList.contains('open')) tb.innerHTML=_teRenderBody();
+  if(tb){
+    if(tb.classList.contains('open')){
+      tb.innerHTML=_teRenderBody();
+    } else {
+      // Clear body so next open always calls _teRenderBody() with fresh state
+      tb.innerHTML='';
+    }
+  }
 
   // Update header badges and strip in-place — no replaceChild so DOM state is preserved
   const allEntries=state.travelEntries||[];
@@ -8837,7 +8911,13 @@ function renderLeavesByPerson(leaves,today){
       sorted.forEach(l=>{
         const ti=LEAVE_TYPES.find(t=>t.key===l.leaveType)||LEAVE_TYPES[0];
         const d=leaveDays(l.dateFrom,l.dateTo);
-        const dateStr=l.dateFrom===l.dateTo?fmtD(l.dateFrom):`${fmtD(l.dateFrom)} – ${fmtD(l.dateTo)}`;
+        const fmtDNoYear=dt=>{try{return new Date(dt+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'});}catch(e){return dt;}};
+        const fromYear=l.dateFrom?l.dateFrom.slice(0,4):'';
+        const toYear=l.dateTo?l.dateTo.slice(0,4):'';
+        const dateStr=l.dateFrom===l.dateTo?fmtD(l.dateFrom)
+          :(fromYear===toYear?`${fmtDNoYear(l.dateFrom)} – ${fmtD(l.dateTo)}`:`${fmtD(l.dateFrom)} – ${fmtD(l.dateTo)}`);
+        const _typeShort={earned:'Earned',sick:'Sick',casual:'Casual',comp:'Comp',otherdept:'Other'};
+        const shortLabel=_typeShort[l.leaveType]||ti.label;
         const isPast=l.dateTo<today;
         const isPreFY=l.dateFrom<fyStart; // before current FY — shown for reference, dimmed
         const stIcon=l.status==='approved'?`<span style="color:#15803D;font-size:10px">✓</span>`:`<span style="color:#B45309;font-size:10px">⏳</span>`;
@@ -8845,7 +8925,7 @@ function renderLeavesByPerson(leaves,today){
         // Grid row: 4 columns — badge | date | days | status+edit
         rows+=`<div style="display:contents;${isPast||isPreFY?'opacity:.55':''}">
           <div style="padding:5px 6px 5px 0;border-bottom:0.5px solid var(--border);display:flex;align-items:center">
-            <span class="leave-type-badge ${ti.cls}" style="font-size:9px;padding:1px 5px;white-space:nowrap">${ti.label}</span>
+            <span class="leave-type-badge ${ti.cls}" style="font-size:9px;padding:1px 5px;white-space:nowrap">${esc(shortLabel)}</span>
           </div>
           <div style="padding:5px 4px;border-bottom:0.5px solid var(--border);font-family:var(--mono);color:var(--text2);font-size:10.5px;white-space:nowrap;display:flex;align-items:center">${esc(dateStr)}</div>
           <div style="padding:5px 4px;border-bottom:0.5px solid var(--border);font-weight:600;font-family:var(--mono);font-size:11px;text-align:right;white-space:nowrap;display:flex;align-items:center;justify-content:flex-end">${d}d</div>
@@ -8855,18 +8935,11 @@ function renderLeavesByPerson(leaves,today){
       // Strip border from last row
       rows=rows.replace(/border-bottom:0\.5px solid var\(--border\)([^<]*)<\/div>\s*<\/div>\s*$/,
         (m)=>m.replace(/border-bottom:0\.5px solid var\(--border\)/g,'border-bottom:none'));
-      // Footer totals
-      const summaryParts=[];
-      if(totals.earned) summaryParts.push(`${totals.earned}d earned`);
-      if(totals.sick)   summaryParts.push(`${totals.sick}d sick`);
-      if(totals.casual) summaryParts.push(`${totals.casual}d casual`);
-      if(totals.comp)   summaryParts.push(`${totals.comp}d comp`);
-      if(totals.otherdept) summaryParts.push(`${totals.otherdept}d other dept`);
       html+=`<div style="border-top:0.5px solid var(--border);padding:9px 12px 10px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:7px">Leave history</div>
         <div style="display:grid;grid-template-columns:auto 1fr auto auto;width:100%">${rows}</div>
         <div style="font-size:10px;color:var(--text3);text-align:right;margin-top:7px;border-top:0.5px solid var(--border);padding-top:5px">
-          Total: <strong style="color:var(--text2)">${totals.total}d</strong>${summaryParts.length?' · '+summaryParts.join(' · '):''}
+          Total since Apr ${fyYear}: <strong style="color:var(--text2)">${totals.total}d</strong>
         </div>
       </div>`;
     }
@@ -9589,7 +9662,7 @@ function renderForm(sec,archKey){
 
       <!-- ── Accordion 5: Remarks & Links ── -->
       ${(()=>{
-        const latestRemark=(editStoryObj?.remarks||[]).slice().sort((a,b)=>(b.ts||0)-(a.ts||0))[0]?.text||'';
+        const latestRemark=(editStoryObj?.remarksList||[]).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0]?.text||editStoryObj?.remarks||'';
         const firstLine=latestRemark.split('\n')[0].slice(0,60)+(latestRemark.length>60?'…':'');
         const hasLinks=!!(editStoryObj?.links);
         const summary=firstLine||(hasLinks?'Has links':'');
